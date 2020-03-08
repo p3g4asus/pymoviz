@@ -1,0 +1,16 @@
+[
+    {
+        "type": "string",
+        "title": "Host",
+        "desc": "OSC Host",
+        "section": "backend",
+        "key": "host"
+    },
+    {
+        "type": "numeric",
+        "title": "OSC Port",
+        "desc": "OSC port",
+        "section": "backend",
+        "key": "port"
+    }
+]

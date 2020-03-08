@@ -1,0 +1,16 @@
+[
+    {
+        "type": "numeric",
+        "title": "Frontend Port",
+        "desc": "Frontend port",
+        "section": "local",
+        "key": "frontendport"
+    },
+    {
+        "type": "numeric",
+        "title": "Backend Port",
+        "desc": "Backend port",
+        "section": "local",
+        "key": "backendport"
+    }
+]

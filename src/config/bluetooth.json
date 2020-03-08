@@ -1,0 +1,16 @@
+[
+    {
+        "type": "numeric",
+        "title": "Retry every (s)",
+        "desc": "Retry every (s)",
+        "section": "bluetooth",
+        "key": "connect_secs"
+    },
+    {
+        "type": "numeric",
+        "title": "Retries",
+        "desc": "Retries",
+        "section": "bluetooth",
+        "key": "connect_retry"
+    }
+]
