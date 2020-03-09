@@ -112,12 +112,14 @@ class MainApp(MDApp):
 
             def on_scan_started(self, success):
                 super(PreBluetoothDispatcher, self).on_scan_started(success)
+                Logger.info(f"On scan started {success}")
                 if success:
                     self.stop_scan()
                 else:
                     self.on_finish(False)
 
             def on_scan_completed(self):
+                Logger.info("On scan completed")
                 self.on_finish(True)
         pbd = PreBluetoothDispatcher(on_finish_handler=on_finish)
         pbd.start_scan()
@@ -127,8 +129,10 @@ class MainApp(MDApp):
            self.check_other_config():
             self.do_pre(self.on_pre_finish)
 
-    def on_pre_finish(self, *args):
-        Timer(0, self.init_osc)
+    def on_pre_finish(self, success, *args):
+        Logger.info(f"On pre init finish {success}")
+        if success:
+            Timer(0, self.init_osc)
 
     def on_nav_exit(self, *args, **kwargs):
         self.true_stop()
@@ -166,7 +170,7 @@ class MainApp(MDApp):
         #     settings.add_json_panel('My Label', self.config, 'settings.json')
         settings.add_json_panel('Backend', self.config, join(dn, 'backend.json'))  # data=json)
         settings.add_json_panel('Frontend', self.config, join(dn, 'frontend.json'))  # data=json)
-        settings.add_json_panel('Bluetooth', self.config, join(dn, 'bluetooth.json'))  # data=json)
+        # settings.add_json_panel('Bluetooth', self.config, join(dn, 'bluetooth.json'))  # data=json)
 
     def check_host_port_config(self, name):
         host = self.config.get(name, "host")

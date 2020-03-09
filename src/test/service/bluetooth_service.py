@@ -35,7 +35,7 @@ class BluetoothService(object):
 
     def insert_notification():
         from jnius import autoclass
-        fim = join(dirname(__file__), '..', '..', 'images', 'device_manager.png')
+        fim = join(dirname(__file__), '..', '..', 'images', 'bluetooth.png')
         Context = autoclass('android.content.Context')
         Color = autoclass("android.graphics.Color")
         Intent = autoclass('android.content.Intent')
