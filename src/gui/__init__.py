@@ -565,6 +565,7 @@ class MainApp(MDApp):
 
     def __init__(self, *args, **kwargs):
         super(MainApp, self).__init__(*args, **kwargs)
+        self.loop = asyncio.get_event_loop()
 
     def build(self):
         """
@@ -604,7 +605,7 @@ class MainApp(MDApp):
             uid = ld[x]
             if dev.type in self.devicemanager_class_by_type:
                 self.devicemanagers_by_uid[uid] = self.devicemanager_class_by_type[dev.type](
-                    self.oscer, uid, service=False, device=dev)
+                    self.oscer, uid, service=False, device=dev, loop=self.loop)
                 self.formatters.extend(self.devicemanagers_by_uid[uid].get_formatters())
 
     def on_list_users_rv(self, *ld):
@@ -636,7 +637,7 @@ class MainApp(MDApp):
             if init is None:
                 cls = self.devicemanager_class_by_type[d]
                 toast(f"Pre operations for devices of type {cls.__type__}...")
-                cls.do_activity_pre_operations(on_finish=self.do_pre_finish)
+                cls.do_activity_pre_operations(on_finish=self.do_pre_finish, loop=self.loop)
                 return
         if not self.devicemanagers_pre_init_done:
             self.devicemanagers_pre_init_done = True

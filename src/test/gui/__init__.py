@@ -68,6 +68,7 @@ class MainApp(MDApp):
 
     def __init__(self, *args, **kwargs):
         super(MainApp, self).__init__(*args, **kwargs)
+        self.loop = asyncio.get_event_loop()
 
     def build(self):
         """
@@ -104,11 +105,12 @@ class MainApp(MDApp):
         else:
             toast('OSC comunication OK')
 
-    def do_pre(self, on_finish):
+    def do_pre(self, on_finish, loop):
         class PreBluetoothDispatcher(BluetoothDispatcher):
-            def __init__(self, on_finish_handler=None, *args, **kwargs):
+            def __init__(self, on_finish_handler=None, loop=None, *args, **kwargs):
                 super(PreBluetoothDispatcher, self).__init__(*args, **kwargs)
                 self.on_finish = on_finish_handler
+                self.loop = loop
 
             def on_scan_started(self, success):
                 super(PreBluetoothDispatcher, self).on_scan_started(success)
@@ -116,21 +118,21 @@ class MainApp(MDApp):
                 if success:
                     self.stop_scan()
                 else:
-                    self.on_finish(False)
+                    self.loop.call_soon_threadsafe(self.on_finish, False)
 
             def on_scan_completed(self):
                 Logger.info("On scan completed")
-                self.on_finish(True)
-        pbd = PreBluetoothDispatcher(on_finish_handler=on_finish)
+                self.loop.call_soon_threadsafe(self.on_finish, True)
+        pbd = PreBluetoothDispatcher(on_finish_handler=on_finish, loop=loop)
         pbd.start_scan()
 
     def on_start(self):
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
-            self.do_pre(self.on_pre_finish)
+            self.do_pre(self.on_pre_finish, self.loop)
 
-    def on_pre_finish(self, success, *args):
-        Logger.info(f"On pre init finish {success}")
+    def on_pre_finishp(self, success, *args):
+        Logger.info(f"On pre init finish loop {success}")
         if success:
             Timer(0, self.init_osc)
 

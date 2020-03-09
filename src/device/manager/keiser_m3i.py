@@ -126,23 +126,24 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
     ]
 
     @classmethod
-    def do_activity_pre_operations(cls, on_finish):
+    def do_activity_pre_operations(cls, on_finish, loop):
         if platform == 'android':
             class PreBluetoothDispatcher(BluetoothDispatcher):
-                def __init__(self, on_finish_handler=None, *args, **kwargs):
+                def __init__(self, on_finish_handler=None, loop=None, *args, **kwargs):
                     super(PreBluetoothDispatcher, self).__init__(*args, **kwargs)
                     self.on_finish = on_finish_handler
+                    self.loop = loop
 
                 def on_scan_started(self, success):
                     super(PreBluetoothDispatcher, self).on_scan_started(success)
                     if success:
                         self.stop_scan()
                     else:
-                        self.on_finish(cls, False)
+                        self.loop.call_soon_threadsafe(self.on_finish, cls, False)
 
                 def on_scan_completed(self):
-                    self.on_finish(cls, True)
-            pbd = PreBluetoothDispatcher(on_finish_handler=on_finish)
+                    self.loop.call_soon_threadsafe(self.on_finish, cls, True)
+            pbd = PreBluetoothDispatcher(on_finish_handler=on_finish, loop=loop)
             pbd.start_scan()
 
     @staticmethod

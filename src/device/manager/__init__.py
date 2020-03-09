@@ -273,7 +273,7 @@ class SearchSettingsScreen(Screen):
 class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     @classmethod
-    def do_activity_pre_operations(cls, on_finish):
+    def do_activity_pre_operations(cls, on_finish, loop):
         on_finish(True)
 
     @staticmethod
@@ -611,7 +611,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def get_id(self):
         return self.device.get_id()
 
-    def __init__(self, oscer, uid, service=False, device=None, db=None, user=None, params=dict(), **kwargs):
+    def __init__(self, oscer, uid, service=False, device=None, db=None, user=None, params=dict(), loop=None, **kwargs):
         super(GenericDeviceManager, self).__init__(**params)
         self.uid = uid
         self.device = device or Device(type=self.__type__)
@@ -621,6 +621,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         self.user = user
         self.state = DEVSTATE_UNINIT
         self.widget = None
+        self.loop = loop
         self.simulator_needs_reset = True
         self.simualtor = None
         if service:
