@@ -107,7 +107,7 @@ class MainApp(MDApp):
     def do_pre(self, on_finish):
         class PreBluetoothDispatcher(BluetoothDispatcher):
             def __init__(self, on_finish_handler=None, *args, **kwargs):
-                super(BluetoothDispatcher, self).__init__(*args, **kwargs)
+                super(PreBluetoothDispatcher, self).__init__(*args, **kwargs)
                 self.on_finish = on_finish_handler
 
             def on_scan_started(self, success):
