@@ -16,6 +16,8 @@ class BluetoothService(object):
     def __init__(self, **kwargs):
         self.oscer = None
         self.bluetooth = None
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
 
     async def init_osc(self):
         self.oscer = OSCManager('127.0.0.1', self.portlistenlocal, '127.0.0.1', self.portcommandlocal)

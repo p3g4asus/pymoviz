@@ -33,13 +33,13 @@ KV = \
     '''
 <SimpleGUI>
     orientation: 'vertical'
-    MDFlatButton:
+    Button:
         text: 'Settings'
         on_release: app.on_nav_settings()
-    MDFlatButton:
+    Button:
         text: 'Activity'
         on_release: app.permissions()
-    MDFlatButton:
+    Button:
         text: 'Exit'
         on_release: app.on_nav_exit()
     '''
