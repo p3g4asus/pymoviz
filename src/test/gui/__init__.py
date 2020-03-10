@@ -131,7 +131,7 @@ class MainApp(MDApp):
            self.check_other_config():
             self.do_pre(self.on_pre_finish, self.loop)
 
-    def on_pre_finishp(self, success, *args):
+    def on_pre_finish(self, success, *args):
         Logger.info(f"On pre init finish loop {success}")
         if success:
             Timer(0, self.init_osc)
