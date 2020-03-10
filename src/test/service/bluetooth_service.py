@@ -33,7 +33,7 @@ class BluetoothService(object):
     def on_command_stop(self, *args):
         self.loop.stop()
 
-    def insert_notification():
+    def insert_notification(self):
         from jnius import autoclass
         fim = join(dirname(__file__), '..', '..', 'images', 'bluetooth.png')
         Context = autoclass('android.content.Context')

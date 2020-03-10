@@ -204,7 +204,7 @@ class DeviceManagerService(object):
     def on_command_stop(self, *args):
         self.loop.stop()
 
-    def insert_notification():
+    def insert_notification(self):
         from jnius import autoclass
         fim = join(dirname(__file__), '..', 'images', 'device_manager.png')
         Context = autoclass('android.content.Context')
