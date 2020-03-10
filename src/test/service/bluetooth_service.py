@@ -119,3 +119,8 @@ def main():
             loop.close()
         except Exception:
             _LOGGER.error("Server: " + traceback.format_exc())
+
+
+_LOGGER.info("Server module name is %s" % __name__)
+if __name__ == '__main__':
+    main()
