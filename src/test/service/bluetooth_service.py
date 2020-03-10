@@ -109,11 +109,15 @@ def main():
     args = json.loads(p4a)
     if args["verbose"]:
         logging.basicConfig(level=logging.DEBUG)
+        _LOGGER.debug("Server: Log level verbose")
+        _LOGGER.info(f"Server: p4a = {p4a}")
     loop = asyncio.get_event_loop()
     dms = BluetoothService(loop=loop, **args)
     try:
         loop.run_until_complete(dms.start())
         loop.run_forever()
+    except Exception:
+        _LOGGER.error("Server: E0 " + traceback.format_exc())
     finally:
         try:
             loop.run_until_complete(dms.stop())
