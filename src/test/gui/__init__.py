@@ -264,7 +264,7 @@ class MainApp(MDApp):
 def main():
     os.environ['KIVY_EVENTLOOP'] = 'async'
     os.environ['KCFG_KIVY_LOG_LEVEL'] = 'debug'
-    os.environ['KCFG_KIVY_LOG_ENABLE'] = 1
+    os.environ['KCFG_KIVY_LOG_ENABLE'] = '1'
     Logger.debug("In Main")
     if platform == "win":
         loop = asyncio.ProactorEventLoop()
