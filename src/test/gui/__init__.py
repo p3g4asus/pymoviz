@@ -263,6 +263,7 @@ class MainApp(MDApp):
 
 def main():
     os.environ['KIVY_EVENTLOOP'] = 'async'
+    os.environ["KIVY_NO_ENV_CONFIG"] = "0"
     os.environ['KCFG_KIVY_LOG_LEVEL'] = 'debug'
     os.environ['KCFG_KIVY_LOG_ENABLE'] = '1'
     Logger.debug("In Main")
