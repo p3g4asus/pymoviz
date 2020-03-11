@@ -273,6 +273,7 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
     Logger.debug("In Main")
     _LOGGER.debug('pyLogger in main')
+    print('Printf in main')
     if platform == "win":
         loop = asyncio.ProactorEventLoop()
         asyncio.set_event_loop(loop)
