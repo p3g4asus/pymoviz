@@ -86,6 +86,7 @@ class MainApp(MDApp):
         return root
 
     async def init_osc(self):
+        Logger.debug("GUI1: Initing OSC")
         self.oscer = OSCManager(
             hostlisten='127.0.0.1',
             portlisten=self.config.get('local', 'frontendport'),
@@ -95,14 +96,18 @@ class MainApp(MDApp):
 
     def on_osc_init_ok(self):
         toast('OSC Init OK')
+        Logger.debug("GUI1: OSC init ok")
 
     def on_ping_timeout(self, is_timeout):
         if is_timeout:
             if not self.server_started:
+                Logger.debug("GUI1: Starting service")
                 self.start_server()
             toast('Timeout comunicating with server')
+            Logger.debug("GUI1: OSC timeout")
             self.server_started = True
         else:
+            Logger.debug("GUI1: OSC timeout OK")
             toast('OSC comunication OK')
 
     def do_pre(self, on_finish, loop):
@@ -124,16 +129,20 @@ class MainApp(MDApp):
                 Logger.info("On scan completed")
                 self.loop.call_soon_threadsafe(self.on_finish, True)
         pbd = PreBluetoothDispatcher(on_finish_handler=on_finish, loop=loop)
+        Logger.info("Starting scan")
         pbd.start_scan()
 
     def on_start(self):
+        Logger.debug("On Start")
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
+            Logger.debug("On Start conf OK")
             self.do_pre(self.on_pre_finish, self.loop)
 
     def on_pre_finish(self, success, *args):
         Logger.info(f"On pre init finish loop {success}")
         if success:
+            Logger.debug("GUI1: Starting osc init in loop")
             Timer(0, self.init_osc)
 
     def on_nav_exit(self, *args, **kwargs):
@@ -254,16 +263,24 @@ class MainApp(MDApp):
 
 def main():
     os.environ['KIVY_EVENTLOOP'] = 'async'
+    os.environ['KCFG_KIVY_LOG_LEVEL'] = 'debug'
+    os.environ['KCFG_KIVY_LOG_ENABLE'] = 1
+    Logger.debug("In Main")
     if platform == "win":
         loop = asyncio.ProactorEventLoop()
         asyncio.set_event_loop(loop)
     else:
         loop = asyncio.get_event_loop()
     app = MainApp()
-    loop.run_until_complete(app.async_run())
-    loop.run_until_complete(asyncio_graceful_shutdown(loop, Logger, False))
-    Logger.debug("Gui: Closing loop")
-    loop.close()
+    Logger.debug("Built APP")
+    try:
+        loop.run_until_complete(app.async_run())
+    except Exception:
+        Logger.eror(f"GUI1: {traceback.format_exc()}")
+    finally:
+        Logger.debug("GUI1: Closing loop")
+        loop.run_until_complete(asyncio_graceful_shutdown(loop, Logger, False))
+        loop.close()
 
 
 if __name__ == '__main__':
