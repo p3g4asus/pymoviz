@@ -9,6 +9,7 @@ When the user next runs the programs, their changes are restored.
 
 import asyncio
 import json
+import logging
 import os
 from os.path import dirname, join
 import traceback
@@ -28,6 +29,9 @@ from util.const import COMMAND_STOP
 from util.osc_comunication import OSCManager
 from util.timer import Timer
 from util import asyncio_graceful_shutdown
+
+
+_LOGGER = logging.getLogger('PY_' + __name__)
 
 KV = \
     '''
@@ -266,7 +270,9 @@ def main():
     os.environ["KIVY_NO_ENV_CONFIG"] = "0"
     os.environ['KCFG_KIVY_LOG_LEVEL'] = 'debug'
     os.environ['KCFG_KIVY_LOG_ENABLE'] = '1'
+    logging.basicConfig(level=logging.DEBUG)
     Logger.debug("In Main")
+    _LOGGER.debug('pyLogger in main')
     if platform == "win":
         loop = asyncio.ProactorEventLoop()
         asyncio.set_event_loop(loop)
