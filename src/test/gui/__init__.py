@@ -265,6 +265,13 @@ class MainApp(MDApp):
         super(MainApp, self).close_settings(settings)
 
 
+def exception_handle(loop, context):
+    if 'exception' in context and isinstance(context['exception'], asyncio.CancelledError):
+        pass
+    else:
+        Logger.error(f'Loop exception: {context["message"]} exc={context["exception"]}')
+
+
 def main():
     os.environ['KIVY_EVENTLOOP'] = 'async'
     os.environ["KIVY_NO_ENV_CONFIG"] = "0"
@@ -279,6 +286,7 @@ def main():
         asyncio.set_event_loop(loop)
     else:
         loop = asyncio.get_event_loop()
+    loop.set_exception_handler(exception_handle)
     app = MainApp()
     Logger.debug("Built APP")
     try:

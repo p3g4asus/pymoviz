@@ -88,7 +88,7 @@ class BluetoothService(object):
         new_notification = notification_builder.getNotification()
         # Below sends the notification to the notification bar; nice but not a foreground service.
         # notification_service.notify(0, new_noti)
-        service.setAutoRestartService(True)
+        # service.setAutoRestartService(True)
         service.startForeground(1, new_notification)
 
     async def start(self):
@@ -103,6 +103,13 @@ class BluetoothService(object):
         service.stopSelf()
 
 
+def exception_handle(loop, context):
+    if 'exception' in context and isinstance(context['exception'], asyncio.CancelledError):
+        pass
+    else:
+        _LOGGER.error(f'Loop exception: {context["message"]} exc={context["exception"]}')
+
+
 def main():
     p4a = os.environ.get('PYTHON_SERVICE_ARGUMENT', '')
     _LOGGER.info("Starting server p4a = %s" % p4a)
@@ -112,6 +119,7 @@ def main():
         _LOGGER.debug("Server: Log level verbose")
         _LOGGER.info(f"Server: p4a = {p4a}")
     loop = asyncio.get_event_loop()
+    loop.set_exception_handler(exception_handle)
     dms = BluetoothService(loop=loop, **args)
     try:
         loop.run_until_complete(dms.start())
