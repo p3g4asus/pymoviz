@@ -1,8 +1,8 @@
 import asyncio
-import logging
 import random
 import string
 from functools import partial
+import traceback
 
 from db import SerializableDBObj
 from pythonosc.dispatcher import Dispatcher
@@ -48,6 +48,7 @@ class OSCManager(object):
                    on_init_ok=None):
         if not self.transport:
             try:
+                _LOGGER.debuf("OSC trying to init")
                 self.user_on_ping_timeout = on_ping_timeout
                 self.server = AsyncIOOSCUDPServer(
                     (self.hostlisten, self.portlisten),
@@ -58,6 +59,7 @@ class OSCManager(object):
                 self.transport, self.protocol = await self.server.create_serve_endpoint()
                 self.client = SimpleUDPClient(self.hostcommand, self.portcommand)
             except (Exception, OSError):
+                _LOGGER.error(f"OSC init exception {traceback.format_exc()}")
                 self.ping = Timer(1, partial(
                     self.init,
                     loop=loop,
