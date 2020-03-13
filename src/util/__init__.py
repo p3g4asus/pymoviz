@@ -33,6 +33,7 @@ _loglevel = logging.WARNING
 
 def init_logger(name, level=None):
     if level is not None:
+        global _loglevel
         _loglevel = level
     _LOGGER = logging.getLogger(f'PY_{name}')
     _LOGGER.setLevel(_loglevel)
