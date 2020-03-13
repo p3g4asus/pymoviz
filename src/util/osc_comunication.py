@@ -55,7 +55,7 @@ class OSCManager(object):
                     self.dispatcher, loop)
                 if self.ping:
                     self.ping = None
-                self.dispatcher.map('/device*', self.device_callback)
+                self.dispatcher.map('/*', self.device_callback)
                 self.transport, self.protocol = await self.server.create_serve_endpoint()
                 self.client = SimpleUDPClient(self.hostcommand, self.portcommand)
             except (Exception, OSError):
@@ -90,6 +90,7 @@ class OSCManager(object):
     def ping_sender_timer_init(self, intv=2.9):
         if self.ping:
             self.ping.cancel()
+        _LOGGER.debug(f'Rearm timer ping send {intv}')
         self.ping = Timer(intv, self.send_command_ping)
 
     def on_ping_timeout(self, timeout):
@@ -99,6 +100,7 @@ class OSCManager(object):
             self.user_on_ping_timeout(timeout)
 
     def on_command_ping(self):
+        _LOGGER.debug('On command ping')
         if self.ping_timeout is not False:
             self.ping_timeout = False
             self.on_ping_timeout(False)
@@ -115,8 +117,8 @@ class OSCManager(object):
 
     def device_callback(self, address, *oscs):
         _LOGGER.debug(f'Received cmd={address} par={str(oscs)}')
+        warn = True
         if address in self.callbacks:
-            warn = True
             if len(oscs) > 0 and isinstance(oscs[0], str) and oscs[0] in self.callbacks[address]:
                 _LOGGER.warning(f'Found device command (uid={oscs[0]})')
                 item = self.callbacks[address][oscs[0]]
@@ -128,11 +130,11 @@ class OSCManager(object):
                 item['f'](*item['a'], *self.deserialize(oscs))
                 uid = ''
                 warn = False
-            if warn:
-                _LOGGER.warning('Handler not found')
-            elif item['t']:
+            if item['t']:
                 item['t'].cancel()
                 self.unhandle_device(address, uid)
+        if warn:
+            _LOGGER.warning('Handler not found')
 
     def call_confirm_callback(self, exitv, *args, confirm_callback=None, confirm_params=(), timeout=False, uid=''):
         self.unhandle_device(COMMAND_CONFIRM, uid)
