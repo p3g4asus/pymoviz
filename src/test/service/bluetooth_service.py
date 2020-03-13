@@ -2,15 +2,15 @@ import asyncio
 import json
 import logging
 import os
-import sys
 import traceback
 from os.path import dirname, join
 
 from util.bluetooth_dispatcher import BluetoothDispatcherWC
 from util.const import COMMAND_STOP
 from util.osc_comunication import OSCManager
+from util import init_logger
 
-_LOGGER = logging.getLogger('PY_' + __name__)
+_LOGGER = None
 
 
 class BluetoothService(object):
@@ -113,16 +113,8 @@ def exception_handle(loop, context):
 
 def main():
     p4a = os.environ.get('PYTHON_SERVICE_ARGUMENT', '')
-    _LOGGER.info("Starting server p4a = %s" % p4a)
     args = json.loads(p4a)
-    if args["verbose"]:
-        _LOGGER.setLevel(logging.DEBUG)
-    handler = logging.StreamHandler(sys.stdout)
-    if args["verbose"]:
-        handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    _LOGGER.addHandler(handler)
+    _LOGGER = init_logger(__name__, level=logging.DEBUG if args['verbose'] else logging.WARNING)
     _LOGGER.info(f"Server: p4a = {p4a}")
     _LOGGER.debug(f"Server: test debug")
     loop = asyncio.get_event_loop()

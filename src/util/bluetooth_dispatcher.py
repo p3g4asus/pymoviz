@@ -2,7 +2,6 @@ import json
 from functools import partial
 
 from able.dispatcher import BluetoothDispatcherBase
-from kivy.logger import Logger
 from kivy.utils import platform
 from kivymd.toast.kivytoast.kivytoast import toast
 from util.const import (
@@ -19,6 +18,10 @@ from util.const import (
     CONFIRM_OK, MSG_COMMAND_TIMEOUT, MSG_ERROR, MSG_OK)
 from util.osc_comunication import OSCManager
 from util.timer import Timer
+from util import init_logger
+
+
+_LOGGER = init_logger(__name__)
 
 
 class BluetoothDispatcherW(BluetoothDispatcherBase):
@@ -105,7 +108,7 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         else:
             msg = args[1]
             exitv = args[0]
-        Logger.info(f"StartScan: [E {str(exitv)}]: {msg}")
+        _LOGGER.info(f"StartScan: [E {str(exitv)}]: {msg}")
         self.on_scan_started(exitv == CONFIRM_OK)
 
     def discover_services(self):
@@ -134,7 +137,7 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         else:
             msg = args[1]
             exitv = args[0]
-        Logger.info(f"WriteDesc: [E {str(exitv)}]: {msg}")
+        _LOGGER.info(f"WriteDesc: [E {str(exitv)}]: {msg}")
 
     def write_descriptor(self, descriptor, value):
         """Set and write the value of a given descriptor to the associated

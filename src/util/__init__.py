@@ -1,7 +1,11 @@
 import asyncio
 import glob
+import logging
 from os.path import basename, dirname, isfile, join, splitext
+import sys
 import traceback
+
+from kivy.utils import platform
 
 
 async def asyncio_graceful_shutdown(loop, logger, perform_loop_stop=True):
@@ -22,6 +26,25 @@ async def asyncio_graceful_shutdown(loop, logger, perform_loop_stop=True):
         if perform_loop_stop:
             logger.debug("Shutdown: Flushing metrics")
             loop.stop()
+
+
+_loglevel = logging.WARNING
+
+
+def init_logger(name, level=None):
+    if level is not None:
+        _loglevel = level
+    _LOGGER = logging.getLogger(f'PY_{name}')
+    _LOGGER.setLevel(_loglevel)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(_loglevel)
+    if platform == 'android':
+        formatter = logging.Formatter('[%(name)s][%(levelname)s]: %(message)s')
+    else:
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    _LOGGER.addHandler(handler)
+    return _LOGGER
 
 
 def find_devicemanager_classes(_LOGGER):

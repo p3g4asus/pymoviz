@@ -10,8 +10,9 @@ from pythonosc.osc_server import AsyncIOOSCUDPServer
 from pythonosc.udp_client import SimpleUDPClient
 from util.const import COMMAND_CONFIRM, COMMAND_PING
 from util.timer import Timer
+from util import init_logger
 
-_LOGGER = logging.getLogger('PY_' + __name__)
+_LOGGER = init_logger(__name__)
 
 
 class OSCManager(object):

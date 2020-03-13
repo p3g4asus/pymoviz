@@ -17,7 +17,6 @@ import traceback
 from util.bluetooth_dispatcher import BluetoothDispatcher
 from kivy.app import App
 from kivy.lang import Builder
-from kivy.logger import Logger
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.settings import SettingsWithSpinner
 from kivy.utils import platform
@@ -28,10 +27,10 @@ from kivymd.uix.snackbar import Snackbar
 from util.const import COMMAND_STOP
 from util.osc_comunication import OSCManager
 from util.timer import Timer
-from util import asyncio_graceful_shutdown
+from util import asyncio_graceful_shutdown, init_logger
 
 
-_LOGGER = logging.getLogger('PY_' + __name__)
+_LOGGER = init_logger(__name__, level=logging.DEBUG)
 
 KV = \
     '''
@@ -90,7 +89,7 @@ class MainApp(MDApp):
         return root
 
     async def init_osc(self):
-        Logger.debug("GUI1: Initing OSC")
+        _LOGGER.debug("GUI1: Initing OSC")
         self.oscer = OSCManager(
             hostlisten='127.0.0.1',
             portlisten=self.config.get('local', 'frontendport'),
@@ -100,18 +99,18 @@ class MainApp(MDApp):
 
     def on_osc_init_ok(self):
         toast('OSC Init OK')
-        Logger.debug("GUI1: OSC init ok")
+        _LOGGER.debug("GUI1: OSC init ok")
 
     def on_ping_timeout(self, is_timeout):
         if is_timeout:
             if not self.server_started:
-                Logger.debug("GUI1: Starting service")
+                _LOGGER.debug("GUI1: Starting service")
                 self.start_server()
             toast('Timeout comunicating with server')
-            Logger.debug("GUI1: OSC timeout")
+            _LOGGER.debug("GUI1: OSC timeout")
             self.server_started = True
         else:
-            Logger.debug("GUI1: OSC timeout OK")
+            _LOGGER.debug("GUI1: OSC timeout OK")
             toast('OSC comunication OK')
 
     def do_pre(self, on_finish, loop):
@@ -123,30 +122,30 @@ class MainApp(MDApp):
 
             def on_scan_started(self, success):
                 super(PreBluetoothDispatcher, self).on_scan_started(success)
-                Logger.info(f"On scan started {success}")
+                _LOGGER.info(f"On scan started {success}")
                 if success:
                     self.stop_scan()
                 else:
                     self.loop.call_soon_threadsafe(self.on_finish, False)
 
             def on_scan_completed(self):
-                Logger.info("On scan completed")
+                _LOGGER.info("On scan completed")
                 self.loop.call_soon_threadsafe(self.on_finish, True)
         pbd = PreBluetoothDispatcher(on_finish_handler=on_finish, loop=loop)
-        Logger.info("Starting scan")
+        _LOGGER.info("Starting scan")
         pbd.start_scan()
 
     def on_start(self):
-        Logger.debug("On Start")
+        _LOGGER.debug("On Start")
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
-            Logger.debug("On Start conf OK")
+            _LOGGER.debug("On Start conf OK")
             self.do_pre(self.on_pre_finish, self.loop)
 
     def on_pre_finish(self, success, *args):
-        Logger.info(f"On pre init finish loop {success}")
+        _LOGGER.info(f"On pre init finish loop {success}")
         if success:
-            Logger.debug("GUI1: Starting osc init in loop")
+            _LOGGER.debug("GUI1: Starting osc init in loop")
             Timer(0, self.init_osc)
 
     def on_nav_exit(self, *args, **kwargs):
@@ -234,10 +233,10 @@ class MainApp(MDApp):
                            portcommandlocal=self.config.getint('local', 'frontendport'),
                            verbose=True)
                 argument = json.dumps(arg)
-                Logger.info("Starting %s [%s]" % (service_class, argument))
+                _LOGGER.info("Starting %s [%s]" % (service_class, argument))
                 service.start(mActivity, argument)
             except Exception:
-                Logger.error(traceback.format_exc())
+                _LOGGER.error(traceback.format_exc())
 
     async def stop_server(self):
         if self.oscer:
@@ -248,7 +247,7 @@ class MainApp(MDApp):
         """
         Respond to changes in the configuration.
         """
-        Logger.info("main.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
+        _LOGGER.info("main.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
             config, section, key, value))
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
@@ -261,7 +260,7 @@ class MainApp(MDApp):
         """
         The settings panel has been closed.
         """
-        Logger.info("main.py: App.close_settings: {0}".format(settings))
+        _LOGGER.info("main.py: App.close_settings: {0}".format(settings))
         super(MainApp, self).close_settings(settings)
 
 
@@ -269,16 +268,12 @@ def exception_handle(loop, context):
     if 'exception' in context and isinstance(context['exception'], asyncio.CancelledError):
         pass
     else:
-        Logger.error(f'Loop exception: {context["message"]} exc={context["exception"]}')
+        _LOGGER.error(f'Loop exception: {context["message"]} exc={context["exception"]}')
 
 
 def main():
     os.environ['KIVY_EVENTLOOP'] = 'async'
-    os.environ["KIVY_NO_ENV_CONFIG"] = "0"
-    os.environ['KCFG_KIVY_LOG_LEVEL'] = 'debug'
-    os.environ['KCFG_KIVY_LOG_ENABLE'] = '1'
-    logging.basicConfig(level=logging.DEBUG)
-    Logger.debug("In Main")
+
     _LOGGER.debug('pyLogger in main')
     print('Printf in main')
     if platform == "win":
@@ -288,14 +283,14 @@ def main():
         loop = asyncio.get_event_loop()
     loop.set_exception_handler(exception_handle)
     app = MainApp()
-    Logger.debug("Built APP")
+    _LOGGER.debug("Built APP")
     try:
         loop.run_until_complete(app.async_run())
     except Exception:
-        Logger.eror(f"GUI1: {traceback.format_exc()}")
+        _LOGGER.eror(f"GUI1: {traceback.format_exc()}")
     finally:
-        Logger.debug("GUI1: Closing loop")
-        loop.run_until_complete(asyncio_graceful_shutdown(loop, Logger, False))
+        _LOGGER.debug("GUI1: Closing loop")
+        loop.run_until_complete(asyncio_graceful_shutdown(loop, _LOGGER, False))
         loop.close()
 
 
