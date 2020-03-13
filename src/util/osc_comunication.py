@@ -68,12 +68,14 @@ class OSCManager(object):
                 on_init_ok()
             if pingsend:
                 self.ping_sender_timer_init(0)
+                self.ping_timeout = False
             else:
                 self.ping_handler_timer_init()
                 self.ping_timeout = None
                 self.handle(COMMAND_PING, self.on_command_ping)
 
     async def send_command_ping(self):
+        _LOGGER.debug("Pinging")
         self.send(COMMAND_PING)
         self.ping_sender_timer_init()
 

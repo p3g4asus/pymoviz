@@ -88,7 +88,7 @@ class BluetoothService(object):
         new_notification = notification_builder.getNotification()
         # Below sends the notification to the notification bar; nice but not a foreground service.
         # notification_service.notify(0, new_noti)
-        # service.setAutoRestartService(True)
+        service.setAutoRestartService(False)
         service.startForeground(1, new_notification)
 
     async def start(self):
