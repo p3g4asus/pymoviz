@@ -29,16 +29,23 @@ async def asyncio_graceful_shutdown(loop, logger, perform_loop_stop=True):
 
 
 _loglevel = logging.WARNING
+_LOGGERS = dict()
 
 
 def init_logger(name, level=None):
+    global _LOGGERS
+    global _loglevel
     if level is not None:
-        global _loglevel
         _loglevel = level
-    _LOGGER = logging.getLogger(f'PY_{name}')
+        for _, log in _LOGGERS.items():
+            log['lo'].setLevel(_loglevel)
+            log['ha'].setLevel(_loglevel)
+    nm = f'PY_{name}'
+    _LOGGER = logging.getLogger(nm)
     _LOGGER.setLevel(_loglevel)
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(_loglevel)
+    _LOGGERS[nm] = dict(lo=_LOGGER, ha=handler)
     if platform == 'android':
         formatter = logging.Formatter('[%(name)s][%(levelname)s]: %(message)s')
     else:
