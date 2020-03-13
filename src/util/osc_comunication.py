@@ -48,7 +48,7 @@ class OSCManager(object):
                    on_init_ok=None):
         if not self.transport:
             try:
-                _LOGGER.debuf("OSC trying to init")
+                _LOGGER.debug(f"OSC trying to init pingsend={pingsend}")
                 self.user_on_ping_timeout = on_ping_timeout
                 self.server = AsyncIOOSCUDPServer(
                     (self.hostlisten, self.portlisten),
