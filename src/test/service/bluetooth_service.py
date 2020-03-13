@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 import traceback
 from os.path import dirname, join
 
@@ -115,9 +116,15 @@ def main():
     _LOGGER.info("Starting server p4a = %s" % p4a)
     args = json.loads(p4a)
     if args["verbose"]:
-        logging.basicConfig(level=logging.DEBUG)
-        _LOGGER.debug("Server: Log level verbose")
-        _LOGGER.info(f"Server: p4a = {p4a}")
+        _LOGGER.setLevel(logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    if args["verbose"]:
+        handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    _LOGGER.addHandler(handler)
+    _LOGGER.info(f"Server: p4a = {p4a}")
+    _LOGGER.debug(f"Server: test debug")
     loop = asyncio.get_event_loop()
     loop.set_exception_handler(exception_handle)
     dms = BluetoothService(loop=loop, **args)
