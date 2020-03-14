@@ -42,7 +42,7 @@ KV = \
         on_release: app.on_nav_settings()
     MDFlatButton:
         text: 'Activity'
-        on_release: app.permissions()
+        on_release: app.on_start()
     MDFlatButton:
         text: 'Exit'
         on_release: app.on_nav_exit()
