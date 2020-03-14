@@ -79,7 +79,10 @@ class OSCManager(object):
 
     async def send_command_ping(self):
         _LOGGER.debug("Pinging")
-        self.send(COMMAND_PING)
+        try:
+            self.send(COMMAND_PING)
+        except Exception:
+            _LOGGER.error(f'Ping send error: {traceback.format_exc()}')
         self.ping_sender_timer_init()
 
     def ping_handler_timer_init(self, intv=6):
