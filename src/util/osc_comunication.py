@@ -114,6 +114,8 @@ class OSCManager(object):
         self.on_ping_timeout(True)
 
     def deserialize(self, args):
+        if len(args) == 1 and args[0] == '()':
+            return tuple()
         args = list(args)
         for i, s in enumerate(args):
             args[i] = SerializableDBObj.deserialize(args[i], args[i])
@@ -174,7 +176,7 @@ class OSCManager(object):
         if len(self.cmd_queue):
             if self.ping_timeout is False:
                 el = self.cmd_queue.pop(0)
-                args = (1,) if not el['args'] else el['args']
+                args = ('()',) if not el['args'] else el['args']
                 self.client.send_message(el['address'], *args)
                 self.process_cmd_queue()
 
