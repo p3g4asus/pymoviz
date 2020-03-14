@@ -34,7 +34,8 @@ _LOGGER = init_logger(__name__, level=logging.DEBUG)
 
 KV = \
     '''
-<SimpleGUI>
+#:import MDFlatButton kivymd.uix.button.MDFlatButton
+<SimpleGUI>:
     orientation: 'vertical'
     MDFlatButton:
         text: 'Settings'
