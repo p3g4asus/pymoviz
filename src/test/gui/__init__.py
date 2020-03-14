@@ -36,13 +36,13 @@ KV = \
     '''
 <SimpleGUI>
     orientation: 'vertical'
-    Button:
+    MDFlatButton:
         text: 'Settings'
         on_release: app.on_nav_settings()
-    Button:
+    MDFlatButton:
         text: 'Activity'
         on_release: app.permissions()
-    Button:
+    MDFlatButton:
         text: 'Exit'
         on_release: app.on_nav_exit()
     '''
@@ -86,6 +86,7 @@ class MainApp(MDApp):
 
         # We apply the saved configuration settings or the defaults
         root = Builder.load_string(KV)  # (client=self.client)
+        _LOGGER.debug(f'Building gui: {type(root)}')
         return root
 
     async def init_osc(self):
