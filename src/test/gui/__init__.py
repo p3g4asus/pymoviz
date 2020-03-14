@@ -38,12 +38,15 @@ KV = \
 <SimpleGUI>:
     orientation: 'vertical'
     MDFlatButton:
+        size_hint: (1, 0.33)
         text: 'Settings'
         on_release: app.on_nav_settings()
     MDFlatButton:
+        size_hint: (1, 0.33)
         text: 'Activity'
         on_release: app.on_start()
     MDFlatButton:
+        size_hint: (1, 0.33)
         text: 'Exit'
         on_release: app.on_nav_exit()
     '''
@@ -187,6 +190,7 @@ class MainApp(MDApp):
         #     settings.add_json_panel('My Label', self.config, 'settings.json')
         settings.add_json_panel('Backend', self.config, join(dn, 'backend.json'))  # data=json)
         settings.add_json_panel('Frontend', self.config, join(dn, 'frontend.json'))  # data=json)
+        settings.add_json_panel('Local', self.config, join(dn, 'local.json'))  # data=json)
         # settings.add_json_panel('Bluetooth', self.config, join(dn, 'bluetooth.json'))  # data=json)
 
     def check_host_port_config(self, name):
