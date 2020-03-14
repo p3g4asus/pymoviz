@@ -114,9 +114,10 @@ class OSCManager(object):
         self.on_ping_timeout(True)
 
     def deserialize(self, args):
+        args = list(args)
         for i, s in enumerate(args):
             args[i] = SerializableDBObj.deserialize(args[i], args[i])
-        return args
+        return tuple(args)
 
     def device_callback(self, address, *oscs):
         _LOGGER.debug(f'Received cmd={address} par={str(oscs)}')
@@ -153,7 +154,7 @@ class OSCManager(object):
                         confirm_params=confirm_params,
                         confirm_callback=confirm_callback),
                 timeout=timeout)
-        args.insert(0, uid)
+        args = (uid,) + args
         self.send(address, *args)
 
     def uninit(self):
@@ -173,7 +174,7 @@ class OSCManager(object):
         if len(self.cmd_queue):
             if self.ping_timeout is False:
                 el = self.cmd_queue.pop(0)
-                args = [1] if not el['args'] else el['args']
+                args = (1,) if not el['args'] else el['args']
                 self.client.send_message(el['address'], *args)
                 self.process_cmd_queue()
 
@@ -186,12 +187,13 @@ class OSCManager(object):
                         confirm_params=confirm_params,
                         confirm_callback=confirm_callback),
                 timeout=timeout)
+        args = list(args)
         for i, s in enumerate(args):
             if isinstance(s, SerializableDBObj):
                 args[i] = s.serialize()
         self.cmd_queue.append(dict(
             address=address,
-            args=args
+            args=tuple(args)
         ))
         self.process_cmd_queue()
 
