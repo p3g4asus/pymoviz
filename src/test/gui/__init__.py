@@ -245,7 +245,7 @@ class MainApp(MDApp):
             except Exception:
                 _LOGGER.error(traceback.format_exc())
 
-    async def stop_server(self):
+    def stop_server(self):
         if self.oscer:
             self.oscer.send(COMMAND_STOP)
             self.oscer.uninit()
