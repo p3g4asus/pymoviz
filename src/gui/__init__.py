@@ -766,11 +766,11 @@ class MainApp(MDApp):
 
                 arg = dict(db_fname=join(MainApp.db_dir(), 'maindb.db'),
                            hostlisten=self.config.get('backend', 'host'),
-                           portlisten=self.config.getint('backend', 'port'),
+                           portlisten=int(self.config.getint('backend', 'port')),
                            hostcommand=self.config.get('frontend', 'host'),
-                           portcommand=self.config.getint('frontend', 'port'),
-                           connect_secs=self.config.getint('bluetooth', 'connect_secs'),
-                           connect_retry=self.config.getint('bluetooth', 'connect_retry'),
+                           portcommand=int(self.config.getint('frontend', 'port')),
+                           connect_secs=int(self.config.getint('bluetooth', 'connect_secs')),
+                           connect_retry=int(self.config.getint('bluetooth', 'connect_retry')),
                            verbose=True)
                 argument = json.dumps(arg)
                 Logger.info("Starting %s [%s]" % (service_class, argument))
