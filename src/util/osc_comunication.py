@@ -211,6 +211,7 @@ class OSCManager(object):
         else:
             t = None
         d[uid] = dict(f=callback, a=args, t=t)
+        self.callbacks[address] = d
 
     def unhandle_device(self, address, uid):
         if address in self.callbacks and uid in self.callbacks[address]:
