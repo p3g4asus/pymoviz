@@ -294,7 +294,7 @@ def main():
     try:
         loop.run_until_complete(app.async_run())
     except Exception:
-        _LOGGER.eror(f"GUI1: {traceback.format_exc()}")
+        _LOGGER.error(f"GUI1: {traceback.format_exc()}")
     finally:
         _LOGGER.debug("GUI1: Closing loop")
         loop.run_until_complete(asyncio_graceful_shutdown(loop, _LOGGER, False))
