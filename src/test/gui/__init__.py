@@ -98,9 +98,9 @@ class MainApp(MDApp):
         _LOGGER.debug("GUI1: Initing OSC")
         self.oscer = OSCManager(
             hostlisten='127.0.0.1',
-            portlisten=self.config.get('local', 'frontendport'),
+            portlisten=int(self.config.get('local', 'frontendport')),
             hostcommand='127.0.0.1',
-            portcommand=self.config.get('local', 'backendport'))
+            portcommand=int(self.config.get('local', 'backendport')))
         await self.oscer.init(pingsend=False, on_init_ok=self.on_osc_init_ok, on_ping_timeout=self.on_ping_timeout)
 
     def on_osc_init_ok(self):
@@ -234,10 +234,10 @@ class MainApp(MDApp):
 
                 arg = dict(hostlisten=self.config.get('backend', 'host'),
                            portlisten=self.config.getint('backend', 'port'),
-                           portlistenlocal=self.config.getint('local', 'backendport'),
+                           portlistenlocal=int(self.config.getint('local', 'backendport')),
                            hostcommand=self.config.get('frontend', 'host'),
-                           portcommand=self.config.getint('frontend', 'port'),
-                           portcommandlocal=self.config.getint('local', 'frontendport'),
+                           portcommand=int(self.config.getint('frontend', 'port')),
+                           portcommandlocal=int(self.config.getint('local', 'frontendport')),
                            verbose=True)
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))
