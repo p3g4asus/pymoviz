@@ -173,7 +173,8 @@ class OSCManager(object):
         if len(self.cmd_queue):
             if self.ping_timeout is False:
                 el = self.cmd_queue.pop(0)
-                self.client.send_message(el['address'], *el['args'])
+                args = [1] if not el['args'] else el['args']
+                self.client.send_message(el['address'], *args)
                 self.process_cmd_queue()
 
     def send(self, address, *args, confirm_callback=None, confirm_params=(), timeout=-1):
