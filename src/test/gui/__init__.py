@@ -86,7 +86,8 @@ class MainApp(MDApp):
         self.settings_cls = SettingsWithSpinner
 
         # We apply the saved configuration settings or the defaults
-        root = Builder.load_string(KV)  # (client=self.client)
+        Builder.load_string(KV)  # (client=self.client)
+        root = SimpleGUI()
         _LOGGER.debug(f'Building gui: {type(root)}')
         return root
 
