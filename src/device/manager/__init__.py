@@ -304,7 +304,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         elif not val and self.state == DEVSTATE_SEARCHING:
             self.stop_scan()
 
-    def on_command_search_device(self, inst, startcommand):
+    def on_command_search_device(self, startcommand):
         rv = CONFIRM_OK
         if startcommand:
             if not (self.sate == DEVSTATE_UNINIT or self.state == DEVSTATE_DISCONNECTED):

@@ -168,12 +168,8 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         if self.state == DEVSTATE_CONNECTING:
             self.rescan_timer_init()
             self.stop_scan()
-            self.set_state(DEVSTATE_DISCONNECTED, DEVREASON_TIMEOUT)
-            return
         elif self.is_connected_state():
             self.stop_scan()
-        self.start_scan(self.get_scan_settings(), self.get_scan_filters())
-        self.rescan_timer_init(1800)
 
     def inner_disconnect(self):
         self.rescan_timer_init()
@@ -191,6 +187,11 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         super(KeiserM3iDeviceManager).on_scan_completed()
         if self.state == DEVSTATE_DISCONNECTING:
             self.set_state(DEVSTATE_DISCONNECTED, DEVREASON_REQUESTED)
+        elif self.state == DEVSTATE_CONNECTING:
+            self.set_state(DEVSTATE_DISCONNECTED, DEVREASON_TIMEOUT)
+        elif self.is_connected_state():
+            self.start_scan(self.get_scan_settings(), self.get_scan_filters())
+            self.rescan_timer_init(1800)
 
     def parse_adv(self, arr):
         if len(arr) < 4 or len(arr) > 19:
