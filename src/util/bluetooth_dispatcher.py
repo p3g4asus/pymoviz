@@ -186,197 +186,196 @@ if platform == 'android':
                 portcommand=portcommand
             )
             super(BluetoothDispatcherWC, self).__init__(**kwargs)
-            self._set_ble_interface2()
             _LOGGER.warning('BluetoothDispatcherWC init end')
 
-    def _set_ble_interface2(self):
-        _LOGGER.warning('Set BLE Interface2')
-        # super(BluetoothDispatcherWC, self)._set_ble_interface()
-        Timer(0, partial(
-            self._oscer.init,
-            pingsend=True,
-            on_init_ok=self.on_osc_init_ok))
+        def _set_ble_interface(self):
+            _LOGGER.warning('Set BLE Interface2')
+            # super(BluetoothDispatcherWC, self)._set_ble_interface()
+            Timer(0, partial(
+                self._oscer.init,
+                pingsend=True,
+                on_init_ok=self.on_osc_init_ok))
 
-    def start_scan_wrap(self, ssett, sfilt):
-        ssett = json.loads(ssett)
-        sfilt = json.loads(sfilt)
-        self.start_scan(ssett, sfilt)
+        def start_scan_wrap(self, ssett, sfilt):
+            ssett = json.loads(ssett)
+            sfilt = json.loads(sfilt)
+            self.start_scan(ssett, sfilt)
 
-    def connect_gatt_wrap(self, devicedict):
-        devicedict = json.loads(devicedict)
-        self.connect_gatt(self._ble.getDevice(devicedict['address']))
+        def connect_gatt_wrap(self, devicedict):
+            devicedict = json.loads(devicedict)
+            self.connect_gatt(self._ble.getDevice(devicedict['address']))
 
-    def write_descriptor_wrap(self, descriptor, value):
-        self.write_descriptor(
-            BluetoothDispatcherWC.descriptorfromdict(json.loads(descriptor)),
-            json.loads(value)
-        )
+        def write_descriptor_wrap(self, descriptor, value):
+            self.write_descriptor(
+                BluetoothDispatcherWC.descriptorfromdict(json.loads(descriptor)),
+                json.loads(value)
+            )
 
-    def read_characteristic_wrap(self, characteristic):
-        self.read_characteristic(
-            BluetoothDispatcherWC.characteristicfromdict(json.loads(characteristic))
-        )
+        def read_characteristic_wrap(self, characteristic):
+            self.read_characteristic(
+                BluetoothDispatcherWC.characteristicfromdict(json.loads(characteristic))
+            )
 
-    def write_characteristic_wrap(self, characteristic, value):
-        self.write_characteristic(
-            BluetoothDispatcherWC.characteristicfromdict(json.loads(characteristic)),
-            value
-        )
+        def write_characteristic_wrap(self, characteristic, value):
+            self.write_characteristic(
+                BluetoothDispatcherWC.characteristicfromdict(json.loads(characteristic)),
+                value
+            )
 
-    def on_osc_init_ok(self):
-        self._oscer.handle(COMMAND_WBD_CONNECTGATT, self.connect_gatt_wrap)
-        self._oscer.handle(COMMAND_WBD_DISCONNECTGATT, self.close_gatt)
-        self._oscer.handle(COMMAND_WBD_DISCOVERSERVICES, self.discover_services)
-        self._oscer.handle(COMMAND_WBD_STARTSCAN, self.start_scan_wrap)
-        self._oscer.handle(COMMAND_WBD_WRITEDESCRIPTOR, self.write_descriptor_wrap)
-        self._oscer.handle(COMMAND_WBD_WRITECHARACTERISTIC, self.write_characteristic_wrap)
-        self._oscer.handle(COMMAND_WBD_READCHARACTERISTIC, self.read_characteristic_wrap)
+        def on_osc_init_ok(self):
+            self._oscer.handle(COMMAND_WBD_CONNECTGATT, self.connect_gatt_wrap)
+            self._oscer.handle(COMMAND_WBD_DISCONNECTGATT, self.close_gatt)
+            self._oscer.handle(COMMAND_WBD_DISCOVERSERVICES, self.discover_services)
+            self._oscer.handle(COMMAND_WBD_STARTSCAN, self.start_scan_wrap)
+            self._oscer.handle(COMMAND_WBD_WRITEDESCRIPTOR, self.write_descriptor_wrap)
+            self._oscer.handle(COMMAND_WBD_WRITECHARACTERISTIC, self.write_characteristic_wrap)
+            self._oscer.handle(COMMAND_WBD_READCHARACTERISTIC, self.read_characteristic_wrap)
 
-    def on_gatt_release(self):
-        """`gatt_release` event handler.
-        Event is dispatched at every read/write completed operation
-        """
-        self._oscer.send(COMMAND_WBD_GATTRELEASE)
+        def on_gatt_release(self):
+            """`gatt_release` event handler.
+            Event is dispatched at every read/write completed operation
+            """
+            self._oscer.send(COMMAND_WBD_GATTRELEASE)
 
-    def on_scan_started(self, success):
-        """`scan_started` event handler
+        def on_scan_started(self, success):
+            """`scan_started` event handler
 
-        :param success: true, if scan was started successfully
-        """
-        self._oscer.send(COMMAND_CONFIRM,
-                         CONFIRM_OK if success else CONFIRM_FAILED_1,
-                         MSG_OK if success else MSG_ERROR)
+            :param success: true, if scan was started successfully
+            """
+            self._oscer.send(COMMAND_CONFIRM,
+                             CONFIRM_OK if success else CONFIRM_FAILED_1,
+                             MSG_OK if success else MSG_ERROR)
 
-    def on_scan_completed(self):
-        """`scan_completed` event handler
-        """
-        self._oscer.send(COMMAND_WBD_STOPSCAN_RV)
+        def on_scan_completed(self):
+            """`scan_completed` event handler
+            """
+            self._oscer.send(COMMAND_WBD_STOPSCAN_RV)
 
-    def on_device(self, device, rssi, advertisement):
-        """`device` event handler.
-        Event is dispatched when device is found during a scan.
+        def on_device(self, device, rssi, advertisement):
+            """`device` event handler.
+            Event is dispatched when device is found during a scan.
 
-        :param device: BluetoothDevice Java object
-        :param rssi: the RSSI value for the remote device
-        :param advertisement: :class:`Advertisement` data record
-        """
-        self._oscer.send(COMMAND_WBD_DEVICEFOUND,
-                         json.dumps(dict(name=device.getName(), address=device.getAddress())),
-                         rssi,
-                         json.dumps(advertisement))
+            :param device: BluetoothDevice Java object
+            :param rssi: the RSSI value for the remote device
+            :param advertisement: :class:`Advertisement` data record
+            """
+            self._oscer.send(COMMAND_WBD_DEVICEFOUND,
+                             json.dumps(dict(name=device.getName(), address=device.getAddress())),
+                             rssi,
+                             json.dumps(advertisement))
 
-    def on_connection_state_change(self, status, state):
-        """`connection_state_change` event handler
+        def on_connection_state_change(self, status, state):
+            """`connection_state_change` event handler
 
-        :param status: status of the operation,
-                       `GATT_SUCCESS` if the operation succeeds
-        :param state: STATE_CONNECTED or STATE_DISCONNECTED
-        """
-        self._oscer.send(COMMAND_WBD_CONNECTSTATECHANGE, status, state)
+            :param status: status of the operation,
+                           `GATT_SUCCESS` if the operation succeeds
+            :param state: STATE_CONNECTED or STATE_DISCONNECTED
+            """
+            self._oscer.send(COMMAND_WBD_CONNECTSTATECHANGE, status, state)
 
-    @staticmethod
-    def characteristic2dict(ch):
-        descs = []
-        descsj = ch.getDescriptors()
-        for i in range(descsj.getSize()):
-            descs.append(BluetoothDispatcherWC.descriptor2dict(descsj.get(i)))
-        return dict(
-            uuid=ch.getUuid(),
-            value=ch.getValue(),
-            descriptors=descs,
-            permissions=ch.getPermissions(),
-            properties=ch.getProperties(),
-        )
+        @staticmethod
+        def characteristic2dict(ch):
+            descs = []
+            descsj = ch.getDescriptors()
+            for i in range(descsj.getSize()):
+                descs.append(BluetoothDispatcherWC.descriptor2dict(descsj.get(i)))
+            return dict(
+                uuid=ch.getUuid(),
+                value=ch.getValue(),
+                descriptors=descs,
+                permissions=ch.getPermissions(),
+                properties=ch.getProperties(),
+            )
 
-    @staticmethod
-    def characteristicfromdict(ch):
-        BluetoothGattCharacteristic = autoclass('	android.bluetooth.BluetoothGattCharacteristic')
-        bgd = BluetoothGattCharacteristic(ch['uuid'], ch['properties'], ch['permissions'])
-        for i in ch['descriptors']:
-            bgd.addDescriptor(BluetoothDispatcherWC.descriptorfromdict(i))
-        bgd.setValue(ch['value'])
-        return bgd
-
-    @staticmethod
-    def descriptor2dict(ch):
-        return dict(
-            uuid=ch.getUuid(),
-            value=ch.getValue(),
-            permissions=ch.getPermissions()
-        )
-
-    @staticmethod
-    def descriptorfromdict(ch):
-        BluetoothGattDescriptor = autoclass('android.bluetooth.BluetoothGattDescriptor')
-        bgd = BluetoothGattDescriptor(ch['uuid'], ch['permissions'])
-        if ch['value']:
+        @staticmethod
+        def characteristicfromdict(ch):
+            BluetoothGattCharacteristic = autoclass('	android.bluetooth.BluetoothGattCharacteristic')
+            bgd = BluetoothGattCharacteristic(ch['uuid'], ch['properties'], ch['permissions'])
+            for i in ch['descriptors']:
+                bgd.addDescriptor(BluetoothDispatcherWC.descriptorfromdict(i))
             bgd.setValue(ch['value'])
-        return bgd
+            return bgd
 
-    def on_services(self, services, status):
-        """`services` event handler
+        @staticmethod
+        def descriptor2dict(ch):
+            return dict(
+                uuid=ch.getUuid(),
+                value=ch.getValue(),
+                permissions=ch.getPermissions()
+            )
 
-        :param services: :class:`Services` dict filled with discovered
-                         characteristics
-                         (BluetoothGattCharacteristic Java objects)
-        :param status: status of the operation,
-                       `GATT_SUCCESS` if the operation succeeds
-        """
-        dct = dict()
-        for sn, ch in services.items():
-            dct[sn] = BluetoothDispatcherWC.characteristic2dict(ch)
-        self._oscer.send(COMMAND_WBD_SERVICES, json.dumps(dct), status)
+        @staticmethod
+        def descriptorfromdict(ch):
+            BluetoothGattDescriptor = autoclass('android.bluetooth.BluetoothGattDescriptor')
+            bgd = BluetoothGattDescriptor(ch['uuid'], ch['permissions'])
+            if ch['value']:
+                bgd.setValue(ch['value'])
+            return bgd
 
-    def on_characteristic_changed(self, characteristic):
-        """`characteristic_changed` event handler
+        def on_services(self, services, status):
+            """`services` event handler
 
-        :param characteristic: BluetoothGattCharacteristic Java object
-        """
-        self._oscer.send(COMMAND_WBD_CHARACTERISTICCHANGED,
-                         json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)))
+            :param services: :class:`Services` dict filled with discovered
+                             characteristics
+                             (BluetoothGattCharacteristic Java objects)
+            :param status: status of the operation,
+                           `GATT_SUCCESS` if the operation succeeds
+            """
+            dct = dict()
+            for sn, ch in services.items():
+                dct[sn] = BluetoothDispatcherWC.characteristic2dict(ch)
+            self._oscer.send(COMMAND_WBD_SERVICES, json.dumps(dct), status)
 
-    def on_characteristic_read(self, characteristic, status):
-        """`characteristic_read` event handler
+        def on_characteristic_changed(self, characteristic):
+            """`characteristic_changed` event handler
 
-        :param characteristic: BluetoothGattCharacteristic Java object
-        :param status: status of the operation,
-                       `GATT_SUCCESS` if the operation succeeds
-        """
-        self._oscer.send(COMMAND_WBD_CHARACTERISTICREAD,
-                         json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)),
-                         status)
+            :param characteristic: BluetoothGattCharacteristic Java object
+            """
+            self._oscer.send(COMMAND_WBD_CHARACTERISTICCHANGED,
+                             json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)))
 
-    def on_characteristic_write(self, characteristic, status):
-        """`characteristic_write` event handler
+        def on_characteristic_read(self, characteristic, status):
+            """`characteristic_read` event handler
 
-        :param characteristic: BluetoothGattCharacteristic Java object
-        :param status: status of the operation,
-                       `GATT_SUCCESS` if the operation succeeds
-        """
-        self._oscer.send(COMMAND_WBD_CHARACTERISTICWRITTEN,
-                         json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)),
-                         status)
+            :param characteristic: BluetoothGattCharacteristic Java object
+            :param status: status of the operation,
+                           `GATT_SUCCESS` if the operation succeeds
+            """
+            self._oscer.send(COMMAND_WBD_CHARACTERISTICREAD,
+                             json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)),
+                             status)
 
-    def on_descriptor_read(self, descriptor, status):
-        """`descriptor_read` event handler
+        def on_characteristic_write(self, characteristic, status):
+            """`characteristic_write` event handler
 
-        :param descriptor: BluetoothGattDescriptor Java object
-        :param status: status of the operation,
-                       `GATT_SUCCESS` if the operation succeeds
-        """
-        self._oscer.send(COMMAND_WBD_DESCRIPTORREAD,
-                         json.dumps(BluetoothDispatcherWC.descriptor2dict(descriptor)),
-                         status)
+            :param characteristic: BluetoothGattCharacteristic Java object
+            :param status: status of the operation,
+                           `GATT_SUCCESS` if the operation succeeds
+            """
+            self._oscer.send(COMMAND_WBD_CHARACTERISTICWRITTEN,
+                             json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)),
+                             status)
 
-    def on_descriptor_write(self, descriptor, status):
-        """`descriptor_write` event handler
+        def on_descriptor_read(self, descriptor, status):
+            """`descriptor_read` event handler
 
-        :param descriptor: BluetoothGattDescriptor Java object
-        :param status: status of the operation,
-                       `GATT_SUCCESS` if the operation succeeds
-        """
-        self._oscer.send(COMMAND_WBD_DESCRIPTORWRITTEN,
-                         json.dumps(BluetoothDispatcherWC.descriptor2dict(descriptor)),
-                         status)
+            :param descriptor: BluetoothGattDescriptor Java object
+            :param status: status of the operation,
+                           `GATT_SUCCESS` if the operation succeeds
+            """
+            self._oscer.send(COMMAND_WBD_DESCRIPTORREAD,
+                             json.dumps(BluetoothDispatcherWC.descriptor2dict(descriptor)),
+                             status)
+
+        def on_descriptor_write(self, descriptor, status):
+            """`descriptor_write` event handler
+
+            :param descriptor: BluetoothGattDescriptor Java object
+            :param status: status of the operation,
+                           `GATT_SUCCESS` if the operation succeeds
+            """
+            self._oscer.send(COMMAND_WBD_DESCRIPTORWRITTEN,
+                             json.dumps(BluetoothDispatcherWC.descriptor2dict(descriptor)),
+                             status)
 else:
     BluetoothDispatcher = BluetoothDispatcherW
