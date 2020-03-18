@@ -31,7 +31,7 @@ _LOGGERS = dict()
 _socket_handler = None
 
 
-def init_logger(name, level=None, hp=None):
+def init_logger(name, level=None, hp=None, loggerobj=None):
     global _LOGGERS
     global _loglevel
     global _socket_handler
@@ -47,6 +47,8 @@ def init_logger(name, level=None, hp=None):
         for _, log in _LOGGERS.items():
             log['lo'].setLevel(_loglevel)
             log['ha'].setLevel(_loglevel)
+    if loggerobj:
+        return loggerobj
     nm = f'PY_{name}'
     _LOGGER = logging.getLogger(nm)
     _LOGGER.setLevel(_loglevel)

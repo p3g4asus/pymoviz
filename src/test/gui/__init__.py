@@ -143,9 +143,10 @@ class MainApp(MDApp):
 
     def on_start(self):
         init_logger(__name__,
-                              hp=(
-                                self.config.get('log', 'host'),
-                                int(self.config.get('log', 'port'))))
+                    loggerobj=_LOGGER,
+                    hp=(
+                      self.config.get('log', 'host'),
+                      int(self.config.get('log', 'port'))))
         _LOGGER.debug("On Start")
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
