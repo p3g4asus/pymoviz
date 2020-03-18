@@ -178,6 +178,7 @@ if platform == 'android':
                      portlisten=33217,
                      hostcommand='127.0.0.1',
                      portcommand=33218, **kwargs):
+            _LOGGER.warning(f'BluetoothDispatcherWC init L({hostlisten}:{portlisten}) C({hostcommand}:{portcommand})')
             self._oscer = OSCManager(
                 hostlisten=hostlisten,
                 portlisten=portlisten,
@@ -185,6 +186,7 @@ if platform == 'android':
                 portcommand=portcommand
             )
             super(BluetoothDispatcherWC, self).__init__(**kwargs)
+            _LOGGER.warning('BluetoothDispatcherWC init end')
 
     def _set_ble_interface(self):
         _LOGGER.warning('Set BLE Interface')
