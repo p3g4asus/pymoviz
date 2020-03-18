@@ -12,7 +12,9 @@ class Timer:
             if self._timeout:
                 await asyncio.sleep(self._timeout)
             await self._callback()
-        except asyncio.CancelledError:
+            # self._task.set_result(0)
+        except Exception:
+            # self._task.set_result(ex)
             pass
 
     def cancel(self):

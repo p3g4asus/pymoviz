@@ -12,6 +12,7 @@ import json
 import os
 import traceback
 from functools import partial
+import logging
 from os.path import dirname, exists, expanduser, join
 
 from db.user import User
@@ -23,7 +24,6 @@ from gui.useredit import UserWidget
 from gui.viewedit import ViewPlayWidget, ViewWidget
 from kivy.app import App
 from kivy.lang import Builder
-from kivy.logger import Logger
 from kivy.properties import StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.settings import SettingsWithSpinner
@@ -45,8 +45,10 @@ from util.const import (COMMAND_CONNECT, COMMAND_DELUSER, COMMAND_DELVIEW,
                         CONFIRM_FAILED_3, CONFIRM_OK, MSG_COMMAND_TIMEOUT)
 from util.osc_comunication import OSCManager
 from util.timer import Timer
-from util import asyncio_graceful_shutdown, find_devicemanager_classes
+from util import asyncio_graceful_shutdown, find_devicemanager_classes, init_logger
 
+
+_LOGGER = init_logger(__name__, level=logging.DEBUG)
 __prog__ = "pyMoviz"
 __version__ = (1, 0, 0)
 
@@ -130,7 +132,7 @@ Screen:
                         title: app.title
                         md_bg_color: app.theme_cls.primary_color
                         left_action_items: [["menu", lambda x: nav_drawer.toggle_nav_drawer()]]
-                        right_action_items: [["lan-connect", id_tabcont.connect_view], ["lan-disconnect", id_tabcont.disconnect_view], ["dots-vertical", app.open_menu]]
+                        right_action_items: [["lan-connect", app.connect_active_views], ["lan-disconnect", app.disconnect_active_views], ["dots-vertical", app.open_menu]]
 
                     MyTabs:
                         manager: root.ids.id_screen_manager
@@ -180,13 +182,13 @@ class MyTabs(MDTabs):
         super(MyTabs, self).remove_widget(w)
         if isinstance(w, View):
             w = self.already_present(w)
-        if isinstance(w, ViewPlayWidget):
+        if w and isinstance(w, ViewPlayWidget):
             idx = -3
             try:
                 idx = self.tab_list.index(w)
                 self.tab_list.remove(w)
             except ValueError:
-                Logger.error(traceback.format_exc())
+                _LOGGER.error(traceback.format_exc())
             if len(self.tab_list) == 0:
                 self.current_tab = None
                 idx = -2
@@ -217,21 +219,23 @@ class MyTabs(MDTabs):
             tab = ViewPlayWidget(view=view)
         elif isinstance(tab, ViewPlayWidget):
             view = tab.view
+        else:
+            return
         oldtab = self.already_present(view)
         if oldtab:
             oldtab.view = view
         else:
             self.tab_list.append(tab)
-            Logger.debug(f"Gui: Adding tab len = {len(self.tab_list)}")
+            _LOGGER.debug(f"Gui: Adding tab len = {len(self.tab_list)}")
             self.carousel.index = len(self.tab_list) - 1
             tab.tab_label.state = "down"
             tab.tab_label.on_release()
 
     def on_tab_switch(self, inst, text):
         super(MyTabs, self).on_tab_switch(inst, text)
-        Logger.debug("On tab switch to %s" % str(text))
+        _LOGGER.debug("On tab switch to %s" % str(text))
         self.current_tab = inst.tab
-        Logger.debug("Gui: Currenttab = %s" % str(inst.tab))
+        _LOGGER.debug("Gui: Currenttab = %s" % str(inst.tab))
 
 
 class MainApp(MDApp):
@@ -260,10 +264,10 @@ class MainApp(MDApp):
     def format_version(self):
         return "%d.%d.%d" % __version__
 
-    def disconnect_view(self, *args, **kwargs):
+    def disconnect_active_views(self, *args, **kwargs):
         self.oscer.send(COMMAND_DISCONNECT)
 
-    def connect_view(self, *args, **kwargs):
+    def connect_active_views(self, *args, **kwargs):
         if not self.is_pre_init_ok():
             toast('Cannot perform connection: pre init failed')
         elif not self.current_user:
@@ -277,8 +281,7 @@ class MainApp(MDApp):
                 device=self.device_edit,
                 view=partial(self.generic_edit_item,
                              dct={v.name: dict(obj=v, active=v.active) for v in self.views},
-                             nameitem='view',
-                             oscercmd=COMMAND_SAVEVIEW),
+                             cls=View),
                 user=self.generic_edit_user
             ),
             title='Edit what?',
@@ -291,8 +294,7 @@ class MainApp(MDApp):
         self.generic_edit_item(
                      dct={v.name: dict(obj=v, active=v == self.current_user) for v in self.users},
                      group='users',
-                     nameitem='user',
-                     oscercmd=COMMAND_SAVEUSER)
+                     cls=User)
 
     def on_device_edit(self, inst, name, device):
         if device:
@@ -309,10 +311,13 @@ class MainApp(MDApp):
         self.root.ids.id_screen_manager.add_widget(self.current_widget)
         self.root.ids.id_screen_manager.current = self.current_widget.name
 
-    def generic_edit_item(self, *arg, dct=dict(), nameitem='', group=None):
+    def generic_edit_item(self, *arg, dct=dict(), group=None, cls=None):
         self.current_widget = TypeWidgetCB(
             types=dct,
-            title=f'Select {nameitem}',
+            group=group,
+            editclass=ViewWidget if cls == View else UserWidget,
+            editpars=dict(formatters=self.formatters) if cls == View else dict(),
+            title=f'Select {"view" if cls == View else "user"}',
             on_type=self.on_generic_edit_item
         )
         self.root.ids.id_screen_manager.add_widget(self.current_widget)
@@ -333,10 +338,12 @@ class MainApp(MDApp):
                 items.append(item)
             if isinstance(items[0], User):
                 self.on_confirm_add_item(None,
+                                         items,
                                          oscercmd=COMMAND_SAVEUSER,
                                          lst=self.users)
             else:
                 self.on_confirm_add_item(None,
+                                         items,
                                          oscercmd=COMMAND_SAVEVIEW,
                                          lst=self.views,
                                          on_ok=self.on_view_added)
@@ -496,6 +503,7 @@ class MainApp(MDApp):
         self.root.ids.id_screen_manager.current = self.current_widget.name
 
     def on_confirm_add_item(self, inst, items, index=0, oscercmd='', lst=[], on_ok=None):
+        _LOGGER.debug(f'on_confirm_add_item items={items} index={index} oscercm={oscercmd}')
         if items:
             if isinstance(items, list):
                 view = items[index] if index < len(items) else None
@@ -508,7 +516,7 @@ class MainApp(MDApp):
                                 view,
                                 confirm_callback=partial(self.on_confirm_add_item_server,
                                                          items=items,
-                                                         oscercmnd=oscercmd,
+                                                         oscercmd=oscercmd,
                                                          lst=lst,
                                                          on_ok=on_ok,
                                                          index=index),
@@ -525,6 +533,8 @@ class MainApp(MDApp):
                 lst[lst.index(view)] = view
             else:
                 lst.append(view)
+            # self.root.ids.id_screen_manager.add_widget(self.current_widget)
+            # self.current_widget = None
             msg = f"Save {view.__table__} {view.name} OK"
             if on_ok:
                 on_ok(view)
@@ -563,9 +573,9 @@ class MainApp(MDApp):
 # https://stackoverflow.com/questions/42159927/http-basic-auth-on-twisted-klein-server
 # https://github.com/racker/python-twisted-core/blob/master/doc/examples/dbcred.py
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, loop=asyncio.get_event_loop(), *args, **kwargs):
         super(MainApp, self).__init__(*args, **kwargs)
-        self.loop = asyncio.get_event_loop()
+        self.loop = loop
 
     def build(self):
         """
@@ -585,19 +595,23 @@ class MainApp(MDApp):
     async def init_osc(self):
         self.oscer = OSCManager(
             hostlisten=self.config.get('frontend', 'host'),
-            portlisten=self.config.get('frontend', 'port'),
+            portlisten=int(self.config.get('frontend', 'port')),
             hostcommand=self.config.get('backend', 'host'),
-            portcommand=self.config.get('backend', 'port'))
-        await self.oscer.init(pingsend=False, on_init_ok=self.on_osc_init_ok, on_ping_timeout=self.on_ping_timeout)
+            portcommand=int(self.config.get('backend', 'port')))
+        await self.oscer.init(pingsend=False,
+                              on_init_ok=self.on_osc_init_ok,
+                              on_ping_timeout=self.on_ping_timeout,
+                              loop=self.loop)
 
     def on_osc_init_ok(self):
+        _LOGGER.debug('Osc init ok')
         self.oscer.handle(COMMAND_LISTDEVICES_RV, self.on_list_devices_rv)
-        self.oscer.handle(COMMAND_DEVICESTATE, self.on_devicestate)
         self.oscer.handle(COMMAND_LISTVIEWS_RV, self.on_list_views_rv)
         self.oscer.handle(COMMAND_LISTUSERS_RV, self.on_list_users_rv)
-        self.send(COMMAND_LISTDEVICES)
-        self.send(COMMAND_LISTUSERS)
-        self.send(COMMAND_LISTVIEWS)
+        self.oscer.send(COMMAND_LISTDEVICES)
+        self.oscer.send(COMMAND_LISTUSERS)
+        self.oscer.send(COMMAND_LISTVIEWS)
+        _LOGGER.debug('Osc init ok done')
 
     def on_list_devices_rv(self, *ld):
         for x in range(0, len(ld), 2):
@@ -610,7 +624,7 @@ class MainApp(MDApp):
 
     def on_list_users_rv(self, *ld):
         self.users = list(ld)
-        useri = self.config.get('dbpars', 'user')
+        useri = int(self.config.get('dbpars', 'user'))
         for u in self.users:
             if useri < 0 or useri == u.rowid:
                 self.current_user = u
@@ -675,7 +689,7 @@ class MainApp(MDApp):
             )
 
     def on_nav_home(self, *args, **kwargs):
-        Logger.debug("On Nav Home")
+        _LOGGER.debug("On Nav Home")
 
     def on_nav_exit(self, *args, **kwargs):
         self.true_stop()
@@ -691,11 +705,11 @@ class MainApp(MDApp):
         """
         Set the default values for the configs sections.
         """
-        config.setdefaults('dbpars', {'user', -1})
+        config.setdefaults('dbpars', {'user': -1})
         config.setdefaults('frontend',
-                           {'host': '127.0.0.1', 'port': 9001})
+                           {'host': '127.0.0.1', 'port': 11002})
         config.setdefaults('backend',
-                           {'host': '127.0.0.1', 'port': 9002})
+                           {'host': '127.0.0.1', 'port': 11001})
         config.setdefaults('bluetooth',
                            {'connect_secs': 5, 'connect_retry': 10})
         self._init_fields()
@@ -707,7 +721,7 @@ class MainApp(MDApp):
         self.users = []
         self.formatters = []
         self.current_widget = None
-        self.devicemanager_class_by_type = find_devicemanager_classes(Logger)
+        self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
         self.devicemanagers_by_uid = dict()
         self.views = []
         self.devicemanagers_pre_init_done = False
@@ -773,10 +787,10 @@ class MainApp(MDApp):
                            connect_retry=int(self.config.getint('bluetooth', 'connect_retry')),
                            verbose=True)
                 argument = json.dumps(arg)
-                Logger.info("Starting %s [%s]" % (service_class, argument))
+                _LOGGER.info("Starting %s [%s]" % (service_class, argument))
                 service.start(mActivity, argument)
             except Exception:
-                Logger.error(traceback.format_exc())
+                _LOGGER.error(traceback.format_exc())
 
     async def stop_server(self):
         if self.oscer:
@@ -787,7 +801,7 @@ class MainApp(MDApp):
         """
         Respond to changes in the configuration.
         """
-        Logger.info("main.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
+        _LOGGER.info("main.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
             config, section, key, value))
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
@@ -800,7 +814,7 @@ class MainApp(MDApp):
         """
         The settings panel has been closed.
         """
-        Logger.info("main.py: App.close_settings: {0}".format(settings))
+        _LOGGER.info("main.py: App.close_settings: {0}".format(settings))
         super(MainApp, self).close_settings(settings)
 
 
@@ -811,10 +825,10 @@ def main():
         asyncio.set_event_loop(loop)
     else:
         loop = asyncio.get_event_loop()
-    app = MainApp()
+    app = MainApp(loop=loop)
     loop.run_until_complete(app.async_run())
-    loop.run_until_complete(asyncio_graceful_shutdown(loop, Logger, False))
-    Logger.debug("Gui: Closing loop")
+    loop.run_until_complete(asyncio_graceful_shutdown(loop, _LOGGER, False))
+    _LOGGER.debug("Gui: Closing loop")
     loop.close()
 
 

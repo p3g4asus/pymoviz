@@ -125,29 +125,38 @@ class OSCManager(object):
         _LOGGER.debug(f'Received cmd={address} par={str(oscs)}')
         warn = True
         if address in self.callbacks:
+            item = None
             if len(oscs) > 0 and isinstance(oscs[0], str) and oscs[0] in self.callbacks[address]:
-                _LOGGER.warning(f'Found device command (uid={oscs[0]})')
+                _LOGGER.debug(f'Found device command (uid={oscs[0]})')
                 item = self.callbacks[address][oscs[0]]
-                item['f'](*item['a'], *self.deserialize(oscs[1:]))
                 uid = oscs[0]
+                pars = oscs[1:]
                 warn = False
             if '' in self.callbacks[address]:
                 item = self.callbacks[address]['']
-                item['f'](*item['a'], *self.deserialize(oscs))
                 uid = ''
+                pars = oscs
                 warn = False
-            if item['t']:
-                item['t'].cancel()
-                self.unhandle_device(address, uid)
+            if item:
+                if item['t']:
+                    _LOGGER.debug(f'Cancelling unhandle timer add={address} uid={uid}')
+                    item['t'].cancel()
+                    self.unhandle_device(address, uid)
+                try:
+                    item['f'](*item['a'], *self.deserialize(pars))
+                except Exception:
+                    _LOGGER.error(f'Handler error {traceback.format_exc()}')
         if warn:
-            _LOGGER.warning('Handler not found')
+            _LOGGER.warning(f'Handler not found ({self.callbacks})')
 
-    def call_confirm_callback(self, exitv, *args, confirm_callback=None, confirm_params=(), timeout=False, uid=''):
+    def call_confirm_callback(self, *args, confirm_callback=None, confirm_params=(), timeout=False, uid=''):
+        _LOGGER.debug(f'Calling confirm_callback with cp={confirm_params} args={args}')
         self.unhandle_device(COMMAND_CONFIRM, uid)
-        confirm_callback(*confirm_params, exitv, *args, timeout=timeout)
+        confirm_callback(*confirm_params, *args, timeout=timeout)
 
     def send_device(self, address, uid, *args, confirm_callback=None, confirm_params=(), timeout=-1):
         if confirm_callback:
+            _LOGGER.debug(f'Adding handle for COMMAND_CONFIRM uid={uid} tim={timeout}')
             self.handle_device(
                 COMMAND_CONFIRM,
                 uid,
@@ -177,11 +186,13 @@ class OSCManager(object):
             if self.ping_timeout is False:
                 el = self.cmd_queue.pop(0)
                 args = ('()',) if not el['args'] else el['args']
-                self.client.send_message(el['address'], *args)
+                _LOGGER.debug(f'Sending {el["address"]} -> {args}')
+                self.client.send_message(el['address'], args)
                 self.process_cmd_queue()
 
     def send(self, address, *args, confirm_callback=None, confirm_params=(), timeout=-1):
         if confirm_callback:
+            _LOGGER.debug(f'Adding handle for COMMAND_CONFIRM tim={timeout}')
             self.handle(
                 COMMAND_CONFIRM,
                 partial(self.call_confirm_callback,
@@ -201,8 +212,13 @@ class OSCManager(object):
 
     async def unhandle_by_timer(self, address, uid):
         if address in self.callbacks and uid in self.callbacks[address]:
+            _LOGGER.debug(f'unhandling by timeout add={address}, uid={uid}')
             item = self.callbacks[address][uid]
-            item['f'](*item['a'], timeout=True)
+            try:
+                item['f'](*item['a'], timeout=True)
+            except Exception:
+                _LOGGER.error(f'Handler error {traceback.format_exc()}')
+            _LOGGER.debug(f'Handler exited add={address}, uid={uid}')
             del self.callbacks[address][uid]
 
     # def some_callback(address: str, *osc_arguments: List[Any]) -> None:
@@ -216,12 +232,14 @@ class OSCManager(object):
             t = None
         d[uid] = dict(f=callback, a=args, t=t)
         self.callbacks[address] = d
+        _LOGGER.debug(f'Handle Added add={address}, uid={uid} timeout={timeout} result={self.callbacks}')
 
     def unhandle_device(self, address, uid):
         if address in self.callbacks and uid in self.callbacks[address]:
             if self.callbacks[address][uid]['t']:
                 self.callbacks[address][uid]['t'].cancel()
             del self.callbacks[address][uid]
+            _LOGGER.debug(f'Handle removed add={address}, uid={uid} result={self.callbacks}')
 
     def handle(self, address, callback, *args, timeout=-1):
         self.handle_device(address, '', callback, *args, timeout=timeout)

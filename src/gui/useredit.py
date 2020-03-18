@@ -3,9 +3,12 @@ from datetime import datetime
 
 from db.user import User
 from kivy.lang import Builder
-from kivy.logger import Logger
 from kivy.properties import ObjectProperty
 from kivy.uix.screenmanager import Screen
+from util import init_logger
+
+
+_LOGGER = init_logger(__name__)
 
 Builder.load_string(
     '''
@@ -18,11 +21,11 @@ Builder.load_string(
 <UserWidget>:
     name: 'user_edit'
     GridLayout:
-        spacing: dp(5)
         height: self.minimum_height
         rows: 3
         cols: 1
         MDToolbar:
+            id: id_toolbar
             pos_hint: {'top': 1}
             size_hint: (1, 0.2)
             title: 'New User'
@@ -30,9 +33,11 @@ Builder.load_string(
             left_action_items: [["arrow-left", lambda x: root.dispatch_confirm(False)]]
             elevation: 10
         BoxLayout:
-            padding: [dp(30), dp(5)]
+            padding: [dp(30), dp(20)]
+            spacing: dp(30)
             size_hint: (1, 0.1)
             MDTextField:
+                pos_hint: {'top': 0.8}
                 id: id_name
                 icon_type: "without"
                 error: True
@@ -41,6 +46,7 @@ Builder.load_string(
                 helper_text: "Enter at least a letter"
                 on_text: root.enable_buttons(self, self.text)
         GridLayout:
+            padding: [dp(30), dp(20)]
             cols: 2
             rows: 4
             MDLabel:
@@ -68,7 +74,7 @@ Builder.load_string(
                 id: id_birth
                 font_size: "12sp"
                 dateformat: '%d/%m/%Y'
-                on_date_picked: root.set_birthday
+                on_date_picked: root.set_birthday(self.date)
     '''
 )
 
@@ -86,7 +92,8 @@ class UserWidget(Screen):
             self.user = User(name='John Doe', weight=75, height=175, male=True, birthday=0)
         self.user2gui()
 
-    def set_birthday(self, inst, dt):
+    def set_birthday(self, dt):
+        _LOGGER.debug(f'Set birthday {dt}')
         if dt:
             self.user.birthday = datetime.timestamp(dt)
             self.set_enabled(self.user.birthday > 0 and not self.ids.id_name.error)
@@ -114,7 +121,8 @@ class UserWidget(Screen):
         self.user.height = self.ids.id_height.value
 
     def on_confirm(self, user):
-        Logger.debug(f"On confirm called {str(user)}")
+        # self.manager.remove_widget(self)
+        _LOGGER.debug(f"On confirm called {str(user)}")
 
     def enable_buttons(self, inst, text, *args, **kwargs):
         dis = not text or not re.search(r"[A-Za-z]", text)

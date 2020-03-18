@@ -13,8 +13,7 @@ from db.device import Device
 from db.label_formatter import LabelFormatter
 from db.user import User
 from db.view import View
-from device.manager import GenericDeviceManager
-from util import find_devicemanager_classes
+from util import find_devicemanager_classes, init_logger
 from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_DELDEVICE,
                         COMMAND_DELUSER, COMMAND_DELVIEW, COMMAND_DISCONNECT,
                         COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV,
@@ -32,18 +31,19 @@ from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_DELDEVICE,
 from util.osc_comunication import OSCManager
 from util.timer import Timer
 
-_LOGGER = logging.getLogger('PY_' + __name__)
+_LOGGER = None
 __prog__ = "pymoviz-server"
 
 
 class DeviceManagerService(object):
     def __init__(self, **kwargs):
         self.addit_params = dict()
-        for key in kwargs:
+        for key, val in kwargs.items():
             if not key.startswith('ab_'):
-                setattr(self, key, kwargs[key])
+                setattr(self, key, val)
             else:
-                self.addit_params[key[3:]] = kwargs[key]
+                self.addit_params[key[3:]] = val
+        _LOGGER.debug(f'Addit params for DM {self.addit_params}')
         self.db = None
         self.oscer = None
         self.devicemanager_class_by_type = dict()
@@ -96,6 +96,7 @@ class DeviceManagerService(object):
         for dm in self.devicemanagers_active_done.copy():
             self.devicemanagers_active.append(dm)
             self.devicemanagers_active_done.remove(dm)
+        from device.manager import GenericDeviceManager
         GenericDeviceManager.sort(self.devicemanagers_active)
         for _, info in self.devicemanagers_active_info:
             info['operation'] = cmd
@@ -116,30 +117,39 @@ class DeviceManagerService(object):
         self.oscer.send(COMMAND_LISTDEVICES_RV, *out)
 
     async def on_command_delelem_async(self, elem, *args, lst=None, on_ok=None):
-        rv = await elem.delete(self.db)
-        if rv:
-            if elem in lst:
-                lst.remove(elem)
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem)
-            if on_ok:
-                on_ok(elem)
-        else:
-            self.oscer.send_device(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem))
+        try:
+            _LOGGER.debug(f'on_command_delelem_async {elem}')
+            rv = await elem.delete(self.db)
+            if rv:
+                if elem in lst:
+                    lst.remove(elem)
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem)
+                if on_ok:
+                    on_ok(elem)
+            else:
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem))
+        except Exception:
+            _LOGGER.error(f'on_command_delelem_async exception {traceback.format_exc()}')
 
     async def on_command_saveelem_async(self, elem, *args, lst=None, on_ok=None):
-        rv = await elem.to_db(self.db)
-        if rv:
-            if elem not in lst:
-                lst.append(elem)
+        try:
+            _LOGGER.debug(f'on_command_saveelem_async {elem}')
+            rv = await elem.to_db(self.db)
+            if rv:
+                if elem not in lst:
+                    lst.append(elem)
+                else:
+                    lst[lst.index(elem)] = elem
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem)
+                if on_ok:
+                    on_ok(elem)
             else:
-                lst[lst.index(elem)] = elem
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem)
-            if on_ok:
-                on_ok(elem)
-        else:
-            self.oscer.send_device(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem))
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem))
+        except Exception:
+            _LOGGER.error(f'on_command_saveelem_async exception {traceback.format_exc()}')
 
     def on_command_dbelem(self, elem, *args, asyncmethod=None, lst=None, cls=None, on_ok=None):
+        _LOGGER.debug(f'on_command_dbelem {elem}')
         if isinstance(elem, cls):
             if self.devicemanagers_all_stopped():
                 Timer(0, partial(asyncmethod, elem, lst=lst, on_ok=on_ok))
@@ -168,10 +178,13 @@ class DeviceManagerService(object):
                 self.devicemanagers_active.remove(dm)
             if dm in self.devicemanagers_active_done:
                 self.devicemanagers_active_done.remove(dm)
+            self.set_formatters_device()
         elif command == COMMAND_SAVEDEVICE and exitv == CONFIRM_OK:
             ids = f'{dm.get_id()}'
             if ids not in self.devicemanagers_by_id:
                 self.devicemanagers_by_id[ids] = dm
+            self.set_formatters_device()
+            self.on_command_listviews()
         elif command == COMMAND_SEARCH and exitv == CONFIRM_OK:
             if self.devicemanagers_all_stopped():
                 dm.search(dm.get_state() != DEVSTATE_SEARCHING)
@@ -198,7 +211,8 @@ class DeviceManagerService(object):
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_CONNECTION_STATE_INVALID)
         else:
             uid = self.generate_uid()
-            self.devicemanagers_by_uid[uid] = self.devicemanager_class_by_type[typev](self.oscer, uid, service=True, db=self.db)
+            self.devicemanagers_by_uid[uid] = self.devicemanager_class_by_type[typev](
+                self.oscer, uid, service=True, db=self.db, params=self.addit_params)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
 
     def on_command_stop(self, *args):
@@ -257,7 +271,7 @@ class DeviceManagerService(object):
         new_notification = notification_builder.getNotification()
         # Below sends the notification to the notification bar; nice but not a foreground service.
         # notification_service.notify(0, new_noti)
-        service.setAutoRestartService(True)
+        service.setAutoRestartService(False)
         service.startForeground(1, new_notification)
 
     async def start(self):
@@ -281,6 +295,28 @@ class DeviceManagerService(object):
         for d in self.devicemanagers_active_done:
             self.devicemanagers_active_info[d.get_uid()] = dict(retry=0, operation='')
 
+    def set_formatters_device(self):
+        views2save = []
+        for v in self.views:
+            saveview = False
+            for i in range(len(v.items) - 1, -1, -1):
+                lab = v.items[i]
+                if lab.device in self.devicemanagers_by_id:
+                    lab.set_device(self.devicemanagers_by_id[lab.device].get_device())
+                else:
+                    del v.items[i]
+                    saveview = True
+            if saveview:
+                views2save.append(v)
+        if views2save:
+            Timer(0, partial(self.save_modified_views, views2save))
+
+    async def save_modified_views(self, views2save):
+        for v in views2save:
+            rv = await v.to_db(self.db)
+            _LOGGER.debug(f'Saving view {v} -> {rv}')
+        self.on_command_listviews()
+
     async def load_db(self):
         self.users = await User.loadbyid(self.db)
         self.devices = await Device.loadbyid(self.db)
@@ -301,6 +337,7 @@ class DeviceManagerService(object):
                 self.devicemanagers_by_id[f'{d.get_id()}'] = dm
                 self.devicemanagers_by_uid[uid] = dm
         self.set_devicemanagers_active()
+        self.set_formatters_device()
 
     async def start_remaining_connection_operations(self, bytimer=True):
         if bytimer:
@@ -337,6 +374,7 @@ class DeviceManagerService(object):
 
     def on_event_state_transition(self, dm, oldstate, newstate, reason):
         info = self.devicemanagers_active_info[dm.get_uid()]
+        from device.manager import GenericDeviceManager
         if GenericDeviceManager.is_connected_state_s(newstate) and oldstate == DEVSTATE_CONNECTING:
             if dm in self.devicemanagers_active:
                 self.devicemanagers_active.remove(dm)
@@ -374,17 +412,18 @@ class DeviceManagerService(object):
             self.db = None
         else:
             self.db.row_factory = aiosqlite.Row
-            modules = glob.glob(join(dirname(__file__), "..", "common", "db", "*.py*"))
+            modules = glob.glob(join(dirname(__file__), "..", "db", "*.py*"))
             pls = [splitext(basename(f))[0] for f in modules if isfile(f)]
             import importlib
             import inspect
             for x in pls:
                 try:
-                    m = importlib.import_module("db." + x)
+                    m = importlib.import_module(f"db.{x}")
                     clsmembers = inspect.getmembers(m, inspect.isclass)
                     for cla in clsmembers:
-                        query = getattr(cla, '__create_table_query__')
+                        query = getattr(cla[1], '__create_table_query__')
                         if query:
+                            # _LOGGER.debug(f'Executing query {query}')
                             await self.db.execute(query)
                 except Exception:
                     _LOGGER.warning(traceback.format_exc())
@@ -397,15 +436,17 @@ class DeviceManagerService(object):
     async def stop(self):
         self.oscer.uninit()
         await self.uninit_db()
-        from jnius import autoclass
-        service = autoclass('org.kivy.android.PythonService').mService
-        service.stopForeground(True)
-        service.stopSelf()
+        if self.android:
+            from jnius import autoclass
+            service = autoclass('org.kivy.android.PythonService').mService
+            service.stopForeground(True)
+            service.stopSelf()
 
 
 def main():
     p4a = os.environ.get('PYTHON_SERVICE_ARGUMENT', '')
-    _LOGGER.info("Starting server p4a = %s" % p4a)
+    global _LOGGER
+
     if len(p4a):
         args = json.loads(p4a)
         # hostlisten
@@ -417,9 +458,9 @@ def main():
         # db_fname
     else:
         parser = argparse.ArgumentParser(prog=__prog__)
-        parser.add_argument('--portcommand', type=int, help='port number', required=False, default=9002)
+        parser.add_argument('--portcommand', type=int, help='port number', required=False, default=11002)
         parser.add_argument('--hostcommand', required=False, default="127.0.0.1")
-        parser.add_argument('--portlisten', type=int, help='port number', required=False, default=9001)
+        parser.add_argument('--portlisten', type=int, help='port number', required=False, default=11001)
         parser.add_argument('--hostlisten', required=False, default="0.0.0.0")
         parser.add_argument('--ab_portcommand', type=int, help='port number', required=False, default=9004)
         parser.add_argument('--ab_hostcommand', required=False, default="127.0.0.1")
@@ -430,10 +471,15 @@ def main():
         parser.add_argument('--db_fname', required=False, help='DB file path', default=join(dirname(__file__), '..', 'maindb.db'))
         parser.add_argument("-v", "--verbose", help="increase output verbosity",
                             action="store_true")
-        args = vars(parser.parse_args())
+        argall = parser.parse_known_args()
+        args = vars(argall[0])
+        import sys
+        sys.argv[1:] = argall[1]
     args['android'] = len(p4a)
-    if args["verbose"]:
-        logging.basicConfig(level=logging.DEBUG)
+    _LOGGER = init_logger(__name__,
+                          level=logging.DEBUG if args['verbose'] else logging.WARNING)
+    _LOGGER.info(f"Server: p4a = {p4a}")
+    _LOGGER.debug(f"Server: test debug {args}")
     loop = asyncio.get_event_loop()
     dms = DeviceManagerService(loop=loop, **args)
     try:

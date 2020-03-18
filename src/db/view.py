@@ -2,7 +2,7 @@ from db import SerializableDBObj
 
 
 class View(SerializableDBObj):
-    __table__ = 'session'
+    __table__ = 'view'
     __columns__ = (
         '_id',
         'name',
@@ -16,7 +16,7 @@ class View(SerializableDBObj):
 
     __create_table_query__ =\
         '''
-        create table if not exists session
+        create table if not exists view
             (_id integer primary key,
             name text not null,
             active integer default 0);

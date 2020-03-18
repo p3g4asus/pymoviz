@@ -1,8 +1,11 @@
 from gui.list_item_cb import get_brand_item
 from kivy.lang import Builder
-from kivy.logger import Logger
 from kivy.properties import DictProperty, ObjectProperty, StringProperty
 from kivy.uix.screenmanager import Screen
+from util import init_logger
+
+
+_LOGGER = init_logger(__name__)
 
 Builder.load_string(
     '''
@@ -17,7 +20,7 @@ Builder.load_string(
         MDToolbar:
             pos_hint: {'top': 1}
             size_hint: (1, 0.2)
-            title: 'New Playlist'
+            title: root.title
             md_bg_color: app.theme_cls.primary_color
             left_action_items: [["arrow-left", lambda x: root.dispatch_on_type(False)]]
             elevation: 10
@@ -42,7 +45,7 @@ Builder.load_string(
                     MDFlatButton:
                         id: id_btnko
                         text: 'Cancel'
-                        theme_text_color: "Custom",
+                        theme_text_color: 'Custom'
                         text_color: self.theme_cls.primary_color
                         on_release: root.dispatch_on_type(False)
     '''
@@ -53,6 +56,7 @@ class TypeWidgetCB(Screen):
     types = DictProperty()
     _cptypes = DictProperty()
     group = StringProperty()
+    title = StringProperty()
     editclass = ObjectProperty()
     editpars = DictProperty()
 
@@ -68,7 +72,7 @@ class TypeWidgetCB(Screen):
             self.ids.id_types.add_widget(b)
 
     def on_type(self, lst):
-        Logger.debug(f"On type called {str(lst)}")
+        _LOGGER.debug(f"On type called {str(lst)}")
 
     def set_btn_enabled(self):
         if len(self._cptypes) > 0:

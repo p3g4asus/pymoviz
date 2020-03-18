@@ -1,0 +1,16 @@
+[
+    {
+        "type": "string",
+        "title": "Host",
+        "desc": "LOG Host",
+        "section": "log",
+        "key": "host"
+    },
+    {
+        "type": "numeric",
+        "title": "LOG Port",
+        "desc": "LOG port",
+        "section": "log",
+        "key": "port"
+    }
+]

@@ -1,15 +1,17 @@
 from kivy.lang import Builder
-from kivy.logger import Logger
-from kivymd.uix.list import IRightBodyTouch, OneLineAvatarListItem, OneLineListItem
+from kivymd.uix.list import IRightBodyTouch, OneLineRightIconListItem, OneLineListItem
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivy.properties import ObjectProperty, StringProperty
+from util import init_logger
+
+_LOGGER = init_logger(__name__)
 
 Builder.load_string(
     '''
 <BrandItemSimple>:
-    on_release: self.dispatch_on_brand(None)
+    on_release: self.dispatch_on_brand(self, None)
 <BrandItemCB>:
-    on_release: self.dispatch_on_brand(None)
+    on_release: self.dispatch_on_brand(self, None)
     BrandCheckbox:
         id: id_cb
         group: root.group
@@ -26,7 +28,7 @@ class BrandItemSimple(OneLineListItem):
         self.register_event_type('on_brand')
 
     def dispatch_on_brand(self, inst, active):
-        Logger.debug(f"BrandItem: Dispatching on brand->{str(active)}")
+        _LOGGER.debug(f"BrandItem: Dispatching on brand->{str(active)}")
         self.dispatch("on_brand", self.brandinfo, active)
 
     def brandinfo2gui(self, b):
@@ -36,7 +38,7 @@ class BrandItemSimple(OneLineListItem):
         self.brandinfo2gui(v)
 
 
-class BrandItemCB(OneLineAvatarListItem):
+class BrandItemCB(OneLineRightIconListItem):
     brandinfo = ObjectProperty()
     group = StringProperty(None, allownone=True)
 
@@ -63,11 +65,11 @@ class BrandItemCB(OneLineAvatarListItem):
         self.brandinfo2gui(v)
 
     def dispatch_on_brand(self, inst, active):
-        Logger.debug(f"BrandItem: Dispatching on brand->{str(active)}")
+        _LOGGER.debug(f"BrandItem: Dispatching on brand->{str(active)}")
         self.dispatch("on_brand", self.brandinfo, active)
 
     def on_brand(self, brandinfo, active):
-        Logger.debug(f"BrandItem: On brand {str(brandinfo)}->{active}")
+        _LOGGER.debug(f"BrandItem: On brand {str(brandinfo)}->{active}")
 
 
 class BrandCheckbox(MDCheckbox, IRightBodyTouch):
@@ -77,7 +79,7 @@ class BrandCheckbox(MDCheckbox, IRightBodyTouch):
         super(BrandCheckbox, self).__init__(*args, **kwargs)
 
     def on_group(self, inst, group):
-        # Logger.debug("Mediaset: group = %s %s %s" % (str(group), str(type(inst)), str(type(group))))
+        # _LOGGER.debug("Mediaset: group = %s %s %s" % (str(group), str(type(inst)), str(type(group))))
         if group and len(group):
             super(BrandCheckbox, self).on_group(self, group)
 

@@ -7,14 +7,16 @@ class Device(SerializableDBObj):
     __table__ = 'device'
     __columns__ = (
         '_id',
+        'address',
         'name',
         'alias',
         'type',
         'additionalsettings',
         'orderd'
     )
-    __columns__ = (
+    __update_columns__ = (
         'name',
+        'address',
         'alias',
         'additionalsettings',
         'orderd'
@@ -29,9 +31,9 @@ class Device(SerializableDBObj):
                 name VARCHAR(30),
                 alias VARCHAR(30) not null UNIQUE,
                 type integer not null,
-                additionalsettings TEXT DEFAULT ''
+                additionalsettings TEXT DEFAULT '',
                 enabled integer not null,
-                orderd integer not null DEFAULT 999);
+                orderd integer not null DEFAULT 50);
         '''
 
     def __lt__(self, other):

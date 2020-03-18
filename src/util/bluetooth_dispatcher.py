@@ -3,7 +3,6 @@ from functools import partial
 
 from able.dispatcher import BluetoothDispatcherBase
 from kivy.utils import platform
-from kivymd.toast.kivytoast.kivytoast import toast
 from util.const import (
     COMMAND_CONFIRM, COMMAND_WBD_CHARACTERISTICCHANGED,
     COMMAND_WBD_CHARACTERISTICREAD, COMMAND_WBD_CHARACTERISTICWRITTEN,
@@ -25,35 +24,40 @@ _LOGGER = init_logger(__name__)
 
 
 class BluetoothDispatcherW(BluetoothDispatcherBase):
+    _oscer = None
+
     def __init__(self,
-                 hostlisten='127.0.0.1',
+                 hostlisten=None,
                  portlisten=33218,
                  hostcommand='127.0.0.1',
                  portcommand=33217, **kwargs):
-        self.oscer = OSCManager(
-            hostlisten=hostlisten,
-            portlisten=portlisten,
-            hostcommand=hostcommand,
-            portcommand=portcommand
-        )
+        if not BluetoothDispatcherW._oscer:
+            if hostlisten:
+                BluetoothDispatcherW._oscer = OSCManager(
+                    hostlisten=hostlisten,
+                    portlisten=portlisten,
+                    hostcommand=hostcommand,
+                    portcommand=portcommand
+                )
         super(BluetoothDispatcherW, self).__init__(**kwargs)
 
     def _set_ble_interface(self):
-        self._ble = self.oscer
-        Timer(0, partial(
-            self.oscer.init,
-            pingsend=False,
-            on_init_ok=self.on_osc_init_ok,
-            on_ping_timeout=self.on_ping_timeout))
+        self._ble = self._oscer
+        if self._oscer:
+            Timer(0, partial(
+                self._oscer.init,
+                pingsend=False,
+                on_init_ok=self.on_osc_init_ok,
+                on_ping_timeout=self.on_ping_timeout))
 
     def on_osc_init_ok(self):
         pass
 
-    def on_ping_timeout(self, ok):
-        if ok:
-            toast('Backend connection OK')
+    def on_ping_timeout(self, is_timeout):
+        if is_timeout:
+            _LOGGER.debug('Backend connection Timeout')
         else:
-            toast('Backend connection Timeout')
+            _LOGGER.debug('Backend connection OK')
 
     def start_scan(self, scan_settings=None, scan_filters=None):
         """Start a scan for devices.
@@ -63,43 +67,43 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         The status of the scan start are reported with
         :func:`scan_started <on_scan_started>` event.
         """
-        self.oser.unhandle(COMMAND_WBD_DEVICEFOUND)
-        self.oser.handle(COMMAND_WBD_DEVICEFOUND, self.on_device)
-        self.oscer.handle(COMMAND_WBD_STARTSCAN,
-                          json.dumps(scan_settings),
-                          json.dumps(scan_filters),
-                          confirm_callback=self.on_scan_started_wrap,
-                          timeout=5)
+        self._oscer.unhandle(COMMAND_WBD_DEVICEFOUND)
+        self._oscer.handle(COMMAND_WBD_DEVICEFOUND, self.on_device)
+        self._oscer.handle(COMMAND_WBD_STARTSCAN,
+                           json.dumps(scan_settings),
+                           json.dumps(scan_filters),
+                           confirm_callback=self.on_scan_started_wrap,
+                           timeout=5)
 
     def stop_scan(self):
         """Stop the ongoing scan for devices.
         """
-        self.oscer.handle(COMMAND_WBD_STOPSCAN_RV, self.on_scan_completed)
-        self.oscer.send(COMMAND_WBD_STOPSCAN)
+        self._oscer.handle(COMMAND_WBD_STOPSCAN_RV, self.on_scan_completed)
+        self._oscer.send(COMMAND_WBD_STOPSCAN)
 
     def connect_gatt(self, device):
         """Connect to GATT Server hosted by device
         """
-        self.oscer.unhandle(COMMAND_WBD_GATTRELEASE)
-        self.oscer.unhandle(COMMAND_WBD_CONNECTSTATECHANGE)
-        self.oscer.unhandle(COMMAND_WBD_CHARACTERISTICREAD)
-        self.oscer.unhandle(COMMAND_WBD_CHARACTERISTICCHANGED)
-        self.oscer.unhandle(COMMAND_WBD_CHARACTERISTICWRITTEN)
-        self.oscer.unhandle(COMMAND_WBD_DESCRIPTORREAD)
-        self.oscer.unhandle(COMMAND_WBD_DESCRIPTORWRITTEN)
-        self.oscer.handle(COMMAND_WBD_CONNECTSTATECHANGE, self.on_connection_state_change)
-        self.oscer.handle(COMMAND_WBD_GATTRELEASE, self.on_gatt_release)
-        self.oscer.handle(COMMAND_WBD_CHARACTERISTICREAD, self.on_characteristic_read)
-        self.oscer.handle(COMMAND_WBD_CHARACTERISTICCHANGED, self.on_characteristic_changed)
-        self.oscer.handle(COMMAND_WBD_CHARACTERISTICWRITTEN, self.on_characteristic_write)
-        self.oscer.handle(COMMAND_WBD_DESCRIPTORREAD, self.on_descriptor_read)
-        self.oscer.handle(COMMAND_WBD_DESCRIPTORWRITTEN, self.on_descriptor_write)
-        self.oscer.send(COMMAND_WBD_CONNECTGATT, json.dumps(device))
+        self._oscer.unhandle(COMMAND_WBD_GATTRELEASE)
+        self._oscer.unhandle(COMMAND_WBD_CONNECTSTATECHANGE)
+        self._oscer.unhandle(COMMAND_WBD_CHARACTERISTICREAD)
+        self._oscer.unhandle(COMMAND_WBD_CHARACTERISTICCHANGED)
+        self._oscer.unhandle(COMMAND_WBD_CHARACTERISTICWRITTEN)
+        self._oscer.unhandle(COMMAND_WBD_DESCRIPTORREAD)
+        self._oscer.unhandle(COMMAND_WBD_DESCRIPTORWRITTEN)
+        self._oscer.handle(COMMAND_WBD_CONNECTSTATECHANGE, self.on_connection_state_change)
+        self._oscer.handle(COMMAND_WBD_GATTRELEASE, self.on_gatt_release)
+        self._oscer.handle(COMMAND_WBD_CHARACTERISTICREAD, self.on_characteristic_read)
+        self._oscer.handle(COMMAND_WBD_CHARACTERISTICCHANGED, self.on_characteristic_changed)
+        self._oscer.handle(COMMAND_WBD_CHARACTERISTICWRITTEN, self.on_characteristic_write)
+        self._oscer.handle(COMMAND_WBD_DESCRIPTORREAD, self.on_descriptor_read)
+        self._oscer.handle(COMMAND_WBD_DESCRIPTORWRITTEN, self.on_descriptor_write)
+        self._oscer.send(COMMAND_WBD_CONNECTGATT, json.dumps(device))
 
     def close_gatt(self):
         """Close current GATT client
         """
-        self.oscer.send(COMMAND_WBD_DISCONNECTGATT)
+        self._oscer.send(COMMAND_WBD_DISCONNECTGATT)
 
     def on_scan_started_wrap(self, *args, timeout=False):
         if timeout:
@@ -118,8 +122,8 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
 
         :return: true, if the remote services discovery has been started
         """
-        self.oscer.handle(COMMAND_WBD_SERVICES, self.on_services)
-        self.oscer.send(COMMAND_WBD_DISCOVERSERVICES)
+        self._oscer.handle(COMMAND_WBD_SERVICES, self.on_services)
+        self._oscer.send(COMMAND_WBD_DISCOVERSERVICES)
 
     def enable_notifications(self, characteristic, enable=True):
         """Enable or disable notifications for a given characteristic
@@ -128,7 +132,7 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         :param enable: enable notifications if True, else disable notifications
         :return: True, if the operation was initiated successfully
         """
-        self.oscer.send(COMMAND_WBD_ENABLENOT, json.dumps(characteristic), enable)
+        self._oscer.send(COMMAND_WBD_ENABLENOT, json.dumps(characteristic), enable)
 
     def on_writedescriptor_command(self, *args, timeout=False):
         if timeout:
@@ -146,7 +150,7 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         :param descriptor: BluetoothGattDescriptor Java object
         :param value: value to write
         """
-        self.oscer.send(COMMAND_WBD_WRITEDESCRIPTOR, json.dumps(descriptor), json.dumps(value), confirm_callback=self.on_writedescriptor_command, timeout=5)
+        self._oscer.send(COMMAND_WBD_WRITEDESCRIPTOR, json.dumps(descriptor), json.dumps(value), confirm_callback=self.on_writedescriptor_command, timeout=5)
 
     def write_characteristic(self, characteristic, value):
         """Write a given characteristic value to the associated remote device
@@ -154,14 +158,14 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         :param characteristic: BluetoothGattCharacteristic Java object
         :param value: value to write
         """
-        self.oscer.send(COMMAND_WBD_WRITECHARACTERISTIC, json.dumps(characteristic), json.dumps(value))
+        self._oscer.send(COMMAND_WBD_WRITECHARACTERISTIC, json.dumps(characteristic), json.dumps(value))
 
     def read_characteristic(self, characteristic):
         """Read a given characteristic from the associated remote device
 
         :param characteristic: BluetoothGattCharacteristic Java object
         """
-        self.oscer.send(COMMAND_WBD_READCHARACTERISTIC, json.dumps(characteristic))
+        self._oscer.send(COMMAND_WBD_READCHARACTERISTIC, json.dumps(characteristic))
 
 
 if platform == 'android':
@@ -174,7 +178,7 @@ if platform == 'android':
                      portlisten=33217,
                      hostcommand='127.0.0.1',
                      portcommand=33218, **kwargs):
-            self.oscer = OSCManager(
+            self._oscer = OSCManager(
                 hostlisten=hostlisten,
                 portlisten=portlisten,
                 hostcommand=hostcommand,
@@ -185,7 +189,7 @@ if platform == 'android':
     def _set_ble_interface(self):
         super(BluetoothDispatcherWC, self)._set_ble_interface()
         Timer(0, partial(
-            self.oscer.init,
+            self._oscer.init,
             pingsend=True,
             on_init_ok=self.on_osc_init_ok))
 
@@ -216,33 +220,33 @@ if platform == 'android':
         )
 
     def on_osc_init_ok(self):
-        self.oscer.handle(COMMAND_WBD_CONNECTGATT, self.connect_gatt_wrap)
-        self.oscer.handle(COMMAND_WBD_DISCONNECTGATT, self.close_gatt)
-        self.oscer.handle(COMMAND_WBD_DISCOVERSERVICES, self.discover_services)
-        self.oscer.handle(COMMAND_WBD_STARTSCAN, self.start_scan_wrap)
-        self.oscer.handle(COMMAND_WBD_WRITEDESCRIPTOR, self.write_descriptor_wrap)
-        self.oscer.handle(COMMAND_WBD_WRITECHARACTERISTIC, self.write_characteristic_wrap)
-        self.oscer.handle(COMMAND_WBD_READCHARACTERISTIC, self.read_characteristic_wrap)
+        self._oscer.handle(COMMAND_WBD_CONNECTGATT, self.connect_gatt_wrap)
+        self._oscer.handle(COMMAND_WBD_DISCONNECTGATT, self.close_gatt)
+        self._oscer.handle(COMMAND_WBD_DISCOVERSERVICES, self.discover_services)
+        self._oscer.handle(COMMAND_WBD_STARTSCAN, self.start_scan_wrap)
+        self._oscer.handle(COMMAND_WBD_WRITEDESCRIPTOR, self.write_descriptor_wrap)
+        self._oscer.handle(COMMAND_WBD_WRITECHARACTERISTIC, self.write_characteristic_wrap)
+        self._oscer.handle(COMMAND_WBD_READCHARACTERISTIC, self.read_characteristic_wrap)
 
     def on_gatt_release(self):
         """`gatt_release` event handler.
         Event is dispatched at every read/write completed operation
         """
-        self.oscer.send(COMMAND_WBD_GATTRELEASE)
+        self._oscer.send(COMMAND_WBD_GATTRELEASE)
 
     def on_scan_started(self, success):
         """`scan_started` event handler
 
         :param success: true, if scan was started successfully
         """
-        self.oscer.send(COMMAND_CONFIRM,
-                        CONFIRM_OK if success else CONFIRM_FAILED_1,
-                        MSG_OK if success else MSG_ERROR)
+        self._oscer.send(COMMAND_CONFIRM,
+                         CONFIRM_OK if success else CONFIRM_FAILED_1,
+                         MSG_OK if success else MSG_ERROR)
 
     def on_scan_completed(self):
         """`scan_completed` event handler
         """
-        self.oscer.send(COMMAND_WBD_STOPSCAN_RV)
+        self._oscer.send(COMMAND_WBD_STOPSCAN_RV)
 
     def on_device(self, device, rssi, advertisement):
         """`device` event handler.
@@ -252,10 +256,10 @@ if platform == 'android':
         :param rssi: the RSSI value for the remote device
         :param advertisement: :class:`Advertisement` data record
         """
-        self.oscer.send(COMMAND_WBD_DEVICEFOUND,
-                        json.dumps(dict(name=device.getName(), address=device.getAddress())),
-                        rssi,
-                        json.dumps(advertisement))
+        self._oscer.send(COMMAND_WBD_DEVICEFOUND,
+                         json.dumps(dict(name=device.getName(), address=device.getAddress())),
+                         rssi,
+                         json.dumps(advertisement))
 
     def on_connection_state_change(self, status, state):
         """`connection_state_change` event handler
@@ -264,7 +268,7 @@ if platform == 'android':
                        `GATT_SUCCESS` if the operation succeeds
         :param state: STATE_CONNECTED or STATE_DISCONNECTED
         """
-        self.oscer.send(COMMAND_WBD_CONNECTSTATECHANGE, status, state)
+        self._oscer.send(COMMAND_WBD_CONNECTSTATECHANGE, status, state)
 
     @staticmethod
     def characteristic2dict(ch):
@@ -317,15 +321,15 @@ if platform == 'android':
         dct = dict()
         for sn, ch in services.items():
             dct[sn] = BluetoothDispatcherWC.characteristic2dict(ch)
-        self.oscer.send(COMMAND_WBD_SERVICES, json.dumps(dct), status)
+        self._oscer.send(COMMAND_WBD_SERVICES, json.dumps(dct), status)
 
     def on_characteristic_changed(self, characteristic):
         """`characteristic_changed` event handler
 
         :param characteristic: BluetoothGattCharacteristic Java object
         """
-        self.oscer.send(COMMAND_WBD_CHARACTERISTICCHANGED,
-                        json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)))
+        self._oscer.send(COMMAND_WBD_CHARACTERISTICCHANGED,
+                         json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)))
 
     def on_characteristic_read(self, characteristic, status):
         """`characteristic_read` event handler
@@ -334,9 +338,9 @@ if platform == 'android':
         :param status: status of the operation,
                        `GATT_SUCCESS` if the operation succeeds
         """
-        self.oscer.send(COMMAND_WBD_CHARACTERISTICREAD,
-                        json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)),
-                        status)
+        self._oscer.send(COMMAND_WBD_CHARACTERISTICREAD,
+                         json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)),
+                         status)
 
     def on_characteristic_write(self, characteristic, status):
         """`characteristic_write` event handler
@@ -345,9 +349,9 @@ if platform == 'android':
         :param status: status of the operation,
                        `GATT_SUCCESS` if the operation succeeds
         """
-        self.oscer.send(COMMAND_WBD_CHARACTERISTICWRITTEN,
-                        json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)),
-                        status)
+        self._oscer.send(COMMAND_WBD_CHARACTERISTICWRITTEN,
+                         json.dumps(BluetoothDispatcherWC.characteristic2dict(characteristic)),
+                         status)
 
     def on_descriptor_read(self, descriptor, status):
         """`descriptor_read` event handler
@@ -356,9 +360,9 @@ if platform == 'android':
         :param status: status of the operation,
                        `GATT_SUCCESS` if the operation succeeds
         """
-        self.oscer.send(COMMAND_WBD_DESCRIPTORREAD,
-                        json.dumps(BluetoothDispatcherWC.descriptor2dict(descriptor)),
-                        status)
+        self._oscer.send(COMMAND_WBD_DESCRIPTORREAD,
+                         json.dumps(BluetoothDispatcherWC.descriptor2dict(descriptor)),
+                         status)
 
     def on_descriptor_write(self, descriptor, status):
         """`descriptor_write` event handler
@@ -367,8 +371,8 @@ if platform == 'android':
         :param status: status of the operation,
                        `GATT_SUCCESS` if the operation succeeds
         """
-        self.oscer.send(COMMAND_WBD_DESCRIPTORWRITTEN,
-                        json.dumps(BluetoothDispatcherWC.descriptor2dict(descriptor)),
-                        status)
+        self._oscer.send(COMMAND_WBD_DESCRIPTORWRITTEN,
+                         json.dumps(BluetoothDispatcherWC.descriptor2dict(descriptor)),
+                         status)
 else:
     BluetoothDispatcher = BluetoothDispatcherW

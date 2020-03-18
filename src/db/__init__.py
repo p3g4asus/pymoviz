@@ -1,9 +1,11 @@
+import importlib
 import json
-import logging
 import re
 import traceback
 
-_LOGGER = logging.getLogger('PY_' + __name__)
+from util import init_logger
+
+_LOGGER = init_logger(__name__)
 
 
 class SerializableDBObj(object):
@@ -30,18 +32,20 @@ class SerializableDBObj(object):
 
         module = o.__module__
         if module is None or module == str.__class__.__module__:
-            return ",".join('', o.__name__)
+            return "," + o.__name__
         else:
-            return ",".join(module, o.__name__)
+            return module + "," + o.__name__
 
     @classmethod
     def get_class(cls, sclassname):
-        try:
-            classname = sclassname.split(',')
-            foo = __import__(classname[0])
-            return getattr(foo, classname[1])
-        except Exception:
-            return cls
+        if sclassname:
+            try:
+                classname = sclassname.split(',')
+                foo = importlib.import_module(classname[0])
+                return getattr(foo, classname[1])
+            except Exception:
+                _LOGGER.debug(f'get_class({sclassname}) Exception {traceback.format_exc()}')
+        return cls
 
     @classmethod
     def select_string(cls, tablename='P', hasprefix=''):
@@ -60,16 +64,6 @@ class SerializableDBObj(object):
                 p.set_items(pls2)
         return pls
 
-    def set_items(self, items):
-        self.items = items
-
-    def clone(self):
-        dct = vars(self)
-        if 'items' in dct and dct['items']:
-            for i in range(len(dct['items'])):
-                dct['items'][i] = dct['items'][i].clone()
-        return self.__class__(**dct)
-
     @classmethod
     async def loadbyid(cls, db, rowid=None, **kwargs):
         pls = []
@@ -84,9 +78,11 @@ class SerializableDBObj(object):
         cond = ''
         subs = ()
         for k, i in kwargs.items():
-            cond += f" {'WHERE' if not cond else 'AND'} P.{k}=?"
+            cond += f" {'WHERE' if not cond else 'AND'} P.{k}=? "
             subs += (i,)
-        cursor = await db.execute(query + cond, subs)
+        query += cond
+        _LOGGER.debug(f'Querying {query}')
+        cursor = await db.execute(query, subs)
         async for row in cursor:
             keys = row.keys()
             clname = row['classname'] if 'classname' in keys else None
@@ -95,13 +91,26 @@ class SerializableDBObj(object):
             pls.append(pl)
         return pls
 
+    @classmethod
+    def fld(cls, key):
+        return key if key not in cls.__columns2field__ else cls.__columns2field__[key]
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.rowid is not None and self.rowid == other.rowid
 
-    @classmethod
-    def fld(cls, key):
-        return key if key not in cls.__columns2field__ else cls.__columns2field__[key]
+    def __str__(self):
+        return str(vars(self))
+
+    def set_items(self, items):
+        self.items = items
+
+    def clone(self):
+        dct = vars(self)
+        if 'items' in dct and dct['items']:
+            for i in range(len(dct['items'])):
+                dct['items'][i] = dct['items'][i].clone()
+        return self.__class__(**dct)
 
     def __init__(self, dbitem=None, **kwargs):
         if dbitem:
@@ -116,10 +125,12 @@ class SerializableDBObj(object):
                 v = kwargs[key]
             setattr(self, self.fld(key), v)
         for c in self.__columns__:
+            f = self.fld(c)
             try:
-                getattr(self, self.fld(c))
+                getattr(self, f)
             except AttributeError:
-                setattr(self, self.fld(c), None)
+                setattr(self, f, None)
+                _LOGGER.debug(f'Set {self.__class__.__name__}.{f} ({c}) = None')
         setattr(self, 'rowid', getattr(self, self.__id__))
         self.set_update_columns()
 
@@ -196,7 +207,10 @@ class SerializableDBObj(object):
         rv = False
         if self.rowid:
             async with db.cursor() as cursor:
-                await cursor.execute("DELETE FROM ? WHERE ?=?", (self.__table__, self.__id__, self.rowid))
+                await cursor.execute(
+                    f'''
+                    DELETE FROM {self.__table__} WHERE {self.__id__}=?
+                    ''', (self.rowid,))
                 rv = cursor.rowcount > 0
         if rv and commit:
             await db.commit()
@@ -204,6 +218,7 @@ class SerializableDBObj(object):
 
     async def to_db(self, db, commit=True):
         values = []
+        colnames = []
         strcol = ''
         key = self.f(self.__id__)
         cols = self.__columns__ if key is None else self.__update_columns__
@@ -213,25 +228,26 @@ class SerializableDBObj(object):
                 if isinstance(v, dict):
                     v = json.dumps(v)
                 values.append(v)
+                colnames.append(t)
                 strcol += '?,' if key is None else f'{t}=?,'
         strcol = strcol[0:-1]
         if key:
             async with db.cursor() as cursor:
                 await cursor.execute(
-                    '''
-                    UPDATE ? SET %s WHERE %s=?
-                    ''' % (strcol, self.__id__),
-                    (self.__table__, *tuple(values), key)
+                    f'''
+                    UPDATE {self.__table__} SET {strcol} WHERE {self.__id__}=?
+                    ''',
+                    (*tuple(values), key)
                 )
                 if cursor.rowcount <= 0:
                     return False
         else:
-            async with self.db.cursor() as cursor:
+            async with db.cursor() as cursor:
                 await cursor.execute(
-                    '''
-                    INSERT OR IGNORE into ? (%s) VALUES (%s)
-                    ''' % (strcol, strcol),
-                    (self.__table__, *tuple(cols), *tuple(values))
+                    f'''
+                    INSERT OR IGNORE into {self.__table__} ({",".join(colnames)}) VALUES ({strcol})
+                    ''',
+                    tuple(values)
                 )
                 if cursor.rowcount <= 0:
                     return False

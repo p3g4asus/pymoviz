@@ -1,9 +1,12 @@
 from kivy.lang import Builder
-from kivy.logger import Logger
 from kivy.uix.screenmanager import Screen
 from kivy.properties import DictProperty, StringProperty
 
 from kivymd.uix.list import OneLineListItem
+from util import init_logger
+
+
+_LOGGER = init_logger(__name__)
 
 Builder.load_string(
     '''
@@ -47,7 +50,7 @@ class TypeWidget(Screen):
         self.ids.id_types.add_widget(b)
 
     def on_type(self, type, elem):
-        Logger.debug(f"On type called {type}->{str(elem)}")
+        _LOGGER.debug(f"On type called {type}->{str(elem)}")
 
     def dispatch_on_type(self, widget):
         self.manager.remove_widget(self)

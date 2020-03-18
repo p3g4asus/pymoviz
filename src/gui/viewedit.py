@@ -3,13 +3,16 @@ from functools import partial
 
 from db.view import View
 from kivy.lang import Builder
-from kivy.logger import Logger
 from kivy.properties import ListProperty, ObjectProperty
 from kivy.uix.screenmanager import Screen
-from kivy.utils.get_color_from_hex import hex
+from kivy.utils import get_color_from_hex
 from kivymd.uix.card import MDCardPost
 from kivymd.uix.list import TwoLineListItem
 from kivymd.uix.tab import MDTabsBase
+from util import init_logger
+
+
+_LOGGER = init_logger(__name__)
 
 Builder.load_string(
     '''
@@ -131,7 +134,7 @@ class FormatterAdd(Screen):
         self.dispatch('on_confirm', inst.formatter.clone() if inst else None)
 
     def on_confirm(self, formatter, *args):
-        Logger.debug(f"On confirm called f={formatter}")
+        _LOGGER.debug(f"On confirm called f={formatter}")
 
     def __init__(self, *args, **kwargs):
         self.register_event_type('on_confirm')
@@ -146,7 +149,7 @@ class FormatterPost(MDCardPost):
 
     def change_bg(self, elem, *args, html=None, **kwargs):
         self.formatter.set_background(elem)
-        self.background_color = hex(html)
+        self.background_color = get_color_from_hex(html)
 
     def __init__(self, *args, **kwargs):
         menu_items = []
@@ -161,7 +164,7 @@ class FormatterPost(MDCardPost):
         f = kwargs['formatter']
         callback = kwargs['callback']
         if f.background:
-            kwargs['background_color'] = hex(ViewWidget.FORMATTER_COLORS[f.background])
+            kwargs['background_color'] = get_color_from_hex(ViewWidget.FORMATTER_COLORS[f.background])
         super(FormatterPost, self).__init__(
             tile_font_style='H3',
             path_to_avatar=f.deviceobj.get_icon(),
@@ -208,11 +211,11 @@ class ViewWidget(Screen):
         self.view2gui()
 
     def on_confirm(self, view):
-        Logger.debug(f"On confirm called {str(view)}")
+        _LOGGER.debug(f"On confirm called {str(view)}")
 
     def on_view(self, view):
         self.view2gui()
-        Logger.debug(f"On view called {str(view)}")
+        _LOGGER.debug(f"On view called {str(view)}")
 
     def callback_card(self, elem, *args, formatter=None):
         self.view.items.remove(formatter)

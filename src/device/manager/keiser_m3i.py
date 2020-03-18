@@ -4,8 +4,7 @@ from db.label_formatter import (DoubleFieldFormatter, SimpleFieldFormatter,
                                 TimeFieldFormatter)
 from device.simulator.keiser_m3i import \
     KeiserM3iDeviceSimulator
-from device.manager import ConfWidget, GenericDeviceManager
-from kivy.lang import Builder
+from device.manager import GenericDeviceManager
 from kivy.utils import platform
 from util.const import (DEVREASON_REQUESTED, DEVREASON_TIMEOUT,
                         DEVSTATE_CONNECTED, DEVSTATE_CONNECTING,
@@ -14,57 +13,11 @@ from util.const import (DEVREASON_REQUESTED, DEVREASON_TIMEOUT,
                         DI_SYSTEMID)
 from util.timer import Timer
 
-Builder.load_string(
-    '''
-<KeiserM3iConfWidget>:
-    orientation: 'vertical'
-    GridLayout:
-        cols: 2
-        rows: 5
-        MDLabel:
-            text: 'Machine ID'
-        MDSlider:
-            id: id_machine
-            min: 1
-            max: 254
-            value: root.DEFAULT_MACHINE
-        MDLabel:
-            text: 'Buffer distanza'
-        MDSlider:
-            id: id_buffer
-            min: 1
-            max: 1000
-            value: root.DEFAULT_BUFFER
-    ''')
-
-
-class KeiserM3iConfWidget(ConfWidget):
-    DEFAULT_BUFFER = 150
-    DEFAULT_MACHINE = 99
-
-    def is_ok(self):
-        return True
-
-    def clear(self):
-        self.ids.id_buffer.value = KeiserM3iConfWidget.DEFAULT_BUFFER
-        self.ids.id_machine.value = KeiserM3iConfWidget.DEFAULT_MACHINE
-
-    def conf2gui(self, conf):
-        if 'buffer' in self.conf:
-            self.ids.id_buffer.value = self.conf['buffer']
-        if 'machine' in self.conf:
-            self.ids.id_machine.value = self.conf['machine']
-
-    def gui2conf(self):
-        self.conf['buffer'] = self.ids.id_buffer.value
-        self.conf['machine'] = self.ids.id_machine.value
-        return self.conf
-
 
 class KeiserM3iDeviceManager(GenericDeviceManager):
     __type__ = 'keyserm3i'
     __simulator_class__ = KeiserM3iDeviceSimulator
-    __label_formatters__ = [
+    __formatters__ = [
         DoubleFieldFormatter(
             name='Speed',
             example=(25, 27),
@@ -92,35 +45,34 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         SimpleFieldFormatter(
             name='Pulse',
             example=(152, 160),
-            format='%d (%d)',
+            format_str='%d (%d)',
             pre='$D Pul: ',
             fields=['pulse', 'pulseMn']),
         SimpleFieldFormatter(
             name='Distance',
             example=(34.6),
-            format='%.2f Km',
+            format_str='%.2f Km',
             pre='$D Dist: ',
             fields=['distance']),
         SimpleFieldFormatter(
             name='Incline',
             example=(12),
-            format='%d',
+            format_str='%d',
             pre='$D Inc: ',
             fields=['incline']),
         SimpleFieldFormatter(
             name='Calorie',
             example=(12),
-            format='%d',
+            format_str='%d',
             pre='$D Cal: ',
             fields=['calorie']),
         SimpleFieldFormatter(
             name='Version',
             example=(13, 22, 40),
-            format='0x%02X.0x%02X (%d)',
+            format_str='0x%02X.0x%02X (%d)',
             pre='$D ver: ',
             fields=['DI_FIRMWARE', 'DI_SOFTWARE', 'DI_SYSTEMID']),
         TimeFieldFormatter(
-            name='Time',
             pre='$D TM: ',
             fields=['time'])
     ]
@@ -145,6 +97,8 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
                     self.loop.call_soon_threadsafe(self.on_finish, cls, True)
             pbd = PreBluetoothDispatcher(on_finish_handler=on_finish, loop=loop)
             pbd.start_scan()
+        else:
+            on_finish(cls, True)
 
     @staticmethod
     def get_machine_id(bt):
@@ -185,6 +139,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
 
     @classmethod
     def get_settings_widget_class(cls):
+        from .keiser_m3i_widget import KeiserM3iConfWidget
         return KeiserM3iConfWidget
 
     @classmethod

@@ -142,6 +142,10 @@ class MainApp(MDApp):
         pbd.start_scan()
 
     def on_start(self):
+        init_logger(__name__,
+                              hp=(
+                                self.config.get('log', 'host'),
+                                int(self.config.get('log', 'port'))))
         _LOGGER.debug("On Start")
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
@@ -170,6 +174,8 @@ class MainApp(MDApp):
         """
         config.setdefaults('frontend',
                            {'host': '127.0.0.1', 'port': 33218})
+        config.setdefaults('log',
+                           {'host': '127.0.0.1', 'port': 60113})
         config.setdefaults('local',
                            {'frontendport': 9002, 'backendport': 9001})
         config.setdefaults('backend',
@@ -190,6 +196,7 @@ class MainApp(MDApp):
         #     settings.add_json_panel('My Label', self.config, 'settings.json')
         settings.add_json_panel('Backend', self.config, join(dn, 'backend.json'))  # data=json)
         settings.add_json_panel('Frontend', self.config, join(dn, 'frontend.json'))  # data=json)
+        settings.add_json_panel('Log', self.config, join(dn, 'log.json'))  # data=json)
         settings.add_json_panel('Local', self.config, join(dn, 'local.json'))  # data=json)
         # settings.add_json_panel('Bluetooth', self.config, join(dn, 'bluetooth.json'))  # data=json)
 
@@ -257,7 +264,7 @@ class MainApp(MDApp):
         _LOGGER.info("main.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
             config, section, key, value))
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
-           self.check_other_config():
+           self.check_host_port_config('log') and self.check_other_config():
             if self.oscer:
                 snack_open("Configuration changes will be effective on restart", "Quit", self.on_nav_exit)
             else:

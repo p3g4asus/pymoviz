@@ -4,7 +4,7 @@ from db import SerializableDBObj
 from util.const import (DEVSTATE_CONNECTED, DEVSTATE_CONNECTING,
                         DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_DPAUSE, DEVSTATE_IDLE, DEVSTATE_INVALIDSTEP,
-                        DEVSTATE_SEARCHING, DEVSTATE_UNINIT)
+                        DEVSTATE_ONLINE, DEVSTATE_SEARCHING, DEVSTATE_UNINIT)
 
 
 class LabelFormatter(SerializableDBObj, abc.ABC):
@@ -19,19 +19,22 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         'classname',
         'settings',
         'background',
-        'order',
+        'orderd',
     )
+    __columns2field__ = {
+        'orderd': 'order'
+    }
 
     __update_columns__ = (
         'device',
         'settings',
         'background',
-        'order',
+        'orderd',
     )
 
     __create_table_query__ =\
         '''
-        create table if not exists session
+        create table if not exists label
             (_id integer primary key,
             view integer not null,
             name text not null,
@@ -40,13 +43,14 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
             pre text,
             classname text not null,
             settings text,
+            timeout text,
             background text,
-            order integer not null,
+            orderd integer not null,
             FOREIGN KEY(view) REFERENCES view(_id) ON DELETE CASCADE,
             FOREIGN KEY(device) REFERENCES device(_id) ON DELETE CASCADE);
         '''
 
-    def __init__(self, name='', example=(), pre='$D: ', **kwargs):
+    def __init__(self, name='', example=(), pre='$D: ', timeout='[color=#ffeb3b]---[/color]', **kwargs):
         super(LabelFormatter, self).__init__(name=name, example=example, pre=pre, **kwargs)
         if self.classname is None:
             self.classname = self.fullname()
@@ -58,6 +62,13 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
     def format(self, *args, **kwargs):
         pass
 
+    @staticmethod
+    def wrap_color(txt, col='#ffeb3b'):
+        return f'[color={col}]{txt}[/color]'
+
+    def set_timeout(self):
+        return self.get_pre() + self.timeout
+
     def reset(self):
         self.order = None
         self.background = None
@@ -66,7 +77,7 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         return self.format(*self.example)
 
     def get_title(self):
-        return self.device.get_name() + " " + self.name
+        return self.deviceobj.get_alias() + " " + self.name
 
     def get_pre(self):
         return self.pre.replace('$D', self.deviceobj.get_alias())
@@ -94,27 +105,27 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
 
 class SimpleFormatter(LabelFormatter):
 
-    def __init__(self, name='', example=(), format='', col='#212121', pre='$D: ', **kwargs):
-        super(SimpleFormatter, self).__init__(name=name, example=example, pre=pre, format=format, col=col)
+    def __init__(self, name='', example=(), format_str='', col='#212121', pre='$D: ', **kwargs):
+        super(SimpleFormatter, self).__init__(name=name, example=example, pre=pre, format_str=format_str, col=col, **kwargs)
         if self.settings is None:
             self.settings = dict()
-        if 'format' not in self.settings:
-            self.settings.update(dict(format=self.format, col=self.col))
+        if 'format_str' not in self.settings:
+            self.settings.update(dict(format_str=self.format_str, col=self.col))
 
     def format(self, *args, **kwargs):
         if args:
-            s = self.format % args
+            s = self.format_str % args
         elif kwargs:
-            s = self.format.format(**kwargs)
+            s = self.format_str.format(**kwargs)
         else:
-            s = self.format
+            s = self.format_str
         return self.get_pre() + f'[color={self.col}]' + s + '[/color]'
 
 
 class SimpleFieldFormatter(SimpleFormatter):
-    def __init__(self, name='', example=(), format='', col='#212121', pre='$D: ', fields=[], **kwargs):
+    def __init__(self, name='', example=(), format_str='', col='#212121', pre='$D: ', fields=[], **kwargs):
         super(SimpleFieldFormatter, self).__init__(
-            name=name, example=example, format=format,
+            name=name, example=example, format_str=format_str,
             col=col, pre=pre, fields=fields, **kwargs)
         if self.settings is None:
             self.settings = dict()
@@ -132,7 +143,7 @@ class SimpleFieldFormatter(SimpleFormatter):
 class TimeFieldFormatter(SimpleFormatter):
     def __init__(self, col='#212121', pre='$D: ', fields=[], **kwargs):
         super(TimeFieldFormatter, self).__init__(
-            name='Time', example=(3723,), format='%d:%02d:%02d',
+            name='Time', example=(3723,), format_str='%d:%02d:%02d',
             col=col, pre=pre, fields=fields, **kwargs)
 
     def format(self, fitobj, *args, **kwargs):
@@ -150,7 +161,7 @@ class DoubleFormatter(LabelFormatter):
                  col='#212121', colmax='#32cb00', colmin='#ffeb3b',
                  colerror='#f44336', pre='$D: ', **kwargs):
         super(DoubleFormatter, self).__init__(
-            name=name, example=example, format=format,
+            name=name, example=example,
             col=col, pre=pre, f1=f1, f2=f2, post=post,
             colmin=colmin, colmax=colmax, colerror=colerror, **kwargs)
         if self.settings is None:
@@ -213,7 +224,7 @@ class DoubleFieldFormatter(DoubleFormatter):
 class StateFormatter(LabelFormatter):
     def __init__(self, name='', col='#212121', pre='ST $D: ', post='',
                  colmax='#32cb00', colmin='#ffeb3b', colerror='#f44336', **kwargs):
-        super(DoubleFormatter, self).__init__(
+        super(StateFormatter, self).__init__(
             name=name, example=(DEVSTATE_DISCONNECTED,), col=col, post=post,
             colmax=colmax, colmin=colmin, colerror=colerror, pre=pre, **kwargs)
         if self.settings is None:
@@ -242,6 +253,9 @@ class StateFormatter(LabelFormatter):
         elif v1 == DEVSTATE_IDLE:
             col1 = self.colmin
             s1 = 'idle'
+        elif v1 == DEVSTATE_ONLINE:
+            col1 = self.colmax
+            s1 = 'online'
         elif v1 == DEVSTATE_CONNECTING:
             col1 = self.colmin
             s1 = 'connecting'
