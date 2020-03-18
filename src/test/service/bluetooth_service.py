@@ -29,12 +29,14 @@ class BluetoothService(object):
         _LOGGER.debug("OSC init ok")
         try:
             self.oscer.handle(COMMAND_STOP, self.on_command_stop)
+            _LOGGER.debug(f"Trying to construct BluetoothDispatcherWC: L({self.hostlisten}:{self.portlisten}) C({self.hostcommand}:{self.portcommand})")
             self.bluetooth = BluetoothDispatcherWC(
                 portlisten=self.portlisten,
                 portcommand=self.portcommand,
                 hostlisten=self.hostlisten,
                 hostcommand=self.hostcommand,
             )
+            _LOGGER.debug('Constructed BluetoothDispatcherWC')
         except Exception:
             _LOGGER.error(f"BluetoothDispatcher construct error {traceback.format_exc()}")
 
