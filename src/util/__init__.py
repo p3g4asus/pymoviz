@@ -1,6 +1,7 @@
 import asyncio
 import glob
 import logging
+from logging.handlers import SocketHandler
 from os.path import basename, dirname, isfile, join, splitext
 import sys
 import traceback
@@ -36,7 +37,7 @@ def init_logger(name, level=None, hp=None, loggerobj=None):
     global _loglevel
     global _socket_handler
     if hp is not None and _socket_handler is None:
-        _socket_handler = logging.handlers.SocketHandler(*hp)
+        _socket_handler = SocketHandler(*hp)
         _socket_handler.setLevel(_loglevel)
         for _, log in _LOGGERS.items():
             log['lo'].addHandler(_socket_handler)
