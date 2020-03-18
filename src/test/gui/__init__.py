@@ -246,6 +246,8 @@ class MainApp(MDApp):
                            hostcommand=self.config.get('frontend', 'host'),
                            portcommand=int(self.config.getint('frontend', 'port')),
                            portcommandlocal=int(self.config.getint('local', 'frontendport')),
+                           loghost=self.config.get('log', 'host'),
+                           logport=int(self.config.get('log', 'port')),
                            verbose=True)
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))

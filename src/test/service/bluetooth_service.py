@@ -123,7 +123,9 @@ def main():
     p4a = os.environ.get('PYTHON_SERVICE_ARGUMENT', '')
     args = json.loads(p4a)
     global _LOGGER
-    _LOGGER = init_logger(__name__, level=logging.DEBUG if args['verbose'] else logging.WARNING)
+    _LOGGER = init_logger(__name__,
+                          level=logging.DEBUG if args['verbose'] else logging.WARNING,
+                          hp=(args['loghost'], args['logport']))
     _LOGGER.info(f"Server: p4a = {p4a}")
     _LOGGER.debug(f"Server: test debug")
     loop = asyncio.get_event_loop()

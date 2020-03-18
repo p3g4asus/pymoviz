@@ -187,7 +187,7 @@ if platform == 'android':
             super(BluetoothDispatcherWC, self).__init__(**kwargs)
 
     def _set_ble_interface(self):
-        _LOGGER.debug('Set BLE Interface')
+        _LOGGER.warning('Set BLE Interface')
         super(BluetoothDispatcherWC, self)._set_ble_interface()
         Timer(0, partial(
             self._oscer.init,
