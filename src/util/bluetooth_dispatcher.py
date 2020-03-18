@@ -186,11 +186,12 @@ if platform == 'android':
                 portcommand=portcommand
             )
             super(BluetoothDispatcherWC, self).__init__(**kwargs)
+            self._set_ble_interface2()
             _LOGGER.warning('BluetoothDispatcherWC init end')
 
-    def _set_ble_interface(self):
-        _LOGGER.warning('Set BLE Interface')
-        super(BluetoothDispatcherWC, self)._set_ble_interface()
+    def _set_ble_interface2(self):
+        _LOGGER.warning('Set BLE Interface2')
+        # super(BluetoothDispatcherWC, self)._set_ble_interface()
         Timer(0, partial(
             self._oscer.init,
             pingsend=True,
