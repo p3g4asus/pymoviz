@@ -131,6 +131,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
 
     @classmethod
     def get_scan_filters(cls, scanning_for_new_devices=False):
+        return None
         return [
             dict(deviceName="M3"),
             dict(deviceName="M3i"),
@@ -184,7 +185,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         return (l & 0xFF) | ((h & 0xFF) << 8)
 
     def on_scan_completed(self):
-        super(KeiserM3iDeviceManager).on_scan_completed()
+        super(KeiserM3iDeviceManager, self).on_scan_completed()
         if self.state == DEVSTATE_DISCONNECTING:
             self.set_state(DEVSTATE_DISCONNECTED, DEVREASON_REQUESTED)
         elif self.state == DEVSTATE_CONNECTING:

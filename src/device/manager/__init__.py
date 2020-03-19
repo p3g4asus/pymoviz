@@ -122,9 +122,9 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def connect(self, *args):
         if self.is_stopped_state():
             self.set_state(DEVSTATE_CONNECTING, DEVREASON_REQUESTED)
-            if self.simulator_needs_reset and self.simualtor:
+            if self.simulator_needs_reset and self.simulator:
                 self.simulator_needs_reset = False
-                if not self.simualtor:
+                if not self.simulator:
                     self.simulator = self.__simulator_class__(
                         self.device.get_id(),
                         self.device.get_additionalsettings(),
@@ -172,7 +172,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         if self.state == DEVSTATE_SEARCHING:
             adv = json.loads(advertisement)\
                   if advertisement and isinstance(advertisement, str) else\
-                  advertisement
+                  advertisement.data
             d = Device(
                 address=device['address'] if isinstance(device, dict) else device.getAddress(),
                 name=device['name'] if isinstance(device, dict) else device.getName(),
@@ -356,7 +356,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     def on_state_transition(self, fromv, tov, rea):
         _LOGGER.debug(f'Device: transition from state {fromv} to {tov}')
-        if tov == DEVSTATE_DISCONNECTED and fromv != DEVSTATE_DISCONNECTING:
+        if tov == DEVSTATE_DISCONNECTED and fromv != DEVSTATE_DISCONNECTING and self.simulator:
             self.simulator.set_offsets()
 
     def on_command_handle(self, command, exitv, *args):
@@ -394,7 +394,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         self.widget = None
         self.loop = loop
         self.simulator_needs_reset = True
-        self.simualtor = None
+        self.simulator = None
         if service:
             self.oscer.handle_device(COMMAND_SAVEDEVICE, self._uid, self.on_command_savedevice)
             self.oscer.handle_device(COMMAND_DELDEVICE, self._uid, self.on_command_deldevice)
@@ -405,6 +405,3 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             _toast = toast
             self.oscer.handle_device(COMMAND_DEVICEFOUND, self._uid, self.on_command_devicefound)
             self.oscer.handle_device(COMMAND_DEVICESTATE, self._uid, self.on_command_newstate)
-
-        #for key, val in kwargs.items():
-        #    setattr(self, key, val)

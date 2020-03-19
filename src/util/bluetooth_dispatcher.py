@@ -264,7 +264,7 @@ if platform == 'android':
             self._oscer.send(COMMAND_WBD_DEVICEFOUND,
                              json.dumps(dict(name=device.getName(), address=device.getAddress())),
                              rssi,
-                             json.dumps(advertisement))
+                             json.dumps(advertisement.data))
 
         def on_connection_state_change(self, status, state):
             """`connection_state_change` event handler

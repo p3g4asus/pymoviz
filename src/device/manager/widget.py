@@ -189,7 +189,7 @@ class SearchSettingsScreen(Screen):
                 field.error = False
                 field.on_text(field, txt)
                 self.check_all_ok()
-                self.ids.id_toolbar.title = f'{self.ids.id_alias.text} Configuration'
+            self.ids.id_toolbar.title = f'{self.ids.id_alias.text} Configuration'
         elif not field.error:
             field.error = True
             self.ids.id_toolbar.title = f'{self.devicetype} Device Configuration'
@@ -210,7 +210,7 @@ class SearchSettingsScreen(Screen):
         item.bind(on_sel=self.on_device_selected)
 
     def check_all_ok(self):
-        if self.ids.id_search.error or not self._device or \
+        if self.ids.id_alias.error or not self._device or \
            (self.conf_widget and not self.conf_widget.is_ok()):
             del self.ids.id_toolbar.right_action_items[:]
         else:
@@ -247,7 +247,7 @@ class SearchSettingsScreen(Screen):
             self.ids.id_search.text = "Stop"
             self.ids.id_search.icon = "stop"
         if val:
-            self.timer_search = Timer(0.25, partial(self.set_searching, reset=False))
+            self.timer_search = Timer(0.10, partial(self.set_searching, reset=False))
         else:
             self.ids.id_search.text = "Search"
             self.ids.id_search.icon = "folder-search"
