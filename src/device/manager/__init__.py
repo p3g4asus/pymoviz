@@ -116,7 +116,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         oldstate = self.state
         if oldstate != st:
             self.state = st
-            self.send_device(COMMAND_DEVICESTATE, self._uid, oldstate, st, reason)
+            self.oscer.send_device(COMMAND_DEVICESTATE, self._uid, oldstate, st, reason)
             self.dispatch("on_state_transition", oldstate, st, reason)
 
     def connect(self, *args):

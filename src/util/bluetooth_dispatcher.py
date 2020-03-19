@@ -70,11 +70,11 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         """
         self._oscer.unhandle(COMMAND_WBD_DEVICEFOUND)
         self._oscer.handle(COMMAND_WBD_DEVICEFOUND, self.on_device)
-        self._oscer.handle(COMMAND_WBD_STARTSCAN,
-                           json.dumps(scan_settings),
-                           json.dumps(scan_filters),
-                           confirm_callback=self.on_scan_started_wrap,
-                           timeout=5)
+        self._oscer.send(COMMAND_WBD_STARTSCAN,
+                         json.dumps(scan_settings),
+                         json.dumps(scan_filters),
+                         confirm_callback=self.on_scan_started_wrap,
+                         timeout=5)
 
     def stop_scan(self):
         """Stop the ongoing scan for devices.
@@ -190,8 +190,8 @@ if platform == 'android':
             _LOGGER.warning('BluetoothDispatcherWC init end')
 
         def _set_ble_interface(self):
-            _LOGGER.warning('Set BLE Interface2')
-            # super(BluetoothDispatcherWC, self)._set_ble_interface()
+            _LOGGER.warning('Set BLE Interface full')
+            super(BluetoothDispatcherWC, self)._set_ble_interface()
             Timer(0, partial(
                 self._oscer.init,
                 pingsend=True,
