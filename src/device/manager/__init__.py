@@ -283,7 +283,8 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
                 self.widget.set_searching(False)
 
     def on_search_device(self, inst, startcommand):
-        self.oscer.send_device(COMMAND_SEARCH, self._uid, startcommand, confirm_callback=self.on_confirm_search_device, timeout=5)
+        # self.oscer.send_device(COMMAND_SEARCH, self._uid, startcommand, confirm_callback=self.on_confirm_search_device, timeout=5)
+        self.oscer.send_device(COMMAND_SEARCH, self._uid, startcommand)
 
     def on_confirm_search_device(self, *args, timeout=False):
         if timeout:
@@ -297,7 +298,8 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         _toast(f"[E {exitv}] {msg}")
 
     def search(self, val):
-        if val and self.sate == DEVSTATE_UNINIT or self.state == DEVSTATE_DISCONNECTED:
+        _LOGGER.debug(f'Search requested: state {self.state}, val={val}')
+        if val and self.state == DEVSTATE_UNINIT or self.state == DEVSTATE_DISCONNECTED:
             self.start_scan(self.get_scan_settings(scanning_for_new_devices=True),
                             self.get_scan_filters(scanning_for_new_devices=True))
             return True
@@ -307,7 +309,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def on_command_search_device(self, startcommand):
         rv = CONFIRM_OK
         if startcommand:
-            if not (self.sate == DEVSTATE_UNINIT or self.state == DEVSTATE_DISCONNECTED):
+            if not (self.state == DEVSTATE_UNINIT or self.state == DEVSTATE_DISCONNECTED):
                 rv = CONFIRM_FAILED_1
         elif self.state != DEVSTATE_SEARCHING:
             rv = CONFIRM_FAILED_2
@@ -357,7 +359,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         if tov == DEVSTATE_DISCONNECTED and fromv != DEVSTATE_DISCONNECTING:
             self.simulator.set_offsets()
 
-    def on_command_handle(self, command, exitv):
+    def on_command_handle(self, command, exitv, *args):
         _LOGGER.debug(f'Handled command {command}: {exitv}')
 
     def on_simulator_session(self, inst, session):
@@ -375,9 +377,13 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def get_id(self):
         return self.device.get_id()
 
-    def __init__(self, oscer, uid, service=False, device=None, db=None, user=None, params=dict(), loop=None, **kwargs):
+    def __init__(self, oscer, uid, service=False, device=None, db=None, user=None, params=dict(), loop=None, on_command_handle=None, on_state_transition=None):
         _LOGGER.debug(f'Initing DM: {self.__class__.__name__} service={service} par={params}')
         super(GenericDeviceManager, self).__init__(**params)
+        if on_command_handle:
+            self.bind(on_command_handle=on_command_handle)
+        if on_state_transition:
+            self.bind(on_state_transition=on_state_transition)
         self._uid = uid
         self.device = device or Device(type=self.__type__)
         self.db = db
@@ -400,5 +406,5 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             self.oscer.handle_device(COMMAND_DEVICEFOUND, self._uid, self.on_command_devicefound)
             self.oscer.handle_device(COMMAND_DEVICESTATE, self._uid, self.on_command_newstate)
 
-        for key, val in kwargs.items():
-            setattr(self, key, val)
+        #for key, val in kwargs.items():
+        #    setattr(self, key, val)

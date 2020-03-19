@@ -39,6 +39,7 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
                     hostcommand=hostcommand,
                     portcommand=portcommand
                 )
+        _LOGGER.debug(f'Constructing BluetoothDispatcherW {kwargs} events={self.__events__}')
         super(BluetoothDispatcherW, self).__init__(**kwargs)
 
     def _set_ble_interface(self):

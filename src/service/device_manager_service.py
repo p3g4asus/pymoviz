@@ -159,6 +159,7 @@ class DeviceManagerService(object):
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_INVALID_ITEM)
 
     def on_event_command_handle(self, dm, command, *args):
+        _LOGGER.debug(f'On Command Handle dm={dm} comm={command} a={args}')
         exitv = args[0] if args else None
         if command == COMMAND_NEWSESSION and exitv == CONFIRM_OK:
             if self.main_session:
@@ -212,7 +213,13 @@ class DeviceManagerService(object):
         else:
             uid = self.generate_uid()
             self.devicemanagers_by_uid[uid] = self.devicemanager_class_by_type[typev](
-                self.oscer, uid, service=True, db=self.db, params=self.addit_params)
+                self.oscer,
+                uid,
+                service=True,
+                db=self.db,
+                params=self.addit_params,
+                on_command_handle=self.on_event_command_handle,
+                on_state_transition=self.on_event_state_transition)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
 
     def on_command_stop(self, *args):

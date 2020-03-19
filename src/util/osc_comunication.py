@@ -244,5 +244,5 @@ class OSCManager(object):
     def handle(self, address, callback, *args, timeout=-1):
         self.handle_device(address, '', callback, *args, timeout=timeout)
 
-    def unhandle(self, address, callback):
+    def unhandle(self, address):
         self.unhandle_device(address, '')
