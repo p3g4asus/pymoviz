@@ -242,16 +242,18 @@ class SearchSettingsScreen(Screen):
         if self.timer_search:
             self.timer_search.cancel()
             self.timer_search = None
+        elif val:
+            self.clear_results()
+            self.ids.id_search.text = "Stop"
+            self.ids.id_search.icon = "stop"
         if val:
             self.timer_search = Timer(0.25, partial(self.set_searching, reset=False))
-
-    def start_search(self):
-        self.clear_results()
-        if self.ids.id_search.text == "Search":
-            self.ids.id_search.text = "Stop"
-            self.ids.id_search.icon = "Stop"
-            self.dispatch('on_search', True)
         else:
             self.ids.id_search.text = "Search"
-            self.ids.id_search.icon = "stop"
+            self.ids.id_search.icon = "folder-search"
+
+    def start_search(self):
+        if self.ids.id_search.text == "Search":
+            self.dispatch('on_search', True)
+        else:
             self.dispatch('on_search', False)

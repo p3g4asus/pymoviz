@@ -187,8 +187,11 @@ class DeviceManagerService(object):
             self.set_formatters_device()
             self.on_command_listviews()
         elif command == COMMAND_SEARCH and exitv == CONFIRM_OK:
-            if self.devicemanagers_all_stopped():
-                dm.search(dm.get_state() != DEVSTATE_SEARCHING)
+            if dm.get_state() != DEVSTATE_SEARCHING:
+                if self.devicemanagers_all_stopped():
+                    dm.search(True)
+            else:
+                dm.search(False)
 
     def generate_uid(self):
         while True:
@@ -380,38 +383,40 @@ class DeviceManagerService(object):
         info['retry'] = 0
 
     def on_event_state_transition(self, dm, oldstate, newstate, reason):
-        info = self.devicemanagers_active_info[dm.get_uid()]
-        from device.manager import GenericDeviceManager
-        if GenericDeviceManager.is_connected_state_s(newstate) and oldstate == DEVSTATE_CONNECTING:
-            if dm in self.devicemanagers_active:
-                self.devicemanagers_active.remove(dm)
-                self.devicemanagers_active_done.append(dm)
-            self.set_operation_ended(info)
-            Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
-        elif oldstate == DEVSTATE_CONNECTING and newstate == DEVSTATE_DISCONNECTED:
-            Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
-        elif GenericDeviceManager.is_connected_state_s(oldstate) and newstate == DEVSTATE_DISCONNECTED:
-            self.set_operation_ended(info)
-            if reason == DEVREASON_PREPARE_ERROR or reason == DEVREASON_BLE_DISABLED:
-                for dm in self.devicemanagers_active:
-                    info = self.devicemanagers_active_info[dm.get_uid()]
-                    self.set_operation_ended(info)
-                    if dm not in self.devicemanagers_active_done:
-                        self.devicemanagers_active_done.append(dm)
-                del self.devicemanagers_active[:]
-            elif reason != DEVREASON_REQUESTED:
-                info['operation'] = 'c'
-                if dm in self.devicemanagers_active_done:
-                    self.devicemanagers_active_done.remove(dm)
-                if dm not in self.devicemanagers_active:
-                    self.devicemanagers_active.append(dm)
-                    GenericDeviceManager.sort(self.devicemanagers_active)
-            else:
-                self.main_session = None
+        uid = dm.get_uid()
+        if uid in self.devicemanagers_active_info:  # assenza significa che stiamo facendo una ricerca
+            info = self.devicemanagers_active_info[uid]
+            from device.manager import GenericDeviceManager
+            if GenericDeviceManager.is_connected_state_s(newstate) and oldstate == DEVSTATE_CONNECTING:
                 if dm in self.devicemanagers_active:
                     self.devicemanagers_active.remove(dm)
                     self.devicemanagers_active_done.append(dm)
-            Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
+                self.set_operation_ended(info)
+                Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
+            elif oldstate == DEVSTATE_CONNECTING and newstate == DEVSTATE_DISCONNECTED:
+                Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
+            elif GenericDeviceManager.is_connected_state_s(oldstate) and newstate == DEVSTATE_DISCONNECTED:
+                self.set_operation_ended(info)
+                if reason == DEVREASON_PREPARE_ERROR or reason == DEVREASON_BLE_DISABLED:
+                    for dm in self.devicemanagers_active:
+                        info = self.devicemanagers_active_info[dm.get_uid()]
+                        self.set_operation_ended(info)
+                        if dm not in self.devicemanagers_active_done:
+                            self.devicemanagers_active_done.append(dm)
+                    del self.devicemanagers_active[:]
+                elif reason != DEVREASON_REQUESTED:
+                    info['operation'] = 'c'
+                    if dm in self.devicemanagers_active_done:
+                        self.devicemanagers_active_done.remove(dm)
+                    if dm not in self.devicemanagers_active:
+                        self.devicemanagers_active.append(dm)
+                        GenericDeviceManager.sort(self.devicemanagers_active)
+                else:
+                    self.main_session = None
+                    if dm in self.devicemanagers_active:
+                        self.devicemanagers_active.remove(dm)
+                        self.devicemanagers_active_done.append(dm)
+                Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
 
     async def init_db(self, file):
         self.db = await aiosqlite.connect(file)

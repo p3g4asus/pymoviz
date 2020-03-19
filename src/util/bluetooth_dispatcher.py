@@ -228,6 +228,7 @@ if platform == 'android':
             self._oscer.handle(COMMAND_WBD_DISCONNECTGATT, self.close_gatt)
             self._oscer.handle(COMMAND_WBD_DISCOVERSERVICES, self.discover_services)
             self._oscer.handle(COMMAND_WBD_STARTSCAN, self.start_scan_wrap)
+            self._oscer.handle(COMMAND_WBD_STOPSCAN, self.stop_scan)
             self._oscer.handle(COMMAND_WBD_WRITEDESCRIPTOR, self.write_descriptor_wrap)
             self._oscer.handle(COMMAND_WBD_WRITECHARACTERISTIC, self.write_characteristic_wrap)
             self._oscer.handle(COMMAND_WBD_READCHARACTERISTIC, self.read_characteristic_wrap)
