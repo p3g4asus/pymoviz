@@ -37,10 +37,10 @@ from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.snackbar import Snackbar
 from kivymd.uix.tab import MDTabs
 from util.const import (COMMAND_CONNECT, COMMAND_DELUSER, COMMAND_DELVIEW,
-                        COMMAND_DEVICESTATE, COMMAND_DISCONNECT, COMMAND_LISTDEVICES,
+                        COMMAND_DEVICEFIT, COMMAND_DISCONNECT, COMMAND_LISTDEVICES,
                         COMMAND_LISTDEVICES_RV, COMMAND_LISTUSERS,
                         COMMAND_LISTUSERS_RV, COMMAND_LISTVIEWS,
-                        COMMAND_LISTVIEWS_RV, COMMAND_NEWDEVICE,
+                        COMMAND_LISTVIEWS_RV, COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
                         COMMAND_SAVEUSER, COMMAND_SAVEVIEW, COMMAND_STOP,
                         CONFIRM_FAILED_3, CONFIRM_OK, MSG_COMMAND_TIMEOUT)
 from util.osc_comunication import OSCManager
@@ -178,11 +178,25 @@ class MyTabs(MDTabs):
         self.tab_list = []
         self.current_tab = None
 
+    def format(self, device, **kwargs):
+        for tb in self.tab_list:
+            tb.format(device, **kwargs)
+
+    def new_view_list(self, views):
+        removel = list()
+        for t in self.tab_list:
+            if t.view not in views:
+                removel.append(t)
+        for t in removel:
+            self.remove_widget(removel)
+        for t in views:
+            self.add_widget(t)
+
     def remove_widget(self, w, *args, **kwargs):
-        super(MyTabs, self).remove_widget(w)
         if isinstance(w, View):
             w = self.already_present(w)
         if w and isinstance(w, ViewPlayWidget):
+            super(MyTabs, self).remove_widget(w)
             idx = -3
             try:
                 idx = self.tab_list.index(w)
@@ -213,18 +227,19 @@ class MyTabs(MDTabs):
         return None
 
     def add_widget(self, tab, *args, **kwargs):
-        super(MyTabs, self).add_widget(tab, *args, **kwargs)
         if isinstance(tab, View):
             view = tab
             tab = ViewPlayWidget(view=view)
         elif isinstance(tab, ViewPlayWidget):
             view = tab.view
         else:
+            super(MyTabs, self).add_widget(tab, *args, **kwargs)
             return
         oldtab = self.already_present(view)
         if oldtab:
             oldtab.view = view
         else:
+            super(MyTabs, self).add_widget(tab, *args, **kwargs)
             self.tab_list.append(tab)
             _LOGGER.debug(f"Gui: Adding tab len = {len(self.tab_list)}")
             self.carousel.index = len(self.tab_list) - 1
@@ -280,7 +295,7 @@ class MainApp(MDApp):
             types=dict(
                 device=self.device_edit,
                 view=partial(self.generic_edit_item,
-                             dct={v.name: dict(obj=v, active=v.active) for v in self.views},
+                             dct={v.name: dict(obj=v, active=True if v.active else False) for v in self.views},
                              cls=View),
                 user=self.generic_edit_user
             ),
@@ -316,7 +331,7 @@ class MainApp(MDApp):
             types=dct,
             group=group,
             editclass=ViewWidget if cls == View else UserWidget,
-            editpars=dict(formatters=self.formatters) if cls == View else dict(),
+            editpars=dict(formatters=self.get_formatters()) if cls == View else dict(),
             title=f'Select {"view" if cls == View else "user"}',
             on_type=self.on_generic_edit_item
         )
@@ -330,7 +345,7 @@ class MainApp(MDApp):
                 item = obj['obj']
                 active = obj['active']
                 if isinstance(item, View):
-                    item.active = active
+                    item.active = 1 if active else 0
                 elif active:
                     self.config.set('dbpars', 'user', f'{item.get_id()}')
                     self.config.write()
@@ -349,10 +364,10 @@ class MainApp(MDApp):
                                          on_ok=self.on_view_added)
 
     def on_view_added(self, view):
-        self.root.id_tabcont.add_widget(view)
+        self.root.ids.id_tabcont.add_widget(view)
 
     def on_view_removed(self, view):
-        self.root.id_tabcont.remove_widget(view)
+        self.root.ids.id_tabcont.remove_widget(view)
 
     def generic_delete(self, *args, **kwargs):
         self.current_widget = TypeWidget(
@@ -497,7 +512,7 @@ class MainApp(MDApp):
                                oscercmd=COMMAND_SAVEVIEW,
                                lst=self.views,
                                on_ok=self.on_view_added),
-            formatters=self.formatters
+            formatters=self.get_formatters()
         )
         self.root.ids.id_screen_manager.add_widget(self.current_widget)
         self.root.ids.id_screen_manager.current = self.current_widget.name
@@ -521,13 +536,17 @@ class MainApp(MDApp):
                                                          on_ok=on_ok,
                                                          index=index),
                                 timeout=5)
+        else:
+            self.root.ids.id_screen_manager.remove_widget(self.current_widget)
+            self.current_widget = None
 
     def on_confirm_add_item_server(self, *args, timeout=False, items=None, index=0, lst=[], oscercmd='', on_ok=None):
+        error = True
         if timeout:
             msg = MSG_COMMAND_TIMEOUT
             exitv = CONFIRM_FAILED_3
             msg = f"[E {exitv}] {msg}"
-        elif args[0] != CONFIRM_OK:
+        elif args[0] == CONFIRM_OK:
             view = args[1]
             if view in lst:
                 lst[lst.index(view)] = view
@@ -538,12 +557,13 @@ class MainApp(MDApp):
             msg = f"Save {view.__table__} {view.name} OK"
             if on_ok:
                 on_ok(view)
+            error = False
         else:
             msg = args[1]
             exitv = args[0]
             msg = f"[E {exitv}] {msg}"
         toast(msg)
-        if items:
+        if not error:
             self.on_confirm_add_item(None, items, index=index, lst=lst, oscercmd=oscercmd, on_ok=on_ok)
 
     def open_menu(self, *args, **kwargs):
@@ -603,6 +623,12 @@ class MainApp(MDApp):
                               on_ping_timeout=self.on_ping_timeout,
                               loop=self.loop)
 
+    def get_formatters(self):
+        formatters = []
+        for _, dm in self.devicemanagers_by_uid.items():
+            formatters.extend(dm.get_formatters())
+        return formatters
+
     def on_osc_init_ok(self):
         _LOGGER.debug('Osc init ok')
         self.oscer.handle(COMMAND_LISTDEVICES_RV, self.on_list_devices_rv)
@@ -619,8 +645,22 @@ class MainApp(MDApp):
             uid = ld[x]
             if dev.type in self.devicemanager_class_by_type:
                 self.devicemanagers_by_uid[uid] = self.devicemanager_class_by_type[dev.type](
-                    self.oscer, uid, service=False, device=dev, loop=self.loop)
-                self.formatters.extend(self.devicemanagers_by_uid[uid].get_formatters())
+                    self.oscer,
+                    uid,
+                    service=False,
+                    device=dev,
+                    on_state_transition=self.on_state_transition,
+                    on_command_handle=self.on_command_handle,
+                    loop=self.loop)
+
+    def on_state_transition(self, inst, oldstate, newstate, reason):
+        self.root.ids.id_tabcont.format(inst.get_device(), state=newstate)
+
+    def on_command_handle(self, inst, command, exitv, *args):
+        if command == COMMAND_NEWSESSION:
+            self.root.ids.id_tabcont.format(inst.get_device(), session=args[0], user=self.current_user)
+        elif command == COMMAND_DEVICEFIT:
+            self.root.ids.id_tabcont.format(inst.get_device(), device=args[0], fitobj=args[1], state=args[2])
 
     def on_list_users_rv(self, *ld):
         self.users = list(ld)
@@ -633,6 +673,8 @@ class MainApp(MDApp):
 
     def on_list_views_rv(self, *ld):
         self.views = list(ld)
+        self.root.ids.id_tabcont.new_view_list(self.views)
+        _LOGGER.debug(f'List of views {self.views}')
 
     def is_pre_init_ok(self):
         for v in self.views:
@@ -719,7 +761,6 @@ class MainApp(MDApp):
         self.oscer = None
         self.current_user = None
         self.users = []
-        self.formatters = []
         self.current_widget = None
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
         self.devicemanagers_by_uid = dict()

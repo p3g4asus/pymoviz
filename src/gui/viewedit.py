@@ -1,15 +1,18 @@
-import re
 from functools import partial
+import re
 
 from db.view import View
 from kivy.lang import Builder
+from kivy.metrics import dp
+from kivy.core.window import Window
 from kivy.properties import ListProperty, ObjectProperty
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 from kivy.utils import get_color_from_hex
 from kivymd.uix.card import MDCardPost
 from kivymd.uix.list import TwoLineListItem
 from kivymd.uix.tab import MDTabsBase
-from util import init_logger
+from util import get_natural_color, init_logger
 
 
 _LOGGER = init_logger(__name__)
@@ -34,7 +37,7 @@ Builder.load_string(
             size_hint: (1, 0.2)
             title: 'New View'
             md_bg_color: app.theme_cls.primary_color
-            left_action_items: [["arrow-left", lambda x: root.dispatch_confirm(False)]]
+            left_action_items: [["arrow-left", lambda x: root.dispatch_on_confirm(False)]]
             right_action_items: [["plus", lambda x: root.open_add_formatter_screen()]]
             elevation: 10
         BoxLayout:
@@ -43,7 +46,7 @@ Builder.load_string(
             MDTextField:
                 id: id_name
                 icon_type: "without"
-                error: True
+                error: False
                 hint_text: "View name"
                 helper_text_mode: "on_error"
                 helper_text: "Enter at least a letter"
@@ -69,41 +72,68 @@ Builder.load_string(
             size_hint: (1, 0.2)
             title: 'Add Formatter'
             md_bg_color: app.theme_cls.primary_color
-            left_action_items: [["arrow-left", lambda x: root.dispatch_confirm(None)]]
+            left_action_items: [["arrow-left", lambda x: root.dispatch_on_confirm(None)]]
             elevation: 10
         ScrollView:
             MDList:
                 id: id_formatters
 <ViewPlayWidget>:
-    BoxLayout:
-        orientation: 'vertical'
-        ScrollView:
-            MDList:
-                id: id_formatters
+    orientation: 'vertical'
+    ScrollView:
+        MDList:
+            id: id_formatters
     '''
 )
 
 
-class ViewPlayWidget(MDTabsBase):
+FORMATTER_COLORS = {
+    'WHITE': '#FFFFFF',
+    'AMBER': '#ffe082',
+    'PINK': '#f48fb1',
+    'PURPLE': '#ce93d8',
+    'BLUE': '#90caf9',
+    'GREEN': '#a5d6a7',
+    'GREY': '#cfd8dc',
+    'RED': '#ef9a9a',
+    'BROWN': '#d7ccc8',
+    'ORANGE': '#ffcc80',
+    'DEEP ORANGE': '#ffccbc',
+    'LIME': '#e6ee9c',
+    'YELLOW': '#fff59d',
+    'LIGHT BLUE': '#b3e5fc',
+    'DEEP PURPLE': '#b39ddb',
+    'NATURAL': None
+}
+
+
+def init_formatter_colors():
+    if not FORMATTER_COLORS['NATURAL']:
+        FORMATTER_COLORS['NATURAL'] = get_natural_color()
+
+class ViewPlayWidget(BoxLayout, MDTabsBase):
     view = ObjectProperty()
 
     def __init__(self, *args, **kwargs):
-        self.register_event_type('on_confirm')
-        super(FormatterAdd, self).__init__(*args, **kwargs)
+        init_formatter_colors()
+        super(ViewPlayWidget, self).__init__(*args, **kwargs)
+        self.on_view(self.view)
 
-    def on_view(self, view):
-        self.text = view.name
-        for i in range(len(self.ids.id_formatters.children) - 1, -1, -1):
-            fi = self.ids.id_formatters.children[i]
-            if isinstance(fi, FormatterItem):
-                self.ids.id.formatters.remove_widget(fi)
-        for f in view.items:
-            fi = FormatterItem(formatter=f)
-            self.ids.id_formatters.add_widget(fi)
+    def on_view(self, *args):
+        self.text = self.view.name
+        try:
+            for i in range(len(self.ids.id_formatters.children) - 1, -1, -1):
+                fi = self.ids.id_formatters.children[i]
+                if isinstance(fi, FormatterItem):
+                    self.ids.id.formatters.remove_widget(fi)
+            for f in self.view.items:
+                fi = FormatterItem(formatter=f)
+                self.ids.id_formatters.add_widget(fi)
+        except Exception:
+            pass
 
-    def format(self, *args):
-        for f in self.view.items:
-            f.format(*args)
+    def format(self, device, **kwargs):
+        for fi in self.ids.id_formatters.children:
+            fi.format(device, **kwargs)
 
 
 class FormatterItem(TwoLineListItem):
@@ -111,10 +141,16 @@ class FormatterItem(TwoLineListItem):
 
     def __init__(self, *args, **kwargs):
         super(FormatterItem, self).__init__(*args, **kwargs)
+
+    def on_formatter(self, *args):
         self.formatter2gui()
 
-    def format(self, *args):
-        txt = self.formatter.format(*args)
+    def format(self, device, **kwargs):
+        f = self.formatter
+        txt = ''
+        for types, obj in kwargs.items():
+            if (not device or device.get_id() == f.device) and types == f.type:
+                txt = f.format(obj)
         if txt:
             self.secondary_text = txt
 
@@ -125,12 +161,16 @@ class FormatterItem(TwoLineListItem):
         # self.ids.id_dropdown.current_item = self.formatter.background
         self.text = self.formatter.get_title()
         self.secondary_text = self.formatter.print_example()
+        self.background_color = self.secondary_background_color =\
+            get_color_from_hex(FORMATTER_COLORS[
+                self.formatter.background if self.formatter.background is not None
+                else 'NATURAL'])
 
 
 class FormatterAdd(Screen):
     formatters = ListProperty()
 
-    def dispatch_confirm(self, inst, *args):
+    def dispatch_on_confirm(self, inst, *args):
         self.dispatch('on_confirm', inst.formatter.clone() if inst else None)
 
     def on_confirm(self, formatter, *args):
@@ -151,9 +191,9 @@ class FormatterPost(MDCardPost):
         self.formatter.set_background(elem)
         self.background_color = get_color_from_hex(html)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, formatter=None, callback=None):
         menu_items = []
-        ll = list(ViewWidget.FORMATTER_COLORS.keys())
+        ll = list(FORMATTER_COLORS.keys())
         ll.sort()
         for c in ll:
             menu_items.append(dict(
@@ -161,61 +201,45 @@ class FormatterPost(MDCardPost):
                 text=c,
                 callback=partial(self.change_bg, html=ViewWidget.FORMATTER_COLORS[c])
             ))
-        f = kwargs['formatter']
-        callback = kwargs['callback']
-        if f.background:
-            kwargs['background_color'] = get_color_from_hex(ViewWidget.FORMATTER_COLORS[f.background])
+        _LOGGER.debug(f'Creating post from {formatter}')
         super(FormatterPost, self).__init__(
+            formatter=formatter,
             tile_font_style='H3',
-            path_to_avatar=f.deviceobj.get_icon(),
+            path_to_avatar=formatter.deviceobj.get_icon(),
             right_menu=menu_items,
-            name_data=f'Name: {f.name}\nDevice: {f.deviceobj.get_alias()}',
+            name_data=f'Name: {formatter.name}\nDevice: {formatter.deviceobj.get_alias()}',
             swipe=True,
-            text_post=f.print_example(),
-            callback=partial(callback, formatter=f), **kwargs)
+            text_post=formatter.print_example(),
+            card_size=(Window.width - 10, dp(80)),
+            callback=partial(callback, formatter=formatter),
+            background_color=get_color_from_hex(FORMATTER_COLORS[
+                formatter.background if formatter.background is not None else 'NATURAL']))
 
 
 class ViewWidget(Screen):
-    FORMATTER_COLORS = {
-        'WHITE': '#FFFFFF',
-        'AMBER': '#ffe082',
-        'PINK': '#f48fb1',
-        'PURPLE': '#ce93d8',
-        'BLUE': '#90caf9',
-        'GREEN': '#a5d6a7',
-        'GREY': '#cfd8dc',
-        'RED': '#ef9a9a',
-        'BROWN': '#d7ccc8',
-        'ORANGE': '#ffcc80',
-        'DEEP ORANGE': '#ffccbc',
-        'LIME': '#e6ee9c',
-        'YELLOW': '#fff59d',
-        'LIGHT BLUE': '#b3e5fc',
-        'DEEP PURPLE': '#b39ddb'
-    }
     obj = ObjectProperty(None, allownone=True)
     view = ObjectProperty(None, allownone=True)
     formatters = ListProperty()
 
     def __init__(self, **kwargs):
+        init_formatter_colors()
         self.register_event_type('on_confirm')
         super(ViewWidget, self).__init__(**kwargs)
         self.view = self.obj
         if self.view:
             self.view = self.view.clone()
         else:
-            self.view = View(name='noname', active=False)
+            self.view = View(name='noname', active=False, items=[])
         if self.view.items is None:
-            self.view.items = []
+            self.view.set_items([])
         self.formatter_add = None
-        self.view2gui()
 
     def on_confirm(self, view):
         _LOGGER.debug(f"On confirm called {str(view)}")
 
-    def on_view(self, view):
+    def on_view(self, *args):
         self.view2gui()
-        _LOGGER.debug(f"On view called {str(view)}")
+        _LOGGER.debug(f"On view called {str(self.view)}")
 
     def callback_card(self, elem, *args, formatter=None):
         self.view.items.remove(formatter)
@@ -230,8 +254,10 @@ class ViewWidget(Screen):
     def gui2view(self):
         self.view.name = self.ids.id_name.text
         self.view.active = True
-        for i, pst in enumerate(self.ids.id_formatters.children):
+        i = 0
+        for pst in reversed(self.ids.id_formatters.children):
             pst.formatter.set_order(i)
+            i = i + 1
 
     def view2gui(self):
         self.ids.id_name.text = self.view.name
@@ -249,13 +275,14 @@ class ViewWidget(Screen):
         elif not inst.error and dis:
             inst.error = True
             inst.on_text(inst, text)
+        self.ids.id_toolbar.title = 'New View' if dis else f'{text} View'
         self.set_enabled(not dis and len(self.ids.id_formatters.children))
 
     def set_enabled(self, valid):
         if valid:
             self.ids.id_toolbar.right_action_items = [
                 ["plus", lambda x: self.open_add_formatter_screen()],
-                ["floppy", lambda x: self.dispatch_confirm()],
+                ["floppy", lambda x: self.dispatch_on_confirm()],
             ]
         else:
             self.ids.id_toolbar.right_action_items = [
@@ -274,8 +301,9 @@ class ViewWidget(Screen):
         if formatter:
             self.ids.id_formatters.add_widget(self.formatter2widget(formatter))
             self.view.items.append(formatter)
+        self.enable_buttons(self.ids.id_name, self.ids.id_name.text)
 
-    def dispatch_confirm(self, confirm=True):
+    def dispatch_on_confirm(self, confirm=True):
         if confirm:
             self.gui2view()
         self.dispatch('on_confirm', self.view if confirm else None)

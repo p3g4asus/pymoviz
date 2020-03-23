@@ -10,7 +10,6 @@ from os.path import basename, dirname, isfile, join, splitext
 
 import aiosqlite
 from db.device import Device
-from db.label_formatter import LabelFormatter
 from db.user import User
 from db.view import View
 from util import find_devicemanager_classes, init_logger
@@ -89,6 +88,7 @@ class DeviceManagerService(object):
                                                    asyncmethod=self.on_command_delelem_async,
                                                    lst=self.users,
                                                    cls=User))
+        self.create_device_managers()
 
     def on_command_condisc(self, cmd, *args):
         if cmd == 'c':
@@ -104,6 +104,9 @@ class DeviceManagerService(object):
         Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
 
     def on_command_listviews(self, *args):
+        _LOGGER.debug('List view before send:')
+        for v in self.views:
+            _LOGGER.debug(f'View = {v}')
         self.oscer.send(COMMAND_LISTVIEWS_RV, *self.views)
 
     def on_command_listusers(self, *args):
@@ -311,8 +314,9 @@ class DeviceManagerService(object):
             saveview = False
             for i in range(len(v.items) - 1, -1, -1):
                 lab = v.items[i]
-                if lab.device in self.devicemanagers_by_id:
-                    lab.set_device(self.devicemanagers_by_id[lab.device].get_device())
+                ids = str(lab.device)
+                if ids in self.devicemanagers_by_id:
+                    lab.set_device(self.devicemanagers_by_id[ids].get_device())
                 else:
                     del v.items[i]
                     saveview = True
@@ -327,10 +331,7 @@ class DeviceManagerService(object):
             _LOGGER.debug(f'Saving view {v} -> {rv}')
         self.on_command_listviews()
 
-    async def load_db(self):
-        self.users = await User.loadbyid(self.db)
-        self.devices = await Device.loadbyid(self.db)
-        self.views = await View.load1m(self.db, LabelFormatter, wherejoin='view')
+    def create_device_managers(self):
         for d in self.devices:
             uid = self.generate_uid()
             typev = d.get_type()
@@ -348,6 +349,15 @@ class DeviceManagerService(object):
                 self.devicemanagers_by_uid[uid] = dm
         self.set_devicemanagers_active()
         self.set_formatters_device()
+
+    async def load_db(self):
+        try:
+            self.users = await User.loadbyid(self.db)
+            self.devices = await Device.loadbyid(self.db)
+            self.views = await View.load1m(self.db)
+            # _LOGGER.debug(f'List view[0] {self.views[0]}')
+        except Exception:
+            _LOGGER.error(f'Load DB error {traceback.format_exc()}')
 
     async def start_remaining_connection_operations(self, bytimer=True):
         if bytimer:
@@ -437,6 +447,7 @@ class DeviceManagerService(object):
                         if query:
                             # _LOGGER.debug(f'Executing query {query}')
                             await self.db.execute(query)
+                    await self.db.execute('PRAGMA foreign_keys = ON')
                 except Exception:
                     _LOGGER.warning(traceback.format_exc())
             await self.db.commit()

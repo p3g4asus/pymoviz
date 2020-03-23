@@ -49,6 +49,7 @@ class KeiserM3iConfWidget(ConfWidget):
             self.ids.id_machine.value = self.conf['machine']
 
     def gui2conf(self):
-        self.conf['buffer'] = self.ids.id_buffer.value
-        self.conf['machine'] = self.ids.id_machine.value
+        self.conf = dict(
+            buffer=int(self.ids.id_buffer.value),
+            machine=int(self.ids.id_machine.value))
         return self.conf

@@ -14,9 +14,6 @@ from util.timer import Timer
 Builder.load_string(
     '''
 <BTLESearchItem>:
-    font_style: 'H1'
-    secondary_font_style: 'H2'
-    tertiary_font_style: 'H5'
     on_release: id_cb.trigger_action()
     MyCheckbox:
         id: id_cb
@@ -48,7 +45,7 @@ Builder.load_string(
                 helper_text: 'Please insert a valid alias'
                 on_text: root.check_alias(self, self.text)
         ScrollView:
-            size_hint: (1, 0.3)
+            size_hint: (1, 0.5)
             MDList:
                 id: id_btds
         GridLayout:
@@ -87,7 +84,7 @@ class ConfWidget(BoxLayout):
         super(ConfWidget, self).__init__(**kwargs)
         self.conf2gui(self.conf)
 
-    def on_conf(self, conf):
+    def on_conf(self, *args):
         self.conf2gui(self.conf)
 
     def is_ok(self):
@@ -201,8 +198,9 @@ class SearchSettingsScreen(Screen):
         addr = item.device.get_address()
         for i in range(len(lst)-1, -1, -1):
             if addr == lst[i].device.get_address():
+                active = lst[i].is_active()
                 self.ids.id_btds.remove_widget(lst[i])
-                if lst[i].is_active():
+                if active:
                     item.set_active(True)
                     self._device = item.device
                 break

@@ -3,6 +3,8 @@ from db import SerializableDBObj
 
 class View(SerializableDBObj):
     __table__ = 'view'
+    __wherejoin__ = 'view'
+    __joinclass__ = 'db.label_formatter,LabelFormatter'
     __columns__ = (
         '_id',
         'name',
@@ -18,7 +20,7 @@ class View(SerializableDBObj):
         '''
         create table if not exists view
             (_id integer primary key,
-            name text not null,
+            name text not null UNIQUE,
             active integer default 0);
         '''
 

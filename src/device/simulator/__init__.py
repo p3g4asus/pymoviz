@@ -47,6 +47,7 @@ class DeviceSimulator(abc.ABC, EventDispatcher):
             await obj.to_db(self.db, commit)
             if commit:
                 self.last_commit = nowms
+            obj.s('updates', self.nUpdates)
         return state
 
     def log(self, s):
@@ -64,8 +65,6 @@ class DeviceSimulator(abc.ABC, EventDispatcher):
         self.userid = user.get_id()
         self.nUpdates = 0
         self.state = DEVSTATE_INVALIDSTEP
-        self.db_columns = self.get_db_columns()
-        self.db_table = self.get_table_name()
         self.session = None
         self.main_session_id = 0
         self.last_commit = 0

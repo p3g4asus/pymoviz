@@ -31,8 +31,10 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
                  portlisten=33218,
                  hostcommand='127.0.0.1',
                  portcommand=33217, **kwargs):
+        self._init_oscer = False
         if not BluetoothDispatcherW._oscer:
             if hostlisten:
+                self._init_oscer = True
                 BluetoothDispatcherW._oscer = OSCManager(
                     hostlisten=hostlisten,
                     portlisten=portlisten,
@@ -44,7 +46,7 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
 
     def _set_ble_interface(self):
         self._ble = self._oscer
-        if self._oscer:
+        if self._init_oscer:
             Timer(0, partial(
                 self._oscer.init,
                 pingsend=False,

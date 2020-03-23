@@ -98,7 +98,7 @@ class KeiserM3iDeviceSimulator(DeviceSimulator):
         if f.time == self.old_time_orig:
             if self.equalTime < self.EQUAL_TIME_THRESHOLD:
                 self.equalTime += 1
-            self.log("EqualTime {equalTime}")
+            self.log(f"EqualTime {self.equalTime}")
         else:
             self.equalTime = 0
             self.old_time_orig = f.time

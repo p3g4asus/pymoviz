@@ -2,7 +2,7 @@ from gui.list_item_cb import get_brand_item
 from kivy.lang import Builder
 from kivy.properties import DictProperty, ObjectProperty, StringProperty
 from kivy.uix.screenmanager import Screen
-from util import init_logger
+from util import get_natural_color, init_logger
 
 
 _LOGGER = init_logger(__name__)
@@ -55,7 +55,7 @@ Builder.load_string(
 class TypeWidgetCB(Screen):
     types = DictProperty()
     _cptypes = DictProperty()
-    group = StringProperty()
+    group = StringProperty(None, allownone=True)
     title = StringProperty()
     editclass = ObjectProperty()
     editpars = DictProperty()
@@ -66,8 +66,14 @@ class TypeWidgetCB(Screen):
         self.buttons = []
         self.edit_widget = None
         self.edit_widget_txt = None
+        col = get_natural_color(False)
         for x, o in self.types.items():
-            b = get_brand_item(group=self.group, text=x, brandinfo=x, active=o['active'], on_brand=self.on_brand_selected)
+            b = get_brand_item(group=self.group,
+                               text=x,
+                               brandinfo=x,
+                               active=o['active'],
+                               background_color=col,
+                               on_brand=self.on_brand_selected)
             self.buttons.append(b)
             self.ids.id_types.add_widget(b)
 
@@ -80,8 +86,7 @@ class TypeWidgetCB(Screen):
                 if b.get_active():
                     self.ids.id_btnok.disabled = False
                     return
-        else:
-            self.ids.id_btnok.disabled = True
+        self.ids.id_btnok.disabled = True
 
     def on_edit_confirm(self, inst, newobj):
         if newobj:

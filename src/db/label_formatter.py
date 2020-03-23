@@ -1,10 +1,14 @@
 import abc
+from datetime import datetime
 
 from db import SerializableDBObj
 from util.const import (DEVSTATE_CONNECTED, DEVSTATE_CONNECTING,
                         DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_DPAUSE, DEVSTATE_IDLE, DEVSTATE_INVALIDSTEP,
                         DEVSTATE_ONLINE, DEVSTATE_SEARCHING, DEVSTATE_UNINIT)
+from util import init_logger
+
+_LOGGER = init_logger(__name__)
 
 
 class LabelFormatter(SerializableDBObj, abc.ABC):
@@ -14,16 +18,21 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         'view',
         'name',
         'device',
-        'example',
+        'example_conf',
         'pre',
         'classname',
         'settings',
         'background',
+        'timeout',
+        'timeouttime',
         'orderd',
+        'type',
     )
     __columns2field__ = {
         'orderd': 'order'
     }
+
+    __load_order__ = {'orderd': 'asc'}
 
     __update_columns__ = (
         'device',
@@ -38,25 +47,63 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
             (_id integer primary key,
             view integer not null,
             name text not null,
-            device integer not null,
-            example text not null,
+            device integer,
+            example_conf text not null,
             pre text,
             classname text not null,
             settings text,
             timeout text,
+            timeouttime integer default 7,
             background text,
+            type text not null,
             orderd integer not null,
             FOREIGN KEY(view) REFERENCES view(_id) ON DELETE CASCADE,
             FOREIGN KEY(device) REFERENCES device(_id) ON DELETE CASCADE);
         '''
 
-    def __init__(self, name='', example=(), pre='$D: ', timeout='[color=#ffeb3b]---[/color]', **kwargs):
-        super(LabelFormatter, self).__init__(name=name, example=example, pre=pre, **kwargs)
+    def __init__(self,
+                 name='',
+                 example_conf=(),
+                 pre='$D: ',
+                 timeout='[color=#ffeb3b]---[/color]',
+                 timeouttime=7,
+                 type='fitobj',
+                 **kwargs):
+        super(LabelFormatter, self).__init__(name=name, example_conf=example_conf, pre=pre, type=type, **kwargs)
         if self.classname is None:
             self.classname = self.fullname()
-        if self.settings:
-            for key in self.settings:
+
+    def __lt__(self, other):
+        return self.orderd < other.orderd
+
+    def __le__(self, other):
+        return self.orderd <= other.orderd
+
+    def __gt__(self, other):
+        return self.orderd > other.orderd
+
+    def __ge__(self, other):
+        return self.orderd >= other.orderd
+
+    def _set_settings(self, settings):
+        if settings:
+            for key, val in settings.items():
+                setattr(self, key, val)
+        self.settings = settings
+
+    def _set_setting_field(self, **kwargs):
+        for key, val in kwargs.items():
+            try:
+                getattr(self, 'settings')
+            except AttributeError:
+                self.settings = dict()
+            if self.settings is None:
+                self.settings = dict()
+            if key in self.settings:
                 setattr(self, key, self.settings[key])
+            else:
+                setattr(self, key, val)
+                self.settings[key] = val
 
     @abc.abstractmethod
     def format(self, *args, **kwargs):
@@ -74,7 +121,10 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         self.background = None
 
     def print_example(self):
-        return self.format(*self.example)
+        if isinstance(self.example_conf, (tuple, list)):
+            return self.format(*tuple(self.example_conf))
+        else:
+            return self.format(self.example_conf)
 
     def get_title(self):
         return self.deviceobj.get_alias() + " " + self.name
@@ -95,6 +145,7 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
     @staticmethod
     def get_fields(fldnamelst, obj):
         rv = []
+        _LOGGER.debug(f'flds={fldnamelst} obj={obj}')
         for i in fldnamelst:
             if i in obj:
                 rv.append(obj[i])
@@ -104,13 +155,14 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
 
 
 class SimpleFormatter(LabelFormatter):
+    def __init__(self, format_str='', col='#212121', **kwargs):
+        super(SimpleFormatter, self).__init__(format_str=format_str, col=col, **kwargs)
 
-    def __init__(self, name='', example=(), format_str='', col='#212121', pre='$D: ', **kwargs):
-        super(SimpleFormatter, self).__init__(name=name, example=example, pre=pre, format_str=format_str, col=col, **kwargs)
-        if self.settings is None:
-            self.settings = dict()
-        if 'format_str' not in self.settings:
-            self.settings.update(dict(format_str=self.format_str, col=self.col))
+    def _set_format_str(self, format_str):
+        self._set_setting_field(format_str=format_str)
+
+    def _set_col(self, col):
+        self._set_setting_field(col=col)
 
     def format(self, *args, **kwargs):
         if args:
@@ -123,14 +175,11 @@ class SimpleFormatter(LabelFormatter):
 
 
 class SimpleFieldFormatter(SimpleFormatter):
-    def __init__(self, name='', example=(), format_str='', col='#212121', pre='$D: ', fields=[], **kwargs):
-        super(SimpleFieldFormatter, self).__init__(
-            name=name, example=example, format_str=format_str,
-            col=col, pre=pre, fields=fields, **kwargs)
-        if self.settings is None:
-            self.settings = dict()
-        if 'fields' not in self.settings:
-            self.settings.update(dict(fields=self.fields))
+    def __init__(self, fields=[], **kwargs):
+        super(SimpleFieldFormatter, self).__init__(fields=fields, **kwargs)
+
+    def _set_fields(self, fields):
+        self._set_setting_field(fields=fields)
 
     def format(self, fitobj, *args, **kwargs):
         flds = self.get_fields(self.fields, fitobj)
@@ -141,10 +190,10 @@ class SimpleFieldFormatter(SimpleFormatter):
 
 
 class TimeFieldFormatter(SimpleFormatter):
-    def __init__(self, col='#212121', pre='$D: ', fields=[], **kwargs):
+    def __init__(self, fields=['time'], **kwargs):
         super(TimeFieldFormatter, self).__init__(
-            name='Time', example=(3723,), format_str='%d:%02d:%02d',
-            col=col, pre=pre, fields=fields, **kwargs)
+            name='Time', example_conf={fields[0]: 3723}, format_str='%d:%02d:%02d',
+            fields=fields, **kwargs)
 
     def format(self, fitobj, *args, **kwargs):
         tm = self.get_fields(self.fields, fitobj)[0]
@@ -153,29 +202,37 @@ class TimeFieldFormatter(SimpleFormatter):
         mins = tm // 60
         tm -= mins * 60
         secs = tm % 60
-        return super(TimeFieldFormatter, self).format(*(hrs, mins, secs), *args, **kwargs)
+        return self.get_pre() + super(TimeFieldFormatter, self).format(*(hrs, mins, secs), *args, **kwargs)
 
 
 class DoubleFormatter(LabelFormatter):
-    def __init__(self, name='', example=(), f1='', f2='', post='',
+    def __init__(self, f1='', f2='', post='',
                  col='#212121', colmax='#32cb00', colmin='#ffeb3b',
-                 colerror='#f44336', pre='$D: ', **kwargs):
+                 colerror='#f44336', **kwargs):
         super(DoubleFormatter, self).__init__(
-            name=name, example=example,
-            col=col, pre=pre, f1=f1, f2=f2, post=post,
+            col=col, f1=f1, f2=f2, post=post,
             colmin=colmin, colmax=colmax, colerror=colerror, **kwargs)
-        if self.settings is None:
-            self.settings = dict()
-        if 'f1' not in self.settings:
-            self.settings.update(dict(
-                f1=self.f1,
-                f2=self.f2,
-                post=self.post,
-                col=self.col,
-                colmin=self.colmin,
-                colmax=self.colmax,
-                colerror=self.colerror
-                ))
+
+    def _set_f1(self, f1):
+        self._set_setting_field(f1=f1)
+
+    def _set_f2(self, f2):
+        self._set_setting_field(f2=f2)
+
+    def _set_post(self, post):
+        self._set_setting_field(post=post)
+
+    def _set_col(self, col):
+        self._set_setting_field(col=col)
+
+    def _set_colmin(self, colmin):
+        self._set_setting_field(colmin=colmin)
+
+    def _set_colmax(self, colmax):
+        self._set_setting_field(colmax=colmax)
+
+    def _set_colerror(self, colerror):
+        self._set_setting_field(colerror=colerror)
 
     def format(self, v1, v2, *args, **kwargs):
         if v1 is None:
@@ -199,19 +256,11 @@ class DoubleFormatter(LabelFormatter):
 
 
 class DoubleFieldFormatter(DoubleFormatter):
-    def __init__(self, name='', example=(), f1='', f2='', post='',
-                 col='#212121', colmax='#32cb00', colmin='#ffeb3b',
-                 colerror='#f44336', pre='$D: ', fields=[], **kwargs):
-        super(DoubleFieldFormatter, self).__init__(
-            name=name, example=example, f1=f1, f2=f2, post=post,
-            col=col, colmax=colmax, colmin=colmin, colerror=colerror, pre=pre,
-            fields=fields, **kwargs)
-        if self.settings is None:
-            self.settings = dict()
-        if 'fields' not in self.settings:
-            self.settings.update(dict(
-                fields=self.fields
-                ))
+    def __init__(self, fields=[], **kwargs):
+        super(DoubleFieldFormatter, self).__init__(fields=fields, **kwargs)
+
+    def _set_fields(self, fields):
+        self._set_setting_field(fields=fields)
 
     def format(self, fitobj, *args, **kwargs):
         flds = self.get_fields(self.fields, fitobj)
@@ -221,26 +270,65 @@ class DoubleFieldFormatter(DoubleFormatter):
             return super(DoubleFieldFormatter, self).format(*flds, *args, **kwargs)
 
 
+class SessionFormatter(LabelFormatter):
+    def __init__(self, col='#212121', pre='$D Ses: ', **kwargs):
+        super(SessionFormatter, self).__init__(
+            name='Session', pre=pre, type='state', timeouttime=0,
+            example_conf=dict(datestart=1584885218699), col=col, **kwargs)
+
+    def _set_col(self, col):
+        self._set_setting_field(col=col)
+
+    def format(self, v1, *args, **kwargs):
+        if not isinstance(v1, (int, float)):
+            v1 = self.get_fields(['datestart'], v1)[0]
+        datepubo = datetime.fromtimestamp(v1 / 1000)
+        datepub = datepubo.strftime('%Y-%m-%d %H:%M:%S.%f')
+        return self.get_pre() + f'[color={self.col}]{datepub}[/color]'
+
+
+class UserFormatter(LabelFormatter):
+    def __init__(self, pre='$D User: ', **kwargs):
+        super(UserFormatter, self).__init__(
+            pre=pre, example_conf=dict(name='Matteo', height=178, weight=75, birthday=480358067),
+            type='user', timeouttime=0, name='user', **kwargs)
+
+    def format(self, v1, *args):
+        flds = self.get_fields(["name", "height", "weight", "birthday"], v1)
+        if flds:
+            datepubo = datetime.fromtimestamp(flds[3])
+            years = int((datetime.now()-datepubo).days / 365.25)
+            return self.get_pre() + f"{flds[0]} {flds[1]}cm/{flds[2]}kg/{years}y"
+        else:
+            return ''
+
+
 class StateFormatter(LabelFormatter):
-    def __init__(self, name='', col='#212121', pre='ST $D: ', post='',
+    def __init__(self, col='#212121', pre='$D ST: ', post='',
                  colmax='#32cb00', colmin='#ffeb3b', colerror='#f44336', **kwargs):
         super(StateFormatter, self).__init__(
-            name=name, example=(DEVSTATE_DISCONNECTED,), col=col, post=post,
-            colmax=colmax, colmin=colmin, colerror=colerror, pre=pre, **kwargs)
-        if self.settings is None:
-            self.settings = dict()
-        if 'colmin' not in self.settings:
-            self.settings.update(dict(
-                col=self.col,
-                post=self.post,
-                colmin=self.colmin,
-                colmax=self.colmax,
-                colerror=self.colerror
-                ))
+            name='State', pre=pre, type='state',
+            example_conf=(DEVSTATE_DISCONNECTED,), col=col, post=post, timeouttime=0,
+            colmax=colmax, colmin=colmin, colerror=colerror, **kwargs)
+
+    def _set_post(self, post):
+        self._set_setting_field(post=post)
+
+    def _set_col(self, col):
+        self._set_setting_field(col=col)
+
+    def _set_colmin(self, colmin):
+        self._set_setting_field(colmin=colmin)
+
+    def _set_colmax(self, colmax):
+        self._set_setting_field(colmax=colmax)
+
+    def _set_colerror(self, colerror):
+        self._set_setting_field(colerror=colerror)
 
     def format(self, v1, *args, **kwargs):
         if not isinstance(v1, int):
-            v1 = self.get_fields(['state'])[0]
+            v1 = self.get_fields(['state'], v1)[0]
         if v1 == DEVSTATE_INVALIDSTEP:
             col1 = self.colerror
             s1 = 'invalid'

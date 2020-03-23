@@ -4,7 +4,7 @@ from functools import partial
 
 from able import (REASON_DISCOVER_ERROR, REASON_NOT_ENABLED, STATE_CONNECTED, STATE_DISCONNECTED)
 from db.device import Device
-from db.label_formatter import StateFormatter
+from db.label_formatter import SimpleFieldFormatter, StateFormatter, UserFormatter
 from util import init_logger
 from util.bluetooth_dispatcher import BluetoothDispatcher
 from util.const import (COMMAND_CONFIRM, COMMAND_DELDEVICE, COMMAND_DEVICEFIT,
@@ -107,10 +107,21 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     def get_formatters(self):
         ll = list(self.__formatters__)
-        ll.append(StateFormatter('State'))
+        ll.append(StateFormatter())
+        ll.append(UserFormatter())
+        ll.append(SimpleFieldFormatter(
+            name='Updates',
+            pre='$D n: ',
+            format_str='%d',
+            example_conf=dict(updates=45),
+            fields=['updates']
+        ))
+        out = []
         for f in ll:
+            f = f.clone()
             f.set_device(self.device)
-        return ll
+            out.append(f)
+        return out
 
     def set_state(self, st, reason=-1):
         oldstate = self.state
@@ -168,55 +179,73 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
                 on_search=self.on_search_device)
         return self.widget
 
+    def process_found_device(self, device):
+        pass
+
     def on_device(self, device, rssi, advertisement):
         if self.state == DEVSTATE_SEARCHING:
-            adv = json.loads(advertisement)\
-                  if advertisement and isinstance(advertisement, str) else\
-                  advertisement.data
+            adv = []
+            if advertisement:
+                if isinstance(advertisement, str):
+                    adv = json.loads(advertisement)
+                elif advertisement.data:
+                    adv = [x for x in advertisement.data]
+            if isinstance(device, str):
+                device = json.loads(device)
+            elif not isinstance(device, dict):
+                device = dict(
+                    address=device.getAddress(),
+                    name=device.getName()
+                )
             d = Device(
-                address=device['address'] if isinstance(device, dict) else device.getAddress(),
-                name=device['name'] if isinstance(device, dict) else device.getName(),
+                address=device['address'],
+                name=device['name'],
                 rssi=rssi,
                 type=self.__type__,
                 advertisement=adv
             )
             self.oscer.send_device(COMMAND_DEVICEFOUND, self._uid, d.serialize())
+            self.process_found_device(d)
 
     async def on_command_savedevice_async(self, device, *args):
         rv = await device.to_db(self.db)
         if rv:
             self.device = device
-            self.oscer.send_device(COMMAND_CONFIRM, CONFIRM_OK, device)
+            self.oscer.send_device(COMMAND_CONFIRM, self._uid, CONFIRM_OK, device)
             self.dispatch('on_command_handle', COMMAND_SAVEDEVICE, CONFIRM_OK)
         else:
-            self.oscer.send_device(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(device))
+            self.oscer.send_device(COMMAND_CONFIRM, self._uid, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(device))
             self.dispatch('on_command_handle', COMMAND_SAVEDEVICE, CONFIRM_FAILED_1)
 
     def on_command_savedevice(self, device, *args):
         if self.is_stopped_state():
             Timer(0, partial(self.on_command_savedevice_async, device))
         else:
-            self.oscer.send_device(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID)
+            self.oscer.send_device(COMMAND_CONFIRM, self._uid, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID)
             self.dispatch('on_command_handle', COMMAND_SAVEDEVICE, CONFIRM_FAILED_2)
 
     async def on_command_deldevice_async(self, device, *args):
         rv = await device.remove(self.db)
         if rv:
-            self.oscer.send_device(COMMAND_CONFIRM, CONFIRM_OK, device)
+            self.oscer.send_device(COMMAND_CONFIRM, self._uid, CONFIRM_OK, device)
             self.dispatch('on_command_handle', COMMAND_DELDEVICE, CONFIRM_OK)
         else:
-            self.oscer.send_device(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(device))
+            self.oscer.send_device(COMMAND_CONFIRM, self._uid, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(device))
             self.dispatch('on_command_handle', COMMAND_DELDEVICE, CONFIRM_FAILED_1)
 
     def on_command_deldevice(self, device, *args):
         if self.is_stopped_state():
             Timer(0, partial(self.on_command_deldevice_async, device))
         else:
-            self.oscer.send_device(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID)
+            self.oscer.send_device(COMMAND_CONFIRM, self._uid, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID)
             self.dispatch('on_command_handle', COMMAND_DELDEVICE, CONFIRM_FAILED_2)
 
     def on_save_device(self, inst, device):
-        self.oscer.send_device(COMMAND_SAVEDEVICE, self._uid, device, confirm_handle=self.on_confirm_save_device, timeout=5)
+        self.oscer.send_device(COMMAND_SAVEDEVICE,
+                               self._uid,
+                               device,
+                               confirm_callback=self.on_confirm_save_device,
+                               timeout=5)
 
     def on_confirm_save_device(self, *args, timeout=False):
         if timeout:
@@ -224,6 +253,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             exitv = CONFIRM_FAILED_3
         elif args[0] == CONFIRM_OK:
             self.device = args[1]
+            _LOGGER.debug(f'Saved device {self.device}')
             self.widget.exit()
             return
         else:
@@ -235,8 +265,8 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         self.oscer.send_device(COMMAND_DELDEVICE,
                                self._uid,
                                self.device,
-                               confirm_handle=partial(self.on_confirm_del_device,
-                                                      on_del_device=on_del_device),
+                               confirm_callback=partial(self.on_confirm_del_device,
+                                                        on_del_device=on_del_device),
                                timeout=5)
 
     def on_confirm_del_device(self, *args, timeout=False, on_del_device=None):
@@ -281,6 +311,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
                 _toast("Search init error: Is bluetooth up and running?")
             if self.widget:
                 self.widget.set_searching(False)
+        self.dispatch("on_state_transition", oldstate, newstate, reason)
 
     def on_search_device(self, inst, startcommand):
         # self.oscer.send_device(COMMAND_SEARCH, self._uid, startcommand, confirm_callback=self.on_confirm_search_device, timeout=5)
@@ -314,7 +345,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         elif self.state != DEVSTATE_SEARCHING:
             rv = CONFIRM_FAILED_2
         if rv != CONFIRM_OK:
-            self.oscer.send_device(COMMAND_CONFIRM, rv, MSG_CONNECTION_STATE_INVALID)
+            self.oscer.send_device(COMMAND_CONFIRM, self._uid, rv, MSG_CONNECTION_STATE_INVALID)
         self.dispatch('on_command_handle', COMMAND_SEARCH, rv)
 
     def on_scan_completed(self):
@@ -362,7 +393,14 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def on_command_handle(self, command, exitv, *args):
         _LOGGER.debug(f'Handled command {command}: {exitv}')
 
+    def on_command_newsession(self, session, *args):
+        self.dispatch('on_command_handle', COMMAND_NEWSESSION, CONFIRM_OK, session)
+
+    def on_command_devicefit(self, device, fitobj, st):
+        self.dispatch('on_command_handle', COMMAND_DEVICEFIT, CONFIRM_OK, device, fitobj, st)
+
     def on_simulator_session(self, inst, session):
+        self.oscer.send_device(COMMAND_NEWSESSION, self._uid, session)
         self.dispatch('on_command_handle', COMMAND_NEWSESSION, CONFIRM_OK, inst, session)
 
     def __eq__(self, other):
@@ -405,3 +443,5 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             _toast = toast
             self.oscer.handle_device(COMMAND_DEVICEFOUND, self._uid, self.on_command_devicefound)
             self.oscer.handle_device(COMMAND_DEVICESTATE, self._uid, self.on_command_newstate)
+            self.oscer.handle_device(COMMAND_NEWSESSION, self._uid, self.on_command_newsession)
+            self.oscer.handle_device(COMMAND_DEVICEFIT, self._uid, self.on_command_devicefit)

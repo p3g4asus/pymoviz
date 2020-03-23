@@ -15,12 +15,12 @@ from util.timer import Timer
 
 
 class KeiserM3iDeviceManager(GenericDeviceManager):
-    __type__ = 'keyserm3i'
+    __type__ = 'keiserm3i'
     __simulator_class__ = KeiserM3iDeviceSimulator
     __formatters__ = [
         DoubleFieldFormatter(
             name='Speed',
-            example=(25, 27),
+            example_conf=dict(speed=25, speedMn=27),
             f1='%.1f',
             f2='%.2f',
             post='Km/h',
@@ -28,7 +28,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             fields=['speed', 'speedMn']),
         DoubleFieldFormatter(
             name='RPM',
-            example=(78, 75),
+            example_conf=dict(rpm=78, rpmMn=75),
             f1='%d',
             f2='%.1f',
             post='',
@@ -36,7 +36,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             fields=['rpm', 'rpmMn']),
         DoubleFieldFormatter(
             name='Watt',
-            example=(125, 127),
+            example_conf=dict(watt=125, wattMn=127),
             f1='%d',
             f2='%.2f',
             post='',
@@ -44,37 +44,36 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             fields=['watt', 'wattMn']),
         SimpleFieldFormatter(
             name='Pulse',
-            example=(152, 160),
+            example_conf=dict(pulse=152, pulseMn=160),
             format_str='%d (%d)',
             pre='$D Pul: ',
             fields=['pulse', 'pulseMn']),
         SimpleFieldFormatter(
             name='Distance',
-            example=(34.6),
+            example_conf=dict(distance=34.6),
             format_str='%.2f Km',
             pre='$D Dist: ',
             fields=['distance']),
         SimpleFieldFormatter(
             name='Incline',
-            example=(12),
+            example_conf=dict(incline=12),
             format_str='%d',
             pre='$D Inc: ',
             fields=['incline']),
         SimpleFieldFormatter(
             name='Calorie',
-            example=(12),
+            example_conf=dict(calorie=12),
             format_str='%d',
             pre='$D Cal: ',
             fields=['calorie']),
         SimpleFieldFormatter(
             name='Version',
-            example=(13, 22, 40),
+            example_conf=dict(DI_FIRMWARE=13, DI_SOFTWARE=22, DI_SYSTEMID=40),
             format_str='0x%02X.0x%02X (%d)',
             pre='$D ver: ',
             fields=['DI_FIRMWARE', 'DI_SOFTWARE', 'DI_SYSTEMID']),
         TimeFieldFormatter(
-            pre='$D TM: ',
-            fields=['time'])
+            pre='$D TM: ')
     ]
 
     @classmethod
@@ -146,6 +145,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
     @classmethod
     def device2line3(cls, device):
         ss = ''
+        mid = ''
         additionalsettings = device.f('additionalsettings')
         if additionalsettings and 'machine' in additionalsettings:
             mid = additionalsettings['machine']
@@ -237,14 +237,14 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         else:
             return None
 
-    def on_device(self, device, rssi, advertisement):
-        super(KeiserM3iDeviceManager, self).on_device(device, rssi, advertisement)
+    def process_found_device(self, device):
+        super(KeiserM3iDeviceManager, self).process_found_device(device)
         if self.state != DEVSTATE_DISCONNECTING:
-            if device.getAddress() == self.device.get_address():
+            if device.get_address() == self.device.get_address():
                 if self.state == DEVSTATE_CONNECTING:
                     self.set_state(DEVSTATE_CONNECTED, DEVREASON_REQUESTED)
                     self.rescan_timer_init(1800)
                 if self.state != DEVSTATE_SEARCHING and self.state != DEVSTATE_DISCONNECTING:
-                    k3 = self.parse_adv(advertisement)
+                    k3 = self.parse_adv(device.advertisement)
                     if k3:
                         Timer(0, self.step(k3))

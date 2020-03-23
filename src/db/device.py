@@ -22,17 +22,17 @@ class Device(SerializableDBObj):
         'orderd'
     )
 
+    __load_order__ = {'orderd': 'desc'}
+
     __create_table_query__ =\
         '''
         create table if not exists device
                 (_id integer primary key autoincrement,
-                description text,
                 address VARCHAR(17),
                 name VARCHAR(30),
                 alias VARCHAR(30) not null UNIQUE,
-                type integer not null,
+                type text not null,
                 additionalsettings TEXT DEFAULT '',
-                enabled integer not null,
                 orderd integer not null DEFAULT 50);
         '''
 

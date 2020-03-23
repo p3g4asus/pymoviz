@@ -3,7 +3,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.properties import DictProperty, StringProperty
 
 from kivymd.uix.list import OneLineListItem
-from util import init_logger
+from util import get_natural_color, init_logger
 
 
 _LOGGER = init_logger(__name__)
@@ -42,11 +42,13 @@ class TypeWidget(Screen):
         self.register_event_type('on_type')
         super(TypeWidget, self).__init__(**kwargs)
         self.buttons = []
+        _LOGGER.debug(f'Types {self.types}')
+        col = get_natural_color(False)
         for x in self.types.keys():
-            b = OneLineListItem(text=x, on_release=self.dispatch_on_type)
+            b = OneLineListItem(text=x, on_release=self.dispatch_on_type, background_color=col)
             self.buttons.append(b)
             self.ids.id_types.add_widget(b)
-        b = OneLineListItem(text=TypeWidget.ABORT, on_release=self.dispatch_on_type)
+        b = OneLineListItem(text=TypeWidget.ABORT, on_release=self.dispatch_on_type, background_color=col)
         self.ids.id_types.add_widget(b)
 
     def on_type(self, type, elem):

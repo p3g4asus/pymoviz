@@ -30,7 +30,7 @@ Builder.load_string(
             size_hint: (1, 0.2)
             title: 'New User'
             md_bg_color: app.theme_cls.primary_color
-            left_action_items: [["arrow-left", lambda x: root.dispatch_confirm(False)]]
+            left_action_items: [["arrow-left", lambda x: root.dispatch_on_confirm(False)]]
             elevation: 10
         BoxLayout:
             padding: [dp(30), dp(20)]
@@ -90,7 +90,10 @@ class UserWidget(Screen):
             self.user = self.user.clone()
         else:
             self.user = User(name='John Doe', weight=75, height=175, male=True, birthday=0)
+
+    def on_user(self, *args):
         self.user2gui()
+        _LOGGER.debug(f"On user called {str(self.user)}")
 
     def set_birthday(self, dt):
         _LOGGER.debug(f'Set birthday {dt}')
@@ -101,7 +104,7 @@ class UserWidget(Screen):
     def set_enabled(self, valid):
         if valid:
             self.ids.id_toolbar.right_action_items = [
-                ["floppy", lambda x: self.dispatch_confirm()],
+                ["floppy", lambda x: self.dispatch_on_confirm()],
             ]
         else:
             self.ids.id_toolbar.right_action_items = []
@@ -117,8 +120,8 @@ class UserWidget(Screen):
     def gui2user(self):
         self.user.name = self.ids.id_name.text
         self.user.male = self.ids.id_sex.active
-        self.user.weight = self.ids.id_weight.value
-        self.user.height = self.ids.id_height.value
+        self.user.weight = int(self.ids.id_weight.value)
+        self.user.height = int(self.ids.id_height.value)
 
     def on_confirm(self, user):
         # self.manager.remove_widget(self)
@@ -134,7 +137,7 @@ class UserWidget(Screen):
             inst.on_text(inst, text)
         self.set_enabled(not inst.error and self.user.birthday > 0)
 
-    def dispatch_confirm(self, confirm=True):
+    def dispatch_on_confirm(self, confirm=True):
         if confirm:
             self.gui2user()
         self.dispatch('on_confirm', self.user if confirm else None)

@@ -20,6 +20,9 @@ class SerializableDBObj(object):
     __table__ = None
     __create_table_query__ = None
     __update_columns__ = None
+    __wherejoin__ = None
+    __joinclass__ = None
+    __load_order__ = None
 
     @classmethod
     def fullname(o):
@@ -55,12 +58,12 @@ class SerializableDBObj(object):
         return strcol[0:-1]
 
     @classmethod
-    async def load1m(cls, db, clsm, wherejoin=None, rowid=None, **kwargs):
+    async def load1m(cls, db, rowid=None, **kwargs):
         pls = await cls.loadbyid(db, rowid=rowid, **kwargs)
-        if wherejoin:
+        if cls.__wherejoin__ and cls.__joinclass__:
             for p in pls:
-                cond = {wherejoin: p.rowid}
-                pls2 = await clsm.loadbyid(db, rowid=None, **cond)
+                cond = {cls.__wherejoin__: p.rowid}
+                pls2 = await SerializableDBObj.get_class(cls.__joinclass__).loadbyid(db, rowid=None, **cond)
                 p.set_items(pls2)
         return pls
 
@@ -77,11 +80,20 @@ class SerializableDBObj(object):
             kwargs[cls.__id__] = rowid
         cond = ''
         subs = ()
+        order = ''
+        if cls.__load_order__:
+            order = ' ORDER BY '
+            for k, i in cls.__load_order__.items():
+                order += f'{k} {i},'
+            order = order[0:-1]
         for k, i in kwargs.items():
-            cond += f" {'WHERE' if not cond else 'AND'} P.{k}=? "
-            subs += (i,)
-        query += cond
-        _LOGGER.debug(f'Querying {query}')
+            if k == 'order':
+                order = f' ORDER BY {i}'
+            else:
+                cond += f" {'WHERE' if not cond else 'AND'} P.{k}=? "
+                subs += (i,)
+        query += cond + order
+        _LOGGER.debug(f'Querying {query} (pars={subs})')
         cursor = await db.execute(query, subs)
         async for row in cursor:
             keys = row.keys()
@@ -106,24 +118,43 @@ class SerializableDBObj(object):
         self.items = items
 
     def clone(self):
-        dct = vars(self)
+        dct = dict(vars(self))
         if 'items' in dct and dct['items']:
+            dct['items'] = list(dct['items'])
             for i in range(len(dct['items'])):
                 dct['items'][i] = dct['items'][i].clone()
-        return self.__class__(**dct)
+        cl = self.__class__()
+        cl._process_kwargs(dct)
+        return cl
 
-    def __init__(self, dbitem=None, **kwargs):
+    def _set_single_field(self, key, val):
+        fln = self.fld(key)
+        if (fln.find('settings') >= 0 or fln.find('conf') >= 0) and isinstance(val, str):
+            v = json.loads(val)
+        else:
+            v = val
+        try:
+            setmethod = getattr(self, f'_set_{fln}')
+            setmethod(v)
+        except Exception:
+            # _LOGGER.debug(f'SetMethod not found for {fln} ({traceback.format_exc()})')
+            setattr(self, fln, v)
+
+    def _process_kwargs(self, dbitem, kwargs=dict()):
         if dbitem:
             for key in dbitem.keys():
-                setattr(self,
-                        self.fld(key),
-                        dbitem[key])
-        for key in kwargs:
-            if (key.find('settings') >= 0 or key.find('conf') >= 0) and isinstance(kwargs[key], str):
-                v = json.loads(kwargs[key])
-            else:
-                v = kwargs[key]
-            setattr(self, self.fld(key), v)
+                self._set_single_field(key, dbitem[key])
+
+    def __init__(self, dbitem=None, **kwargs):
+        self._process_kwargs(dbitem)
+        if dbitem:
+            ks = dbitem.keys()
+        else:
+            ks = ()
+        for i in kwargs.copy():
+            if i in ks:
+                del kwargs[i]
+        self._process_kwargs(kwargs)
         for c in self.__columns__:
             f = self.fld(c)
             try:
@@ -144,10 +175,10 @@ class SerializableDBObj(object):
 
     @staticmethod
     def is_serialized_str(s):
-        return isinstance(s, str) and re.search(r'^\$([a-zA-Z0-9,\.]+)~(.+)$', s)
+        return isinstance(s, str) and re.search(r'^\$([a-zA-Z0-9,\._]+)~(.+)$', s)
 
     def serialize(self):
-        dct = vars(self)
+        dct = dict(vars(self))
         for d, k in dct.copy().items():
             if isinstance(k, SerializableDBObj):
                 dct[d] = k.serialize()
@@ -159,7 +190,7 @@ class SerializableDBObj(object):
         return f'${self.fullname()}~' + json.dumps(dct)
 
     def s(self, name, val):
-        setattr(self, self.fld(name), val)
+        self._set_single_field(name, val)
 
     def _f(self, name, typetuple=None):
         try:
@@ -192,13 +223,19 @@ class SerializableDBObj(object):
                 if dct:
                     for d, k in dct.copy().items():
                         if d.startswith('items'):
+                            _LOGGER.debug(f'Items arr {k}')
                             items2 = []
                             for it in k:
                                 items2.append(SerializableDBObj.deserialize(it))
                             dct[d] = items2
                         else:
                             dct[d] = SerializableDBObj.deserialize(k, k)
-                    return SerializableDBObj.get_class(rer.group(1))(**dct)
+                    _LOGGER.debug(f'Deserialized {dct}')
+                    cl = SerializableDBObj.get_class(rer.group(1))()
+                    cl._process_kwargs(dct)
+                    return cl
+            else:
+                _LOGGER.debug(f'Invalid serialized str {jsons}')
         except Exception:
             _LOGGER.error(traceback.format_exc())
         return rv
@@ -207,10 +244,10 @@ class SerializableDBObj(object):
         rv = False
         if self.rowid:
             async with db.cursor() as cursor:
-                await cursor.execute(
-                    f'''
-                    DELETE FROM {self.__table__} WHERE {self.__id__}=?
-                    ''', (self.rowid,))
+                values = (self.rowid,)
+                query = f'DELETE FROM {self.__table__} WHERE {self.__id__}=?'
+                _LOGGER.debug(f'Deleting: {query} (par={values})')
+                await cursor.execute(query, values)
                 rv = cursor.rowcount > 0
         if rv and commit:
             await db.commit()
@@ -233,30 +270,38 @@ class SerializableDBObj(object):
         strcol = strcol[0:-1]
         if key:
             async with db.cursor() as cursor:
-                await cursor.execute(
-                    f'''
-                    UPDATE {self.__table__} SET {strcol} WHERE {self.__id__}=?
-                    ''',
-                    (*tuple(values), key)
-                )
+                values.append(key)
+                query = f'UPDATE {self.__table__} SET {strcol} WHERE {self.__id__}=?'
+                _LOGGER.debug(f'Updating: {query} (par={values})')
+                await cursor.execute(query, tuple(values))
                 if cursor.rowcount <= 0:
                     return False
         else:
             async with db.cursor() as cursor:
-                await cursor.execute(
-                    f'''
-                    INSERT OR IGNORE into {self.__table__} ({",".join(colnames)}) VALUES ({strcol})
-                    ''',
-                    tuple(values)
-                )
+                query = f'INSERT OR IGNORE into {self.__table__} ({",".join(colnames)}) VALUES ({strcol})'
+                _LOGGER.debug(f'Inserting: {query} (par={values})')
+                await cursor.execute(query, tuple(values))
                 if cursor.rowcount <= 0:
                     return False
                 self.rowid = cursor.lastrowid
                 self.s(self.__id__, self.rowid)
-        items = self.f('items')
-        if items:
+        if self.__wherejoin__:
+            items = self.f('items')
+            if items is None:
+                items = []
+            cond = {self.__wherejoin__: self.rowid}
+            _LOGGER.debug(f'Rowid = {self.rowid}')
+            itemsold = await SerializableDBObj.get_class(self.__joinclass__).loadbyid(db, rowid=None, **cond)
+            for it in itemsold:
+                rv = await it.delete(db, commit=False)
+                if not rv:
+                    return False
             for it in items:
-                await it.to_db(db, commit=False)
+                it._set_single_field(self.__wherejoin__, self.rowid)
+                rv = await it.to_db(db, commit=False)
+                _LOGGER.debug(f'Saving item[{rv}] {it}')
+                if not rv:
+                    return False
         if commit:
             await db.commit()
         return True
