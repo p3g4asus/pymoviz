@@ -188,7 +188,8 @@ class OSCManager(object):
             if self.ping_timeout is False:
                 el = self.cmd_queue.pop(0)
                 args = ('()',) if not el['args'] else el['args']
-                _LOGGER.debug(f'Sending {el["address"]} -> {args}')
+                if el['address'] != COMMAND_PING:
+                    _LOGGER.debug(f'Sending {el["address"]} -> {args}')
                 self.client.send_message(el['address'], args)
                 self.process_cmd_queue()
 
