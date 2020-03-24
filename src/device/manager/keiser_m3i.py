@@ -1,3 +1,5 @@
+import traceback
+
 from able import BluetoothDispatcher
 from db.keiser_m3i_output import KeiserM3iOutput
 from db.label_formatter import (DoubleFieldFormatter, SimpleFieldFormatter,
@@ -11,7 +13,10 @@ from util.const import (DEVREASON_REQUESTED, DEVREASON_TIMEOUT,
                         DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_SEARCHING, DI_FIRMWARE, DI_SOFTWARE,
                         DI_SYSTEMID)
+from util import init_logger
 from util.timer import Timer
+
+_LOGGER = init_logger(__name__)
 
 
 class KeiserM3iDeviceManager(GenericDeviceManager):
@@ -23,6 +28,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             example_conf=dict(speed=25, speedMn=27),
             f1='%.1f',
             f2='%.2f',
+            timeout='[color=#f44336]--.- (--.--)Km/h[/color]',
             post='Km/h',
             pre='$D SPD: ',
             fields=['speed', 'speedMn']),
@@ -31,6 +37,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             example_conf=dict(rpm=78, rpmMn=75),
             f1='%d',
             f2='%.1f',
+            timeout='[color=#f44336]-- (--.-)[/color]',
             post='',
             pre='$D RPM: ',
             fields=['rpm', 'rpmMn']),
@@ -39,6 +46,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             example_conf=dict(watt=125, wattMn=127),
             f1='%d',
             f2='%.2f',
+            timeout='[color=#f44336]-- (--.--)[/color]',
             post='',
             pre='$D WT: ',
             fields=['watt', 'wattMn']),
@@ -46,17 +54,20 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             name='Pulse',
             example_conf=dict(pulse=152, pulseMn=160),
             format_str='%d (%d)',
+            timeout='[color=#f44336]-- (--)[/color]',
             pre='$D Pul: ',
             fields=['pulse', 'pulseMn']),
         SimpleFieldFormatter(
             name='Distance',
             example_conf=dict(distance=34.6),
             format_str='%.2f Km',
+            timeout='[color=#f44336]--.--[/color]',
             pre='$D Dist: ',
             fields=['distance']),
         SimpleFieldFormatter(
             name='Incline',
             example_conf=dict(incline=12),
+            timeout='[color=#f44336]--[/color]',
             format_str='%d',
             pre='$D Inc: ',
             fields=['incline']),
@@ -64,6 +75,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             name='Calorie',
             example_conf=dict(calorie=12),
             format_str='%d',
+            timeout='[color=#f44336]--[/color]',
             pre='$D Cal: ',
             fields=['calorie']),
         SimpleFieldFormatter(
@@ -130,7 +142,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
 
     @classmethod
     def get_scan_filters(cls, scanning_for_new_devices=False):
-        return None
+        # return None
         return [
             dict(deviceName="M3"),
             dict(deviceName="M3i"),
@@ -160,12 +172,19 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
 
     def rescan_timer_init(self, timeout=False):
         if self.force_rescan_timer:
-            self.self.force_rescan_timer.cancel()
-            self.self.force_rescan_timer = None
+            _LOGGER.debug('Stopping rescan timer')
+            try:
+                self.force_rescan_timer.cancel()
+            except Exception:
+                _LOGGER.error(f'Stop timer error {traceback.format_exc()}')
+            _LOGGER.debug('Stopped')
+            self.force_rescan_timer = None
         if timeout:
+            _LOGGER.debug(f'Starting rescan timer({timeout})')
             self.force_rescan_timer = Timer(timeout, self.restart_scan)
 
     async def restart_scan(self):
+        _LOGGER.debug(f'Rescan timer done: state={self.state}')
         if self.state == DEVSTATE_CONNECTING:
             self.rescan_timer_init()
             self.stop_scan()

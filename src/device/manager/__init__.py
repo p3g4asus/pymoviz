@@ -4,7 +4,7 @@ from functools import partial
 
 from able import (REASON_DISCOVER_ERROR, REASON_NOT_ENABLED, STATE_CONNECTED, STATE_DISCONNECTED)
 from db.device import Device
-from db.label_formatter import SimpleFieldFormatter, StateFormatter, UserFormatter
+from db.label_formatter import SessionFormatter, SimpleFieldFormatter, StateFormatter, UserFormatter
 from util import init_logger
 from util.bluetooth_dispatcher import BluetoothDispatcher
 from util.const import (COMMAND_CONFIRM, COMMAND_DELDEVICE, COMMAND_DEVICEFIT,
@@ -108,6 +108,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def get_formatters(self):
         ll = list(self.__formatters__)
         ll.append(StateFormatter())
+        ll.append(SessionFormatter())
         ll.append(UserFormatter())
         ll.append(SimpleFieldFormatter(
             name='Updates',
@@ -131,6 +132,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             self.dispatch("on_state_transition", oldstate, st, reason)
 
     def connect(self, *args):
+        _LOGGER.debug(f'Connecting[{self.device.get_uid()}] {self.device.get_alias()}')
         if self.is_stopped_state():
             self.set_state(DEVSTATE_CONNECTING, DEVREASON_REQUESTED)
             if self.simulator_needs_reset and self.simulator:
@@ -145,6 +147,8 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
                 else:
                     self.simulator.reset(self.device.get_additionalsettings(), self.user)
             self.inner_connect()
+        else:
+            _LOGGER.debug(f'Device {self.device.get_alias()} is not stopped ({self.state})')
 
     def disconnect(self, *args):
         if self.is_connected_state() or self.state == DEVSTATE_CONNECTING:

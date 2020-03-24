@@ -678,9 +678,13 @@ class MainApp(MDApp):
 
     def is_pre_init_ok(self):
         for v in self.views:
-            for d in v.get_connected_devices():
-                if not self.devicemanagers_pre_init[d.get_type()]:
-                    return False
+            for did in v.get_connected_devices():
+                for _, dm in self.devicemanagers_by_uid.items():
+                    dev = dm.get_device()
+                    if did == dev.get_id():
+                        if not self.devicemanagers_pre_init[dev.get_type()]:
+                            return False
+                        break
         return True
 
     def do_pre_finish(self, cls, ok):

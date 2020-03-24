@@ -91,6 +91,7 @@ class DeviceManagerService(object):
         self.create_device_managers()
 
     def on_command_condisc(self, cmd, *args):
+        _LOGGER.debug(f'On Command condisc: {cmd}')
         if cmd == 'c':
             self.last_user = args[0]
         for dm in self.devicemanagers_active_done.copy():
@@ -98,7 +99,7 @@ class DeviceManagerService(object):
             self.devicemanagers_active_done.remove(dm)
         from device.manager import GenericDeviceManager
         GenericDeviceManager.sort(self.devicemanagers_active)
-        for _, info in self.devicemanagers_active_info:
+        for _, info in self.devicemanagers_active_info.items():
             info['operation'] = cmd
             info['retry'] = 0
         Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
@@ -360,6 +361,7 @@ class DeviceManagerService(object):
             _LOGGER.error(f'Load DB error {traceback.format_exc()}')
 
     async def start_remaining_connection_operations(self, bytimer=True):
+        _LOGGER.debug(f'Starting remaining con timer={bytimer}')
         if bytimer:
             self.timer_obj = None
         elif self.timer_obj:
@@ -367,6 +369,7 @@ class DeviceManagerService(object):
             self.timer_obj = None
         for dm in self.devicemanagers_active.copy():
             info = self.devicemanagers_active_info[dm.get_uid()]
+            _LOGGER.debug(f'Processing[{dm.get_uid()}] {dm.get_device()} -> {info["operation"]}')
             if info['operation'] == 'd':
                 if not dm.is_connected_state():
                     self.devicemanagers_active.remove(dm)
@@ -387,6 +390,8 @@ class DeviceManagerService(object):
                         self.timer_obj = Timer(self.connect_secs, self.start_remaining_connection_operations)
                         info['retry'] += 1
                         break
+                    else:
+                        _LOGGER.debug(f'Retry FINISH for device[{dm.get_uid()}] {dm.get_device()}')
 
     def set_operation_ended(self, info):
         info['operation'] = ''

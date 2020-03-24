@@ -5,7 +5,7 @@ from db.view import View
 from kivy.lang import Builder
 from kivy.metrics import dp
 from kivy.core.window import Window
-from kivy.properties import ListProperty, ObjectProperty
+from kivy.properties import BooleanProperty, ListProperty, ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 from kivy.utils import get_color_from_hex
@@ -13,6 +13,7 @@ from kivymd.uix.card import MDCardPost
 from kivymd.uix.list import TwoLineListItem
 from kivymd.uix.tab import MDTabsBase
 from util import get_natural_color, init_logger
+from util.timer import Timer
 
 
 _LOGGER = init_logger(__name__)
@@ -110,6 +111,7 @@ def init_formatter_colors():
     if not FORMATTER_COLORS['NATURAL']:
         FORMATTER_COLORS['NATURAL'] = get_natural_color()
 
+
 class ViewPlayWidget(BoxLayout, MDTabsBase):
     view = ObjectProperty()
 
@@ -138,12 +140,25 @@ class ViewPlayWidget(BoxLayout, MDTabsBase):
 
 class FormatterItem(TwoLineListItem):
     formatter = ObjectProperty()
+    player = BooleanProperty(True)
 
     def __init__(self, *args, **kwargs):
         super(FormatterItem, self).__init__(*args, **kwargs)
+        self.timer_format = None
+        self.formatter2gui()
 
     def on_formatter(self, *args):
         self.formatter2gui()
+
+    def rearm_fomat_timer(self):
+        if self.timer_format:
+            self.timer_format.cancel()
+            self.timer_format = None
+        if self.formatter.timeouttime > 0:
+            self.timer_format = Timer(self.formatter.timeouttime, self.set_timeout)
+
+    def set_timeout(self):
+        self.secondary_text = self.formatter.set_timeout()
 
     def format(self, device, **kwargs):
         f = self.formatter
@@ -152,6 +167,8 @@ class FormatterItem(TwoLineListItem):
             if (not device or device.get_id() == f.device) and types == f.type:
                 txt = f.format(obj)
         if txt:
+            if self.player:
+                self.rearm_fomat_timer()
             self.secondary_text = txt
 
     def formatter2gui(self):
@@ -160,7 +177,7 @@ class FormatterItem(TwoLineListItem):
         #     self.formatter.background = 'WHITE'
         # self.ids.id_dropdown.current_item = self.formatter.background
         self.text = self.formatter.get_title()
-        self.secondary_text = self.formatter.print_example()
+        self.secondary_text = self.formatter.set_timeout() if self.player else self.formatter.print_example()
         self.background_color = self.secondary_background_color =\
             get_color_from_hex(FORMATTER_COLORS[
                 self.formatter.background if self.formatter.background is not None
@@ -180,7 +197,9 @@ class FormatterAdd(Screen):
         self.register_event_type('on_confirm')
         super(FormatterAdd, self).__init__(*args, **kwargs)
         for f in self.formatters:
-            fi = FormatterItem(formatter=f, on_release=self.dispatch_on_confirm)
+            fi = FormatterItem(formatter=f,
+                               player=False,
+                               on_release=self.dispatch_on_confirm)
             self.ids.id_formatters.add_widget(fi)
 
 
@@ -199,7 +218,7 @@ class FormatterPost(MDCardPost):
             menu_items.append(dict(
                 viewclass='MDMenuItem',
                 text=c,
-                callback=partial(self.change_bg, html=ViewWidget.FORMATTER_COLORS[c])
+                callback=partial(self.change_bg, html=FORMATTER_COLORS[c])
             ))
         _LOGGER.debug(f'Creating post from {formatter}')
         super(FormatterPost, self).__init__(

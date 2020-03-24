@@ -65,11 +65,17 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
                  name='',
                  example_conf=(),
                  pre='$D: ',
-                 timeout='[color=#ffeb3b]---[/color]',
+                 timeout='[color=#f44336]---[/color]',
                  timeouttime=7,
                  type='fitobj',
                  **kwargs):
-        super(LabelFormatter, self).__init__(name=name, example_conf=example_conf, pre=pre, type=type, **kwargs)
+        super(LabelFormatter, self).__init__(name=name,
+                                             example_conf=example_conf,
+                                             pre=pre,
+                                             type=type,
+                                             timeouttime=timeouttime,
+                                             timeout=timeout,
+                                             **kwargs)
         if self.classname is None:
             self.classname = self.fullname()
 
@@ -110,7 +116,7 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         pass
 
     @staticmethod
-    def wrap_color(txt, col='#ffeb3b'):
+    def wrap_color(txt, col='#fdd835'):
         return f'[color={col}]{txt}[/color]'
 
     def set_timeout(self):
@@ -193,7 +199,7 @@ class TimeFieldFormatter(SimpleFormatter):
     def __init__(self, fields=['time'], **kwargs):
         super(TimeFieldFormatter, self).__init__(
             name='Time', example_conf={fields[0]: 3723}, format_str='%d:%02d:%02d',
-            fields=fields, **kwargs)
+            timeout='[color=#f44336]-:--:--[/color]', fields=fields, **kwargs)
 
     def format(self, fitobj, *args, **kwargs):
         tm = self.get_fields(self.fields, fitobj)[0]
@@ -202,12 +208,12 @@ class TimeFieldFormatter(SimpleFormatter):
         mins = tm // 60
         tm -= mins * 60
         secs = tm % 60
-        return self.get_pre() + super(TimeFieldFormatter, self).format(*(hrs, mins, secs), *args, **kwargs)
+        return super(TimeFieldFormatter, self).format(*(hrs, mins, secs), *args, **kwargs)
 
 
 class DoubleFormatter(LabelFormatter):
     def __init__(self, f1='', f2='', post='',
-                 col='#212121', colmax='#32cb00', colmin='#ffeb3b',
+                 col='#212121', colmax='#32cb00', colmin='#fdd835',
                  colerror='#f44336', **kwargs):
         super(DoubleFormatter, self).__init__(
             col=col, f1=f1, f2=f2, post=post,
@@ -305,10 +311,10 @@ class UserFormatter(LabelFormatter):
 
 class StateFormatter(LabelFormatter):
     def __init__(self, col='#212121', pre='$D ST: ', post='',
-                 colmax='#32cb00', colmin='#ffeb3b', colerror='#f44336', **kwargs):
+                 colmax='#32cb00', colmin='#fdd835', colerror='#f44336', **kwargs):
         super(StateFormatter, self).__init__(
             name='State', pre=pre, type='state',
-            example_conf=(DEVSTATE_DISCONNECTED,), col=col, post=post, timeouttime=0,
+            example_conf=dict(state=DEVSTATE_DISCONNECTED), col=col, post=post, timeouttime=0,
             colmax=colmax, colmin=colmin, colerror=colerror, **kwargs)
 
     def _set_post(self, post):

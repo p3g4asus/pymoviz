@@ -78,7 +78,7 @@ class OSCManager(object):
                 self.handle(COMMAND_PING, self.on_command_ping)
 
     async def send_command_ping(self):
-        _LOGGER.debug("Pinging")
+        # _LOGGER.debug("Pinging")
         try:
             self.send(COMMAND_PING)
         except Exception:
@@ -93,7 +93,7 @@ class OSCManager(object):
     def ping_sender_timer_init(self, intv=2.9):
         if self.ping:
             self.ping.cancel()
-        _LOGGER.debug(f'Rearm timer ping send {intv}')
+        # _LOGGER.debug(f'Rearm timer ping send {intv}')
         self.ping = Timer(intv, self.send_command_ping)
 
     def on_ping_timeout(self, timeout):
@@ -103,15 +103,17 @@ class OSCManager(object):
             self.user_on_ping_timeout(timeout)
 
     def on_command_ping(self):
-        _LOGGER.debug('On command ping')
+        # _LOGGER.debug('On command ping')
         if self.ping_timeout is not False:
             self.ping_timeout = False
             self.on_ping_timeout(False)
+            _LOGGER.debug('Connection to backend timeout')
         self.ping_handler_timer_init()
 
     async def set_ping_timeout(self):
         self.ping_timeout = True
         self.on_ping_timeout(True)
+        _LOGGER.debug('Connection to backend OK')
 
     def deserialize(self, args):
         if len(args) == 1 and args[0] == '()':
