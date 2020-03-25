@@ -279,7 +279,7 @@ class DoubleFieldFormatter(DoubleFormatter):
 class SessionFormatter(LabelFormatter):
     def __init__(self, col='#212121', pre='$D Ses: ', **kwargs):
         super(SessionFormatter, self).__init__(
-            name='Session', pre=pre, type='state', timeouttime=0,
+            name='Session', pre=pre, type='session', timeouttime=0,
             example_conf=dict(datestart=1584885218699), col=col, **kwargs)
 
     def _set_col(self, col):

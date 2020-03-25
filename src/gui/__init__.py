@@ -658,6 +658,7 @@ class MainApp(MDApp):
 
     def on_command_handle(self, inst, command, exitv, *args):
         if command == COMMAND_NEWSESSION:
+            _LOGGER.debug(f'New session received: {args[0]}')
             self.root.ids.id_tabcont.format(inst.get_device(), session=args[0], user=self.current_user)
         elif command == COMMAND_DEVICEFIT:
             self.root.ids.id_tabcont.format(inst.get_device(), device=args[0], fitobj=args[1], state=args[2])

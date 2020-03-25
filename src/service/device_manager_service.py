@@ -361,37 +361,40 @@ class DeviceManagerService(object):
             _LOGGER.error(f'Load DB error {traceback.format_exc()}')
 
     async def start_remaining_connection_operations(self, bytimer=True):
-        _LOGGER.debug(f'Starting remaining con timer={bytimer}')
-        if bytimer:
-            self.timer_obj = None
-        elif self.timer_obj:
-            self.timer_obj.cancel()
-            self.timer_obj = None
-        for dm in self.devicemanagers_active.copy():
-            info = self.devicemanagers_active_info[dm.get_uid()]
-            _LOGGER.debug(f'Processing[{dm.get_uid()}] {dm.get_device()} -> {info["operation"]}')
-            if info['operation'] == 'd':
-                if not dm.is_connected_state():
-                    self.devicemanagers_active.remove(dm)
-                    self.devicemanagers_active_done.append(dm)
-                else:
-                    dm.disconnect()
-                    break
-            elif info['operation'] == 'c':
-                if dm.is_connected_state():
-                    self.devicemanagers_active.remove(dm)
-                    self.devicemanagers_active_done.append(dm)
-                elif bytimer:
-                    dm.set_user(self.last_user)
-                    dm.connect()
-                    break
-                else:
-                    if info['retry'] < self.connect_retry:
-                        self.timer_obj = Timer(self.connect_secs, self.start_remaining_connection_operations)
-                        info['retry'] += 1
+        try:
+            _LOGGER.debug(f'Starting remaining con timer={bytimer}')
+            if bytimer:
+                self.timer_obj = None
+            elif self.timer_obj:
+                self.timer_obj.cancel()
+                self.timer_obj = None
+            for dm in self.devicemanagers_active.copy():
+                info = self.devicemanagers_active_info[dm.get_uid()]
+                _LOGGER.debug(f'Processing[{dm.get_uid()}] {dm.get_device()} -> {info["operation"]}')
+                if info['operation'] == 'd':
+                    if not dm.is_connected_state():
+                        self.devicemanagers_active.remove(dm)
+                        self.devicemanagers_active_done.append(dm)
+                    else:
+                        dm.disconnect()
+                        break
+                elif info['operation'] == 'c':
+                    if dm.is_connected_state():
+                        self.devicemanagers_active.remove(dm)
+                        self.devicemanagers_active_done.append(dm)
+                    elif bytimer:
+                        dm.set_user(self.last_user)
+                        dm.connect()
                         break
                     else:
-                        _LOGGER.debug(f'Retry FINISH for device[{dm.get_uid()}] {dm.get_device()}')
+                        if info['retry'] < self.connect_retry:
+                            self.timer_obj = Timer(self.connect_secs, self.start_remaining_connection_operations)
+                            info['retry'] += 1
+                            break
+                        else:
+                            _LOGGER.debug(f'Retry FINISH for device[{dm.get_uid()}] {dm.get_device()}')
+        except Exception:
+            _LOGGER.error(f'Rem op error {traceback.format_exc()}')
 
     def set_operation_ended(self, info):
         info['operation'] = ''

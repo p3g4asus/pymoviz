@@ -132,7 +132,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             self.dispatch("on_state_transition", oldstate, st, reason)
 
     def connect(self, *args):
-        _LOGGER.debug(f'Connecting[{self.device.get_uid()}] {self.device.get_alias()}')
+        _LOGGER.debug(f'Connecting[{self.get_uid()}] {self.device.get_alias()}')
         if self.is_stopped_state():
             self.set_state(DEVSTATE_CONNECTING, DEVREASON_REQUESTED)
             if self.simulator_needs_reset and self.simulator:
