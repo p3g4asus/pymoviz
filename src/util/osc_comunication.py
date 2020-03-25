@@ -107,13 +107,13 @@ class OSCManager(object):
         if self.ping_timeout is not False:
             self.ping_timeout = False
             self.on_ping_timeout(False)
-            _LOGGER.debug('Connection to backend timeout')
+            _LOGGER.debug('Connection to backend OK')
         self.ping_handler_timer_init()
 
     async def set_ping_timeout(self):
         self.ping_timeout = True
         self.on_ping_timeout(True)
-        _LOGGER.debug('Connection to backend OK')
+        _LOGGER.debug('Connection to backend timeout')
 
     def deserialize(self, args):
         if len(args) == 1 and args[0] == '()':
@@ -124,7 +124,8 @@ class OSCManager(object):
         return tuple(args)
 
     def device_callback(self, address, *oscs):
-        _LOGGER.debug(f'Received cmd={address} par={str(oscs)}')
+        if address != COMMAND_PING:
+            _LOGGER.debug(f'Received cmd={address} par={str(oscs)}')
         warn = True
         if address in self.callbacks:
             item = None
