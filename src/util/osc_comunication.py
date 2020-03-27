@@ -76,7 +76,7 @@ class OSCManager(object):
         # _LOGGER.debug("Connecting")
         try:
             hp = (self.hostconnect, self.portconnect)
-            self.on_command_connection(hp, self.portconnect, timeout=True)
+            self.on_command_connection(hp, self.portconnect, timeout=1)
         except Exception:
             _LOGGER.error(f'Connection send error: {traceback.format_exc()}')
         self.connection_sender_timer_init()
@@ -135,7 +135,7 @@ class OSCManager(object):
         if hpstr in self.connected_hosts:
             notifytimeout = True
             if self.hostconnect:
-                if not self.connected_hosts[hpstr]['timeout']:
+                if self.connected_hosts[hpstr]['timeout'] is not True:
                     self.connected_hosts[hpstr]['timeout'] = True
                 else:
                     notifytimeout = False
