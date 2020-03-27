@@ -188,7 +188,7 @@ class MyTabs(MDTabs):
             if t.view not in views:
                 removel.append(t)
         for t in removel:
-            self.remove_widget(removel)
+            self.remove_widget(t)
         for t in views:
             self.add_widget(t)
 
@@ -616,11 +616,10 @@ class MainApp(MDApp):
         self.oscer = OSCManager(
             hostlisten=self.config.get('frontend', 'host'),
             portlisten=int(self.config.get('frontend', 'port')),
-            hostcommand=self.config.get('backend', 'host'),
-            portcommand=int(self.config.get('backend', 'port')))
-        await self.oscer.init(pingsend=False,
-                              on_init_ok=self.on_osc_init_ok,
-                              on_ping_timeout=self.on_ping_timeout,
+            hostconnect=self.config.get('backend', 'host'),
+            portconnect=int(self.config.get('backend', 'port')))
+        await self.oscer.init(on_init_ok=self.on_osc_init_ok,
+                              on_connection_timeout=self.on_connection_timeout,
                               loop=self.loop)
 
     def get_formatters(self):
@@ -640,6 +639,7 @@ class MainApp(MDApp):
         _LOGGER.debug('Osc init ok done')
 
     def on_list_devices_rv(self, *ld):
+        del self.devicemanagers_by_uid[:]
         for x in range(0, len(ld), 2):
             dev = ld[x + 1]
             uid = ld[x]
@@ -704,17 +704,17 @@ class MainApp(MDApp):
             self.devicemanagers_pre_init_done = True
             self.start_server()
 
-    def on_ping_timeout(self, is_timeout):
+    def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
             self.do_pre()
-            toast('Timeout comunicating with the service')
+            toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
         else:
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init.keys():
                     if self.devicemanagers_pre_init[d] is None:
                         self.devicemanagers_pre_init[d] = True
                 self.devicemanagers_pre_init_done = True
-            toast('Serivice connection OK')
+            toast(f'Serivice connection OK ({hp[0]}:{hp[1]})')
 
     def on_start(self):
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
@@ -827,8 +827,6 @@ class MainApp(MDApp):
                 arg = dict(db_fname=join(MainApp.db_dir(), 'maindb.db'),
                            hostlisten=self.config.get('backend', 'host'),
                            portlisten=int(self.config.getint('backend', 'port')),
-                           hostcommand=self.config.get('frontend', 'host'),
-                           portcommand=int(self.config.getint('frontend', 'port')),
                            connect_secs=int(self.config.getint('bluetooth', 'connect_secs')),
                            connect_retry=int(self.config.getint('bluetooth', 'connect_retry')),
                            verbose=True)

@@ -8,7 +8,7 @@ from db import SerializableDBObj
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import AsyncIOOSCUDPServer
 from pythonosc.udp_client import SimpleUDPClient
-from util.const import COMMAND_CONFIRM, COMMAND_PING
+from util.const import COMMAND_CONFIRM, COMMAND_CONNECTION
 from util.timer import Timer
 from util import init_logger
 
@@ -19,21 +19,20 @@ class OSCManager(object):
     def __init__(self,
                  hostlisten='127.0.0.1',
                  portlisten=33217,
-                 hostcommand='127.0.0.1',
-                 portcommand=33218):
+                 hostconnect=None,
+                 portconnect=None):
         self.hostlisten = hostlisten
-        self.hostcommand = hostcommand
         self.portlisten = portlisten
-        self.portcommand = portcommand
+        self.hostconnect = hostconnect
+        self.portconnect = portconnect
         self.on_init_ok = None
-        self.client = None
         self.server = None
         self.transport = None
         self.protocol = None
         self.dispatcher = Dispatcher()
-        self.ping = None
-        self.ping_timeout = None
-        self.user_on_ping_timeout = None
+        self.client_connection_sender_timer = None
+        self.user_on_connection_timeout = None
+        self.connected_hosts = dict()
         self.callbacks = dict()
         self.cmd_queue = []
 
@@ -43,77 +42,108 @@ class OSCManager(object):
 
     async def init(self,
                    loop=asyncio.get_event_loop(),
-                   pingsend=False,
-                   on_ping_timeout=None,
+                   on_connection_timeout=None,
                    on_init_ok=None):
         if not self.transport:
             try:
-                _LOGGER.debug(f"OSC trying to init pingsend={pingsend}")
-                self.user_on_ping_timeout = on_ping_timeout
+                _LOGGER.debug(f"OSC trying to init conpars={self.hostlisten}:{self.portlisten} -> {self.hostconnect}:{self.portconnect}")
+                self.user_on_connection_timeout = on_connection_timeout
                 self.server = AsyncIOOSCUDPServer(
                     (self.hostlisten, self.portlisten),
                     self.dispatcher, loop)
-                if self.ping:
-                    self.ping = None
-                self.dispatcher.map('/*', self.device_callback)
+                if self.client_connection_sender_timer:
+                    self.client_connection_sender_timer = None
+                self.dispatcher.map('/*', self.device_callback, needs_reply_address=True)
                 self.transport, self.protocol = await self.server.create_serve_endpoint()
-                self.client = SimpleUDPClient(self.hostcommand, self.portcommand)
             except (Exception, OSError):
                 _LOGGER.error(f"OSC init exception {traceback.format_exc()}")
-                self.ping = Timer(1, partial(
+                self.client_connection_sender_timer = Timer(1, partial(
                     self.init,
                     loop=loop,
-                    ping=pingsend,
-                    on_ping_timeout=on_ping_timeout,
+                    on_connection_timeout=on_connection_timeout,
                     on_init_ok=on_init_ok))
                 return
-            if on_init_ok:
-                on_init_ok()
-            if pingsend:
-                self.ping_sender_timer_init(0)
-                self.ping_timeout = False
-            else:
-                self.ping_handler_timer_init()
-                self.ping_timeout = None
-                self.handle(COMMAND_PING, self.on_command_ping)
+            try:
+                if on_init_ok:
+                    on_init_ok()
+                if self.hostconnect:
+                    self.connection_sender_timer_init(0)
+                self.handle(COMMAND_CONNECTION, self.on_command_connection)
+            except Exception:
+                _LOGGER.error(f'OSC post init error {traceback.format_exc()}')
 
-    async def send_command_ping(self):
-        # _LOGGER.debug("Pinging")
+    async def send_client_command_connection(self):
+        # _LOGGER.debug("Connecting")
         try:
-            self.send(COMMAND_PING)
+            hp = (self.hostconnect, self.portconnect)
+            self.on_command_connection(hp, self.portconnect, timeout=True)
         except Exception:
-            _LOGGER.error(f'Ping send error: {traceback.format_exc()}')
-        self.ping_sender_timer_init()
+            _LOGGER.error(f'Connection send error: {traceback.format_exc()}')
+        self.connection_sender_timer_init()
 
-    def ping_handler_timer_init(self, intv=6):
-        if self.ping:
-            self.ping.cancel()
-        self.ping = Timer(intv, self.set_ping_timeout)
+    def connection_handler_timer_init(self, hp, intv=6):
+        hpstr = f'{hp[0]}:{hp[1]}'
+        if hpstr in self.connected_hosts:
+            d = self.connected_hosts[hpstr]
+            if d['timer']:
+                d['timer'].cancel()
+            d['timer'] = Timer(intv, partial(self.set_connection_timeout, hp=hp))
 
-    def ping_sender_timer_init(self, intv=2.9):
-        if self.ping:
-            self.ping.cancel()
-        # _LOGGER.debug(f'Rearm timer ping send {intv}')
-        self.ping = Timer(intv, self.send_command_ping)
+    def connection_sender_timer_init(self, intv=2.9):
+        if self.client_connection_sender_timer:
+            self.client_connection_sender_timer.cancel()
+        # _LOGGER.debug(f'Rearm timer connect send {intv}')
+        self.client_connection_sender_timer = Timer(intv, self.send_client_command_connection)
 
-    def on_ping_timeout(self, timeout):
+    def on_connection_timeout(self, hp, timeout):
         if not timeout:
             self.process_cmd_queue()
-        if self.user_on_ping_timeout:
-            self.user_on_ping_timeout(timeout)
+        if self.user_on_connection_timeout:
+            self.user_on_connection_timeout(hp, timeout)
 
-    def on_command_ping(self):
-        # _LOGGER.debug('On command ping')
-        if self.ping_timeout is not False:
-            self.ping_timeout = False
-            self.on_ping_timeout(False)
-            _LOGGER.debug('Connection to backend OK')
-        self.ping_handler_timer_init()
+    def on_command_connection(self, hp, portlisten, timeout=False):
+        # _LOGGER.debug(f'On command connection type={type(portlisten)}')
+        hp = (hp[0], portlisten)
+        hpstr = f'{hp[0]}:{hp[1]}'
+        send_command = self.hostconnect is None or timeout
+        new_connection = not timeout
+        rearm_timer = not timeout
+        if hpstr not in self.connected_hosts:
+            self.connected_hosts[hpstr] = dict(
+                hp=hp,
+                timeout=timeout,
+                timer=None,
+                client=SimpleUDPClient(hp[0], hp[1])
+            )
+            rearm_timer = True
+        elif not timeout and self.connected_hosts[hpstr]['timeout']:
+            self.connected_hosts[hpstr]['timeout'] = False
+            _LOGGER.debug('Setting timeout to false')
+        else:
+            new_connection = False
+        if new_connection:
+            self.on_connection_timeout(hp, False)
+            _LOGGER.debug(f'Connection to {hp[0]}:{hp[1]} estabilished')
+        if send_command:
+            _LOGGER.debug(f'Sending connect command as {"client" if self.hostconnect else "server"} to {hp[0]}:{hp[1]} (port={self.portlisten})')
+            self.connected_hosts[hpstr]['client'].send_message(COMMAND_CONNECTION, (self.portlisten,))
+        if rearm_timer:
+            self.connection_handler_timer_init(hp=hp)
 
-    async def set_ping_timeout(self):
-        self.ping_timeout = True
-        self.on_ping_timeout(True)
-        _LOGGER.debug('Connection to backend timeout')
+    async def set_connection_timeout(self, hp=None):
+        hpstr = f'{hp[0]}:{hp[1]}'
+        if hpstr in self.connected_hosts:
+            notifytimeout = True
+            if self.hostconnect:
+                if not self.connected_hosts[hpstr]['timeout']:
+                    self.connected_hosts[hpstr]['timeout'] = True
+                else:
+                    notifytimeout = False
+            else:
+                del self.connected_hosts[hpstr]
+            if notifytimeout:
+                self.on_connection_timeout(hp, True)
+                _LOGGER.debug(f'Connection to {hp[0]}:{hp[1]} lost')
 
     def deserialize(self, args):
         if len(args) == 1 and args[0] == '()':
@@ -123,8 +153,8 @@ class OSCManager(object):
             args[i] = SerializableDBObj.deserialize(args[i], args[i])
         return tuple(args)
 
-    def device_callback(self, address, *oscs):
-        if address != COMMAND_PING:
+    def device_callback(self, client_address, address, *oscs):
+        if address != COMMAND_CONNECTION:
             _LOGGER.debug(f'Received cmd={address} par={str(oscs)}')
         warn = True
         if address in self.callbacks:
@@ -146,9 +176,10 @@ class OSCManager(object):
                     item['t'].cancel()
                     self.unhandle_device(address, uid)
                 try:
-                    item['f'](*item['a'], *self.deserialize(pars))
+                    fixedpars = item['a'] if address != COMMAND_CONNECTION else (client_address,) + item['a']
+                    item['f'](*fixedpars, *self.deserialize(pars))
                 except Exception:
-                    _LOGGER.error(f'Handler error {traceback.format_exc()}')
+                    _LOGGER.error(f'Handler({fixedpars}, {pars} [{self.deserialize(pars)}]) error {traceback.format_exc()}')
         if warn:
             _LOGGER.warning(f'Handler not found ({self.callbacks})')
 
@@ -179,19 +210,24 @@ class OSCManager(object):
             for _, y in x.items():
                 if y['t']:
                     y['t'].cancel()
-        if self.ping:
-            self.ping.cancel()
-            self.ping = None
-        self.user_on_ping_timeout = None
+        for _, x in self.connected_hosts.items():
+            if x['timer']:
+                x['timer'].cancel()
+        if self.client_connection_sender_timer:
+            self.client_connection_sender_timer.cancel()
+            self.client_connection_sender_timer = None
+        self.user_on_connection_timeout = None
 
     def process_cmd_queue(self):
         if len(self.cmd_queue):
-            if self.ping_timeout is False:
+            hpstr = f'{self.hostconnect}:{self.portconnect}'
+            if not self.hostconnect or (hpstr in self.connected_hosts and not self.connected_hosts[hpstr]['timeout']):
                 el = self.cmd_queue.pop(0)
                 args = ('()',) if not el['args'] else el['args']
-                if el['address'] != COMMAND_PING:
-                    _LOGGER.debug(f'Sending {el["address"]} -> {args}')
-                self.client.send_message(el['address'], args)
+                for _, d in self.connected_hosts.items():
+                    if el['address'] != COMMAND_CONNECTION:
+                        _LOGGER.debug(f'Sending[{d["hp"][0]}:{d["hp"][1]}] {el["address"]} -> {args}')
+                    d['client'].send_message(el['address'], args)
                 self.process_cmd_queue()
 
     def send(self, address, *args, confirm_callback=None, confirm_params=(), timeout=-1):

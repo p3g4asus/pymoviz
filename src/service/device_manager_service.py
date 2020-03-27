@@ -59,8 +59,8 @@ class DeviceManagerService(object):
         self.devicemanagers_active_info = dict()
 
     async def init_osc(self):
-        self.oscer = OSCManager(self.hostlisten, self.portlisten, self.hostcommand, self.portcommand)
-        await self.oscer.init(pingsend=True, on_init_ok=self.on_osc_init_ok)
+        self.oscer = OSCManager(hostlisten=self.hostlisten, portlisten=self.portlisten)
+        await self.oscer.init(on_init_ok=self.on_osc_init_ok)
 
     def on_osc_init_ok(self):
         self.oscer.handle(COMMAND_STOP, self.on_command_stop)
@@ -482,19 +482,17 @@ def main():
         args = json.loads(p4a)
         # hostlisten
         # portlisten
-        # hostcommand
-        # portcommand
+        # hostconnect
+        # portconnect
         # connect_retry
         # connect_secs
         # db_fname
     else:
         parser = argparse.ArgumentParser(prog=__prog__)
-        parser.add_argument('--portcommand', type=int, help='port number', required=False, default=11002)
-        parser.add_argument('--hostcommand', required=False, default="127.0.0.1")
         parser.add_argument('--portlisten', type=int, help='port number', required=False, default=11001)
         parser.add_argument('--hostlisten', required=False, default="0.0.0.0")
-        parser.add_argument('--ab_portcommand', type=int, help='port number', required=False, default=9004)
-        parser.add_argument('--ab_hostcommand', required=False, default="127.0.0.1")
+        parser.add_argument('--ab_portconnect', type=int, help='port number', required=False, default=9004)
+        parser.add_argument('--ab_hostconnect', required=False, default="127.0.0.1")
         parser.add_argument('--ab_portlisten', type=int, help='port number', required=False, default=9003)
         parser.add_argument('--ab_hostlisten', required=False, default="0.0.0.0")
         parser.add_argument('--connect_retry', type=int, help='connect retry', required=False, default=10)

@@ -99,25 +99,25 @@ class MainApp(MDApp):
         self.oscer = OSCManager(
             hostlisten='127.0.0.1',
             portlisten=int(self.config.get('local', 'frontendport')),
-            hostcommand='127.0.0.1',
-            portcommand=int(self.config.get('local', 'backendport')))
-        await self.oscer.init(pingsend=False, on_init_ok=self.on_osc_init_ok, on_ping_timeout=self.on_ping_timeout)
+            hostconnect='127.0.0.1',
+            portconnect=int(self.config.get('local', 'backendport')))
+        await self.oscer.init(on_init_ok=self.on_osc_init_ok, on_connection_timeout=self.on_connection_timeout)
 
     def on_osc_init_ok(self):
         toast('OSC Init OK')
         _LOGGER.debug("GUI1: OSC init ok")
 
-    def on_ping_timeout(self, is_timeout):
+    def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
             if not self.server_started:
                 _LOGGER.debug("GUI1: Starting service")
                 self.start_server()
-            toast('Timeout comunicating with server')
-            _LOGGER.debug("GUI1: OSC timeout")
+            toast(f'Timeout comunicating with server ({hp[0]}:{hp[1]})')
+            _LOGGER.debug(f"GUI1: OSC timeout ({hp[0]}:{hp[1]})")
             self.server_started = True
         else:
-            _LOGGER.debug("GUI1: OSC timeout OK")
-            toast('OSC comunication OK')
+            _LOGGER.debug(f"GUI1: OSC timeout OK ({hp[0]}:{hp[1]})")
+            toast(f'OSC comunication OK ({hp[0]}:{hp[1]})')
 
     def do_pre(self, on_finish, loop):
         class PreBluetoothDispatcher(BluetoothDispatcher):
@@ -243,9 +243,6 @@ class MainApp(MDApp):
                 arg = dict(hostlisten=self.config.get('backend', 'host'),
                            portlisten=self.config.getint('backend', 'port'),
                            portlistenlocal=int(self.config.getint('local', 'backendport')),
-                           hostcommand=self.config.get('frontend', 'host'),
-                           portcommand=int(self.config.getint('frontend', 'port')),
-                           portcommandlocal=int(self.config.getint('local', 'frontendport')),
                            loghost=self.config.get('log', 'host'),
                            logport=int(self.config.get('log', 'port')),
                            verbose=True)

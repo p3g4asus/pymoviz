@@ -29,8 +29,8 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
     def __init__(self,
                  hostlisten=None,
                  portlisten=33218,
-                 hostcommand='127.0.0.1',
-                 portcommand=33217, **kwargs):
+                 hostconnect='127.0.0.1',
+                 portconnect=33217, **kwargs):
         self._init_oscer = False
         if not BluetoothDispatcherW._oscer:
             if hostlisten:
@@ -38,8 +38,8 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
                 BluetoothDispatcherW._oscer = OSCManager(
                     hostlisten=hostlisten,
                     portlisten=portlisten,
-                    hostcommand=hostcommand,
-                    portcommand=portcommand
+                    hostconnect=hostconnect,
+                    portconnect=portconnect
                 )
         _LOGGER.debug(f'Constructing BluetoothDispatcherW {kwargs} events={self.__events__}')
         super(BluetoothDispatcherW, self).__init__(**kwargs)
@@ -49,18 +49,17 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         if self._init_oscer:
             Timer(0, partial(
                 self._oscer.init,
-                pingsend=False,
                 on_init_ok=self.on_osc_init_ok,
-                on_ping_timeout=self.on_ping_timeout))
+                on_connection_timeout=self.on_connection_timeout))
 
     def on_osc_init_ok(self):
         pass
 
-    def on_ping_timeout(self, is_timeout):
+    def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
-            _LOGGER.debug('Backend connection Timeout')
+            _LOGGER.debug(f'Backend connection Timeout ({hp[0]}:{hp[1]})')
         else:
-            _LOGGER.debug('Backend connection OK')
+            _LOGGER.debug(f'Backend connection OK ({hp[0]}:{hp[1]})')
 
     def start_scan(self, scan_settings=None, scan_filters=None):
         """Start a scan for devices.
@@ -178,15 +177,11 @@ if platform == 'android':
     class BluetoothDispatcherWC(BluetoothDispatcher):
         def __init__(self,
                      hostlisten='127.0.0.1',
-                     portlisten=33217,
-                     hostcommand='127.0.0.1',
-                     portcommand=33218, **kwargs):
-            _LOGGER.warning(f'BluetoothDispatcherWC init L({hostlisten}:{portlisten}) C({hostcommand}:{portcommand})')
+                     portlisten=33217, **kwargs):
+            _LOGGER.warning(f'BluetoothDispatcherWC init L({hostlisten}:{portlisten})')
             self._oscer = OSCManager(
                 hostlisten=hostlisten,
-                portlisten=portlisten,
-                hostcommand=hostcommand,
-                portcommand=portcommand
+                portlisten=portlisten
             )
             super(BluetoothDispatcherWC, self).__init__(**kwargs)
             _LOGGER.warning('BluetoothDispatcherWC init end')
@@ -196,7 +191,6 @@ if platform == 'android':
             super(BluetoothDispatcherWC, self)._set_ble_interface()
             Timer(0, partial(
                 self._oscer.init,
-                pingsend=True,
                 on_init_ok=self.on_osc_init_ok))
 
         def start_scan_wrap(self, ssett, sfilt):

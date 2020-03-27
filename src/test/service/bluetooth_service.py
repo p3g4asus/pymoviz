@@ -22,19 +22,17 @@ class BluetoothService(object):
 
     async def init_osc(self):
         _LOGGER.debug("Initing OSC")
-        self.oscer = OSCManager('127.0.0.1', self.portlistenlocal, '127.0.0.1', self.portcommandlocal)
-        await self.oscer.init(pingsend=True, on_init_ok=self.on_osc_init_ok)
+        self.oscer = OSCManager('127.0.0.1', self.portlistenlocal)
+        await self.oscer.init(on_init_ok=self.on_osc_init_ok)
 
     def on_osc_init_ok(self):
         _LOGGER.debug("OSC init ok")
         try:
             self.oscer.handle(COMMAND_STOP, self.on_command_stop)
-            _LOGGER.debug(f"Trying to construct BluetoothDispatcherWC: L({self.hostlisten}:{self.portlisten}) C({self.hostcommand}:{self.portcommand})")
+            _LOGGER.debug(f"Trying to construct BluetoothDispatcherWC: L({self.hostlisten}:{self.portlisten})")
             self.bluetooth = BluetoothDispatcherWC(
                 portlisten=self.portlisten,
-                portcommand=self.portcommand,
-                hostlisten=self.hostlisten,
-                hostcommand=self.hostcommand,
+                hostlisten=self.hostlisten
             )
             _LOGGER.debug('Constructed BluetoothDispatcherWC')
         except Exception:
