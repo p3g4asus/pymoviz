@@ -161,7 +161,7 @@ class SerializableDBObj(object):
                 getattr(self, f)
             except AttributeError:
                 setattr(self, f, None)
-                _LOGGER.debug(f'Set {self.__class__.__name__}.{f} ({c}) = None')
+                # _LOGGER.debug(f'Set {self.__class__.__name__}.{f} ({c}) = None')
         setattr(self, 'rowid', getattr(self, self.__id__))
         self.set_update_columns()
 

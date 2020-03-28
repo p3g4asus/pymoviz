@@ -1,3 +1,4 @@
+from functools import partial
 import traceback
 
 from able import BluetoothDispatcher
@@ -258,6 +259,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
 
     def process_found_device(self, device):
         super(KeiserM3iDeviceManager, self).process_found_device(device)
+        _LOGGER.debug(f'process_found_device: state={self.state} addr_my={self.device.get_address()} addr_oth={device.get_address()}')
         if self.state != DEVSTATE_DISCONNECTING:
             if device.get_address() == self.device.get_address():
                 if self.state == DEVSTATE_CONNECTING:
@@ -265,5 +267,6 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
                     self.rescan_timer_init(1800)
                 if self.state != DEVSTATE_SEARCHING and self.state != DEVSTATE_DISCONNECTING:
                     k3 = self.parse_adv(device.advertisement)
+                    _LOGGER.debug(f'k3 Parse result {k3}')
                     if k3:
-                        Timer(0, self.step(k3))
+                        Timer(0, partial(self.step, k3))

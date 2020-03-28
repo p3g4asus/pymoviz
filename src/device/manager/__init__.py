@@ -187,29 +187,29 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         pass
 
     def on_device(self, device, rssi, advertisement):
-        if self.state == DEVSTATE_SEARCHING:
-            adv = []
-            if advertisement:
-                if isinstance(advertisement, str):
-                    adv = json.loads(advertisement)
-                elif advertisement.data:
-                    adv = [x for x in advertisement.data]
-            if isinstance(device, str):
-                device = json.loads(device)
-            elif not isinstance(device, dict):
-                device = dict(
-                    address=device.getAddress(),
-                    name=device.getName()
-                )
-            d = Device(
-                address=device['address'],
-                name=device['name'],
-                rssi=rssi,
-                type=self.__type__,
-                advertisement=adv
+        adv = []
+        if advertisement:
+            if isinstance(advertisement, str):
+                adv = json.loads(advertisement)
+            elif advertisement.data:
+                adv = [x for x in advertisement.data]
+        if isinstance(device, str):
+            device = json.loads(device)
+        elif not isinstance(device, dict):
+            device = dict(
+                address=device.getAddress(),
+                name=device.getName()
             )
+        d = Device(
+            address=device['address'],
+            name=device['name'],
+            rssi=rssi,
+            type=self.__type__,
+            advertisement=adv
+        )
+        if self.state == DEVSTATE_SEARCHING:
             self.oscer.send_device(COMMAND_DEVICEFOUND, self._uid, d.serialize())
-            self.process_found_device(d)
+        self.process_found_device(d)
 
     async def on_command_savedevice_async(self, device, *args):
         rv = await device.to_db(self.db)
