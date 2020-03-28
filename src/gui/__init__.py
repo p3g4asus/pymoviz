@@ -639,7 +639,7 @@ class MainApp(MDApp):
         _LOGGER.debug('Osc init ok done')
 
     def on_list_devices_rv(self, *ld):
-        del self.devicemanagers_by_uid[:]
+        self.devicemanagers_by_uid.clear()
         for x in range(0, len(ld), 2):
             dev = ld[x + 1]
             uid = ld[x]

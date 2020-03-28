@@ -234,10 +234,10 @@ class SerializableDBObj(object):
                     cl = SerializableDBObj.get_class(rer.group(1))()
                     cl._process_kwargs(dct)
                     return cl
-            else:
-                _LOGGER.debug(f'Invalid serialized str {jsons}')
+            # else:
+            #     _LOGGER.debug(f'Invalid serialized str {jsons}')
         except Exception:
-            _LOGGER.error(traceback.format_exc())
+            _LOGGER.error(f'Deserialize error {traceback.format_exc()}')
         return rv
 
     async def delete(self, db, commit=True):

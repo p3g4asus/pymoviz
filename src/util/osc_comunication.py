@@ -118,14 +118,14 @@ class OSCManager(object):
             rearm_timer = True
         elif not timeout and self.connected_hosts[hpstr]['timeout']:
             self.connected_hosts[hpstr]['timeout'] = False
-            _LOGGER.debug('Setting timeout to false')
+            # _LOGGER.debug('Setting timeout to false')
         else:
             new_connection = False
         if new_connection:
             self.on_connection_timeout(hp, False)
             _LOGGER.debug(f'Connection to {hp[0]}:{hp[1]} estabilished')
         if send_command:
-            _LOGGER.debug(f'Sending connect command as {"client" if self.hostconnect else "server"} to {hp[0]}:{hp[1]} (port={self.portlisten})')
+            # _LOGGER.debug(f'Sending connect command as {"client" if self.hostconnect else "server"} to {hp[0]}:{hp[1]} (port={self.portlisten})')
             self.connected_hosts[hpstr]['client'].send_message(COMMAND_CONNECTION, (self.portlisten,))
         if rearm_timer:
             self.connection_handler_timer_init(hp=hp)
