@@ -178,9 +178,9 @@ class MyTabs(MDTabs):
         self.tab_list = []
         self.current_tab = None
 
-    def format(self, device, **kwargs):
+    def format(self, devobj, **kwargs):
         for tb in self.tab_list:
-            tb.format(device, **kwargs)
+            tb.format(devobj, **kwargs)
 
     def new_view_list(self, views):
         removel = list()

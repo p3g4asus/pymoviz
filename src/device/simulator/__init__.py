@@ -25,11 +25,13 @@ class DeviceSimulator(abc.ABC, EventDispatcher):
     def inner_reset(self, conf, userid):
         pass
 
-    def __init__(self, deviceid, conf, userid, db, **kwargs):
-        super(DeviceSimulator, self).__init__(**kwargs)
+    def __init__(self, db, deviceid, conf, user, on_session=None, **kwargs):
+        super(DeviceSimulator, self).__init__()
         self.db = db
         self.deviceid = deviceid
-        self.reset(conf, userid)
+        if on_session:
+            self.bind(on_session=on_session)
+        self.reset(conf, user)
 
     async def step(self, obj):
         try:
@@ -72,6 +74,7 @@ class DeviceSimulator(abc.ABC, EventDispatcher):
         self.nUpdates = 0
         self.state = DEVSTATE_INVALIDSTEP
         self.session = None
+        self.lastUpdateTime = 0
         self.main_session_id = 0
         self.last_commit = 0
         self.inner_reset(conf, user)

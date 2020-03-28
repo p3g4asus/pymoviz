@@ -13,7 +13,7 @@ from util.const import (DEVREASON_REQUESTED, DEVREASON_TIMEOUT,
                         DEVSTATE_CONNECTED, DEVSTATE_CONNECTING,
                         DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_SEARCHING, DI_FIRMWARE, DI_SOFTWARE,
-                        DI_SYSTEMID)
+                        DI_SYSTEMID, DI_BLNAME)
 from util import init_logger
 from util.timer import Timer
 
@@ -81,10 +81,14 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             fields=['calorie']),
         SimpleFieldFormatter(
             name='Version',
-            example_conf=dict(DI_FIRMWARE=13, DI_SOFTWARE=22, DI_SYSTEMID=40),
-            format_str='0x%02X.0x%02X (%d)',
+            example_conf={
+                DI_BLNAME: 'M3i',
+                DI_FIRMWARE: 13,
+                DI_SOFTWARE: 22,
+                DI_SYSTEMID: 40},
+            format_str='%s 0x%02X.0x%02X (%d)',
             pre='$D ver: ',
-            fields=['DI_FIRMWARE', 'DI_SOFTWARE', 'DI_SYSTEMID']),
+            fields=[DI_BLNAME, DI_FIRMWARE, DI_SOFTWARE, DI_SYSTEMID]),
         TimeFieldFormatter(
             pre='$D TM: ')
     ]

@@ -1,6 +1,7 @@
 import abc
 import json
 from functools import partial
+import traceback
 
 from able import (REASON_DISCOVER_ERROR, REASON_NOT_ENABLED, STATE_CONNECTED, STATE_DISCONNECTED)
 from db.device import Device
@@ -17,7 +18,7 @@ from util.const import (COMMAND_CONFIRM, COMMAND_DELDEVICE, COMMAND_DEVICEFIT,
                         DEVSTATE_CONNECTED, DEVSTATE_CONNECTING,
                         DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_INVALIDSTEP, DEVSTATE_SEARCHING,
-                        DEVSTATE_UNINIT, MSG_COMMAND_TIMEOUT,
+                        DEVSTATE_UNINIT, DI_BLNAME, MSG_COMMAND_TIMEOUT,
                         MSG_CONNECTION_STATE_INVALID, MSG_DB_SAVE_ERROR)
 from util.timer import Timer
 
@@ -135,14 +136,14 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         _LOGGER.debug(f'Connecting[{self.get_uid()}] {self.device.get_alias()}')
         if self.is_stopped_state():
             self.set_state(DEVSTATE_CONNECTING, DEVREASON_REQUESTED)
-            if self.simulator_needs_reset and self.simulator:
+            if self.simulator_needs_reset:
                 self.simulator_needs_reset = False
                 if not self.simulator:
                     self.simulator = self.__simulator_class__(
+                        self.db,
                         self.device.get_id(),
                         self.device.get_additionalsettings(),
-                        self.user.get_id(),
-                        self.db,
+                        self.user,
                         on_session=self.on_simulator_session)
                 else:
                     self.simulator.reset(self.device.get_additionalsettings(), self.user)
@@ -157,10 +158,16 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             self.simulator_needs_reset = True
 
     async def step(self, obj):
-        st = await self.simulator.step(obj)
-        self.set_state(st, DEVREASON_SIMULATOR)
-        if st != DEVSTATE_INVALIDSTEP:
-            self.oscer.send_device(COMMAND_DEVICEFIT, self._uid, self.device, obj, st)
+        st = None
+        try:
+            st = await self.simulator.step(obj)
+            self.set_state(st, DEVREASON_SIMULATOR)
+            nm = self.device.get_name()
+            obj.s(DI_BLNAME, nm if nm else 'N/A')
+            if st != DEVSTATE_INVALIDSTEP:
+                self.oscer.send_device(COMMAND_DEVICEFIT, self._uid, self.device, obj, st)
+        except Exception:
+            _LOGGER.error(f'Step error (state={st}, obj={obj}): {traceback.format_exc()}')
 
     def on_connection_state_change(self, status, state):
         if state == STATE_DISCONNECTED:

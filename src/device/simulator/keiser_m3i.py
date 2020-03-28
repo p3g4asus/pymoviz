@@ -2,12 +2,13 @@ from time import time
 import traceback
 
 from device.simulator import DeviceSimulator
-from util.const import DEVSTATE_DPAUSE, DEVSTATE_ONLINE
+from util.const import DEVSTATE_DPAUSE, DEVSTATE_INVALIDSTEP, DEVSTATE_ONLINE
 
 
 class KeiserM3iDeviceSimulator(DeviceSimulator):
     EQUAL_TIME_THRESHOLD = 4
     VALID_PULSE_THRESHOLD = 50
+    PAUSE_DELAY_DETECT_THRESHOLD = 10000
 
     def _set_offsets(self):
         self.time_o = self.time_old
@@ -108,6 +109,10 @@ class KeiserM3iDeviceSimulator(DeviceSimulator):
         try:
             if self.old_time_orig > f.time:
                 self._set_offsets()
+            f.s('pulseMn', 0.0)
+            f.s('rpmMn', 0.0)
+            f.s('speedMn', 0.0)
+            f.s('wattMn', 0.0)
             out = self.step_cyc(f, nowms)
             f.pulse //= 10
             f.pulseMn /= 10.0
@@ -117,6 +122,7 @@ class KeiserM3iDeviceSimulator(DeviceSimulator):
             return out
         except Exception:
             self.log(f'Step error {traceback.format_exc()}')
+            return DEVSTATE_INVALIDSTEP
 
     def step_cyc(self, f, nowms):
         now = nowms

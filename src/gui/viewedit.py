@@ -133,9 +133,9 @@ class ViewPlayWidget(BoxLayout, MDTabsBase):
         except Exception:
             pass
 
-    def format(self, device, **kwargs):
+    def format(self, devobj, **kwargs):
         for fi in self.ids.id_formatters.children:
-            fi.format(device, **kwargs)
+            fi.format(devobj, **kwargs)
 
 
 class FormatterItem(TwoLineListItem):
@@ -160,11 +160,11 @@ class FormatterItem(TwoLineListItem):
     def set_timeout(self):
         self.secondary_text = self.formatter.set_timeout()
 
-    def format(self, device, **kwargs):
+    def format(self, devobj, **kwargs):
         f = self.formatter
         txt = ''
         for types, obj in kwargs.items():
-            if (not device or device.get_id() == f.device) and types == f.type:
+            if (not devobj or devobj.get_id() == f.device) and types == f.type:
                 txt = f.format(obj)
         if txt:
             if self.player:

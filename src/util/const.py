@@ -33,7 +33,7 @@ CONFIRM_FAILED_2 = -2
 CONFIRM_FAILED_3 = -10
 
 DI_FIRMWARE = 'info_firmware'
-DI_BLNANE = 'info_blname'
+DI_BLNAME = 'info_blname'
 DI_SOFTWARE = 'info_software'
 DI_SYSTEMID = 'info_systemid'
 
