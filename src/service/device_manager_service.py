@@ -6,16 +6,16 @@ import logging
 import os
 import traceback
 from functools import partial
-from os.path import basename, dirname, isfile, join, splitext
+from os.path import basename, dirname, exists, isfile, join, splitext
 
 import aiosqlite
 from db.device import Device
 from db.user import User
 from db.view import View
 from util import find_devicemanager_classes, init_logger
-from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_DELDEVICE,
-                        COMMAND_DELUSER, COMMAND_DELVIEW, COMMAND_DISCONNECT,
-                        COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV,
+from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_CONNECTORS,
+                        COMMAND_DELDEVICE, COMMAND_DELUSER, COMMAND_DELVIEW,
+                        COMMAND_DISCONNECT, COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV,
                         COMMAND_LISTUSERS, COMMAND_LISTUSERS_RV,
                         COMMAND_LISTVIEWS, COMMAND_LISTVIEWS_RV,
                         COMMAND_NEWDEVICE, COMMAND_NEWSESSION, COMMAND_SAVEDEVICE,
@@ -28,6 +28,7 @@ from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_DELDEVICE,
                         MSG_DB_SAVE_ERROR, MSG_INVALID_ITEM,
                         MSG_TYPE_DEVICE_UNKNOWN)
 from util.osc_comunication import OSCManager
+from util.velocity_tcp import TcpClient
 from util.timer import Timer
 
 _LOGGER = None
@@ -45,9 +46,11 @@ class DeviceManagerService(object):
         _LOGGER.debug(f'Addit params for DM {self.addit_params}')
         self.db = None
         self.oscer = None
+        self.connectors_format = False
         self.devicemanager_class_by_type = dict()
         self.devicemanagers_by_id = dict()
         self.devicemanagers_by_uid = dict()
+        self.connectors_info = []
         self.users = []
         self.views = []
         self.devices = []
@@ -67,6 +70,7 @@ class DeviceManagerService(object):
         self.oscer.handle(COMMAND_NEWDEVICE, self.on_command_newdevice)
         self.oscer.handle(COMMAND_CONNECT, self.on_command_condisc, 'c')
         self.oscer.handle(COMMAND_DISCONNECT, self.on_command_condisc, 'd')
+        self.oscer.handle(COMMAND_CONNECTORS, self.on_command_connectors)
         self.oscer.handle(COMMAND_LISTDEVICES, self.on_command_listdevices)
         self.oscer.handle(COMMAND_LISTUSERS, self.on_command_listusers)
         self.oscer.handle(COMMAND_LISTVIEWS, self.on_command_listviews)
@@ -112,6 +116,17 @@ class DeviceManagerService(object):
 
     def on_command_listusers(self, *args):
         self.oscer.send(COMMAND_LISTUSERS_RV, *self.users)
+
+    def on_command_connectors(self, connectors_info, *args):
+        connectors_info = json.loads(connectors_info)
+        if connectors_info:
+            for ci in connectors_info:
+                if not exists(ci['temp']):
+                    self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1)
+                    return
+            self.connectors_format = True
+            Timer(0, partial(TcpClient.init_connectors_async, self.loop, connectors_info))
+        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK)
 
     def on_command_listdevices(self, *args):
         out = []
@@ -166,10 +181,15 @@ class DeviceManagerService(object):
         _LOGGER.debug(f'On Command Handle dm={dm} comm={command} a={args}')
         exitv = args[0] if args else None
         if command == COMMAND_NEWSESSION and exitv == CONFIRM_OK:
+            if self.connectors_format:
+                TcpClient.format(dm.get_device(), session=args[2], user=self.last_user)
             if self.main_session:
                 args[1].set_main_session_id(self.main_session.get_id())
             else:
                 self.main_session = args[2]
+        elif command == COMMAND_DEVICEFIT and exitv == CONFIRM_OK:
+            if self.connectors_format:
+                TcpClient.format(args[1], fitobj=args[2])
         elif command == COMMAND_DELDEVICE and exitv == CONFIRM_OK:
             ids = f'{dm.get_id()}'
             if ids in self.devicemanagers_by_id:
@@ -401,6 +421,8 @@ class DeviceManagerService(object):
         info['retry'] = 0
 
     def on_event_state_transition(self, dm, oldstate, newstate, reason):
+        if self.connectors_format:
+            TcpClient.format(dm.get_device(), state=newstate)
         uid = dm.get_uid()
         if uid in self.devicemanagers_active_info:  # assenza significa che stiamo facendo una ricerca
             info = self.devicemanagers_active_info[uid]

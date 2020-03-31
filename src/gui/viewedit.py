@@ -1,5 +1,6 @@
 from functools import partial
 import re
+import traceback
 
 from db.view import View
 from kivy.lang import Builder
@@ -121,16 +122,20 @@ class ViewPlayWidget(BoxLayout, MDTabsBase):
         self.on_view(self.view)
 
     def on_view(self, *args):
+        _LOGGER.debug(f'On view {args[0]}')
         self.text = self.view.name
         try:
             for i in range(len(self.ids.id_formatters.children) - 1, -1, -1):
                 fi = self.ids.id_formatters.children[i]
                 if isinstance(fi, FormatterItem):
-                    self.ids.id.formatters.remove_widget(fi)
+                    _LOGGER.debug(f'Removing formatter {fi.formatter.get_title()}')
+                    self.ids.id_formatters.remove_widget(fi)
             for f in self.view.items:
                 fi = FormatterItem(formatter=f)
+                _LOGGER.debug(f'Adding formatter {fi.formatter.get_title()}')
                 self.ids.id_formatters.add_widget(fi)
         except Exception:
+            _LOGGER.error(f'On view error {traceback.format_exc()}')
             pass
 
     def format(self, devobj, **kwargs):

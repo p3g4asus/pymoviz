@@ -12,5 +12,9 @@
         "desc": "Retries",
         "section": "bluetooth",
         "key": "connect_retry"
+    },
+    {
+        "type": "title",
+        "title": "Formatters dir: "
     }
 ]

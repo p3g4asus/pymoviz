@@ -151,7 +151,6 @@ class KeiserM3iDeviceSimulator(DeviceSimulator):
                 f.distanceR = 0.0
             else:
                 f.distanceR = f.speedMn * (self.sumTime / 3600000.0)
-        f.updateN = self.nUpdates
         f.time += self.time_o
         f.calorie += self.calorie_o
         f.distance += self.distance_o

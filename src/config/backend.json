@@ -8,7 +8,7 @@
     },
     {
         "type": "numeric",
-        "title": "OSC Port",
+        "title": "Port",
         "desc": "OSC port",
         "section": "backend",
         "key": "port"

@@ -8,12 +8,13 @@ When the user next runs the programs, their changes are restored.
 """
 
 import asyncio
+import fnmatch
 import json
 import os
 import traceback
 from functools import partial
 import logging
-from os.path import dirname, exists, expanduser, join
+from os.path import basename, dirname, exists, expanduser, isfile, join
 
 from db.user import User
 from db.view import View
@@ -36,15 +37,16 @@ from kivymd.uix.list import OneLineAvatarListItem
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.snackbar import Snackbar
 from kivymd.uix.tab import MDTabs
-from util.const import (COMMAND_CONNECT, COMMAND_DELUSER, COMMAND_DELVIEW,
-                        COMMAND_DEVICEFIT, COMMAND_DISCONNECT, COMMAND_LISTDEVICES,
-                        COMMAND_LISTDEVICES_RV, COMMAND_LISTUSERS,
+from util.const import (COMMAND_CONNECT, COMMAND_CONNECTORS, COMMAND_DELUSER,
+                        COMMAND_DELVIEW, COMMAND_DEVICEFIT, COMMAND_DISCONNECT,
+                        COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV, COMMAND_LISTUSERS,
                         COMMAND_LISTUSERS_RV, COMMAND_LISTVIEWS,
                         COMMAND_LISTVIEWS_RV, COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
                         COMMAND_SAVEUSER, COMMAND_SAVEVIEW, COMMAND_STOP,
                         CONFIRM_FAILED_3, CONFIRM_OK, MSG_COMMAND_TIMEOUT)
 from util.osc_comunication import OSCManager
 from util.timer import Timer
+from util.velocity_tcp import TcpClient
 from util import asyncio_graceful_shutdown, find_devicemanager_classes, init_logger
 
 
@@ -237,8 +239,11 @@ class MyTabs(MDTabs):
             return
         oldtab = self.already_present(view)
         if oldtab:
+            _LOGGER.debug(f'Already present: {oldtab.view} -> {oldtab.view is view}')
             oldtab.view = view
+            oldtab.on_view(view)
         else:
+            _LOGGER.debug(f'TAB not present: {view}')
             super(MyTabs, self).add_widget(tab, *args, **kwargs)
             self.tab_list.append(tab)
             _LOGGER.debug(f"Gui: Adding tab len = {len(self.tab_list)}")
@@ -596,6 +601,7 @@ class MainApp(MDApp):
     def __init__(self, loop=asyncio.get_event_loop(), *args, **kwargs):
         super(MainApp, self).__init__(*args, **kwargs)
         self.loop = loop
+        self._init_fields()
 
     def build(self):
         """
@@ -628,14 +634,84 @@ class MainApp(MDApp):
             formatters.extend(dm.get_formatters())
         return formatters
 
+    def find_connectors_info(self):
+        dir_additonals = join(self.db_dir(), 'connectors')
+        connectors_info = []
+        off = 0
+        if not exists(dir_additonals):
+            os.mkdir(dir_additonals)
+        for file in os.listdir(dir_additonals):
+            fp = join(dir_additonals, file)
+            bn = basename(file)
+            if isfile(fp) and fnmatch.fnmatch(file, '*.vm') and bn[0] != '_':
+                section = bn[:-3]
+                title = section.title()
+                cnf = [
+                    {
+                        "type": "title",
+                        "title": fp
+                    },
+                    {
+                        "type": "string",
+                        "title": "Host",
+                        "desc": f"{title} Host",
+                        "section": section,
+                        "key": "host"
+                    },
+                    {
+                        "type": "numeric",
+                        "title": "Port",
+                        "desc": f"{title} Port",
+                        "section": section,
+                        "key": "port"
+                    }
+                ]
+                self.config.setdefaults(
+                    section,
+                    {'host': '127.0.0.1', 'port': 6000 + off})
+                off += 1
+                connectors_info.append(dict(section=section,
+                                            config=cnf,
+                                            temp=fp,
+                                            hp=(self.config.get(section, 'host'),
+                                                int(self.config.get(section, 'port')))))
+        return connectors_info
+
+    def on_command_connectors_confirm(self, *args, timeout=False):
+        if not timeout and args[0] != CONFIRM_OK:
+            self.all_format = [self.root.ids.id_tabcont.format, TcpClient.format]
+            Timer(0, partial(TcpClient.init_connectors_async, self.loop, self.connectors_info))
+        else:
+            self.all_format = [self.root.ids.id_tabcont.format]
+        self.on_osc_init_ok_cmd_next(
+            COMMAND_LISTDEVICES
+            if not timeout else
+            COMMAND_CONNECTORS)
+
+    def on_osc_init_ok_cmd_next(self, nextcmd):
+        if self.init_osc_cmd:
+            self.init_osc_cmd = nextcmd
+            if self.init_osc_timer:
+                self.init_osc_timer.cancel()
+            self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd) if self.init_osc_cmd else None
+
+    async def on_osc_init_ok_cmd(self):
+        if self.init_osc_cmd == COMMAND_CONNECTORS:
+            self.oscer.send(COMMAND_CONNECTORS,
+                            json.dumps(self.connectors_info),
+                            confirm_callback=self.on_command_connectors_confirm,
+                            timeout=5)
+        elif self.init_osc_cmd:
+            self.init_osc_timer = Timer(5, self.on_osc_init_ok_cmd)
+            self.oscer.send(self.init_osc_cmd)
+
     def on_osc_init_ok(self):
         _LOGGER.debug('Osc init ok')
         self.oscer.handle(COMMAND_LISTDEVICES_RV, self.on_list_devices_rv)
         self.oscer.handle(COMMAND_LISTVIEWS_RV, self.on_list_views_rv)
         self.oscer.handle(COMMAND_LISTUSERS_RV, self.on_list_users_rv)
-        self.oscer.send(COMMAND_LISTDEVICES)
-        self.oscer.send(COMMAND_LISTUSERS)
-        self.oscer.send(COMMAND_LISTVIEWS)
+        self.init_osc_cmd = COMMAND_CONNECTORS
+        self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
         _LOGGER.debug('Osc init ok done')
 
     def on_list_devices_rv(self, *ld):
@@ -652,29 +728,37 @@ class MainApp(MDApp):
                     on_state_transition=self.on_state_transition,
                     on_command_handle=self.on_command_handle,
                     loop=self.loop)
+        self.on_osc_init_ok_cmd_next(COMMAND_LISTUSERS)
 
     def on_state_transition(self, inst, oldstate, newstate, reason):
-        self.root.ids.id_tabcont.format(inst.get_device(), state=newstate)
+        dev = inst.get_device()
+        for f in self.all_format:
+            f(dev, state=newstate)
 
     def on_command_handle(self, inst, command, exitv, *args):
+        dev = inst.get_device()
         if command == COMMAND_NEWSESSION:
             _LOGGER.debug(f'New session received: {args[0]}')
-            self.root.ids.id_tabcont.format(inst.get_device(), session=args[0], user=self.current_user)
+            for f in self.all_format:
+                f(dev, session=args[0], user=self.current_user)
         elif command == COMMAND_DEVICEFIT:
-            self.root.ids.id_tabcont.format(inst.get_device(), device=args[0], fitobj=args[1], state=args[2])
+            for f in self.all_format:
+                f(dev, device=args[0], fitobj=args[1], state=args[2])
 
     def on_list_users_rv(self, *ld):
         self.users = list(ld)
         useri = int(self.config.get('dbpars', 'user'))
+        self.current_user = None
         for u in self.users:
             if useri < 0 or useri == u.rowid:
                 self.current_user = u
-                return
-        self.current_user = None
+                break
+        self.on_osc_init_ok_cmd_next(COMMAND_LISTVIEWS)
 
     def on_list_views_rv(self, *ld):
         self.views = list(ld)
         self.root.ids.id_tabcont.new_view_list(self.views)
+        self.on_osc_init_ok_cmd_next(None)
         _LOGGER.debug(f'List of views {self.views}')
 
     def is_pre_init_ok(self):
@@ -719,7 +803,11 @@ class MainApp(MDApp):
     def on_start(self):
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
+            for ci in self.connectors_info.copy():
+                if not self.check_host_port_config(ci['section']):
+                    self.connectors_info.remove(ci)
             Timer(0, self.init_osc)
+
         self.root.ids.content_drawer.image_path = join(
             dirname(__file__), '..', "images", "navdrawer.png")
         for items in {
@@ -759,17 +847,21 @@ class MainApp(MDApp):
                            {'host': '127.0.0.1', 'port': 11001})
         config.setdefaults('bluetooth',
                            {'connect_secs': 5, 'connect_retry': 10})
-        self._init_fields()
+        self.connectors_info = self.find_connectors_info()
 
     def _init_fields(self):
         self.title = __prog__
         self.oscer = None
         self.current_user = None
+        self.connectors_info = []
+        self.all_format = []
         self.users = []
         self.current_widget = None
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
         self.devicemanagers_by_uid = dict()
         self.views = []
+        self.init_osc_cmd = None
+        self.init_osc_timer = None
         self.devicemanagers_pre_init_done = False
         self.devicemanagers_pre_init = dict.fromkeys(self.devicemanager_class_by_type.keys(), None)
 
@@ -778,12 +870,18 @@ class MainApp(MDApp):
         Add our custom section to the default configuration object.
         """
         dn = join(dirname(__file__), '..', 'config')
+        dir_additonals = join(self.db_dir(), 'connectors')
         # We use the string defined above for our JSON, but it could also be
         # loaded from a file as follows:
         #     settings.add_json_panel('My Label', self.config, 'settings.json')
         settings.add_json_panel('Backend', self.config, join(dn, 'backend.json'))  # data=json)
-        settings.add_json_panel('Frontend', self.config, join(dn, 'frontend.json'))  # data=json)
-        settings.add_json_panel('Bluetooth', self.config, join(dn, 'bluetooth.json'))  # data=json)
+        settings.add_json_panel('Frontend', self.config, join(dn, 'frontend.json'))
+        with open(join(dn, 'bluetooth.json')) as json_file:
+            blue = json.load(json_file)
+            blue[2]['title'] += dir_additonals
+            settings.add_json_panel('Bluetooth', self.config, data=json.dumps(blue))  # data=json)
+        for ci in self.connectors_info:
+            settings.add_json_panel(ci['section'].title(), self.config, data=json.dumps(ci['config']))
 
     def check_host_port_config(self, name):
         host = self.config.get(name, "host")
