@@ -14,7 +14,7 @@ from db.user import User
 from db.view import View
 from util import find_devicemanager_classes, init_logger
 from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_CONNECTORS,
-                        COMMAND_DELDEVICE, COMMAND_DELUSER, COMMAND_DELVIEW,
+                        COMMAND_DEVICEFIT, COMMAND_DELDEVICE, COMMAND_DELUSER, COMMAND_DELVIEW,
                         COMMAND_DISCONNECT, COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV,
                         COMMAND_LISTUSERS, COMMAND_LISTUSERS_RV,
                         COMMAND_LISTVIEWS, COMMAND_LISTVIEWS_RV,
