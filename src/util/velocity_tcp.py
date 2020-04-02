@@ -32,24 +32,44 @@ class TcpClient(asyncio.Protocol):
         if action:
             action()
 
-    def __init__(self, hp=None, template_file=None, loop=asyncio.get_event_loop(), *args, **kwargs):
+    @staticmethod
+    def load_template(template_file, vm_var):
         dir = dirname(template_file)
-        if self._LOADER is None:
-            self._LOADER = CachingFileLoader(dir)
+        if TcpClient._LOADER is None:
+            TcpClient._LOADER = CachingFileLoader(dir)
+        TcpClient._VARS[vm_var] = dict(macro=0)
+        return TcpClient._LOADER.load_template(template_file)
+
+    def __init__(self,
+                 hp=None,
+                 template_file=None,
+                 loop=asyncio.get_event_loop(),
+                 write_out=None,
+                 *args, **kwargs):
         self.transport = None
+        if hp is None:
+            hp = (template_file, 0)
         self.hp = hp
         self.loop = loop
         self.template_file = template_file
-        self.template = self._LOADER.load_template(template_file)
+        self.vm_var = f'_{basename(template_file)[:-3]}_m'
+        self.template = TcpClient.load_template(template_file, self.vm_var)
         self.stopped = False
         self.stop_event = asyncio.Event()
-        self.vm_var = f'_{basename(self.template_file)[:-3]}_m'
-        self._VARS[self.vm_var] = dict(macro=0)
+        self.write_out = write_out if write_out else self._network_write
+        for k, v in kwargs.items():
+            TcpClient._VARS[self.vm_var][k] = v
         Timer(0, partial(TcpClient.set_open_clients, hp, dict(obj=self)))
         super(TcpClient, self).__init__()
 
+    def get_var(self, v):
+        if v is None:
+            return self._VARS[self.vm_var]
+        else:
+            return self._VARS[self.vm_var].get(v)
+
     @staticmethod
-    def format(devobj, **kwargs):
+    def update_namespace(devobj, **kwargs):
         v = TcpClient._VARS
         if devobj:
             alias = devobj.get_alias()
@@ -58,12 +78,18 @@ class TcpClient(asyncio.Protocol):
             v = v[alias]
         for key, value in kwargs.items():
             v[key] = value
+        return TcpClient._VARS
+
+    @staticmethod
+    def format(devobj, **kwargs):
+        dictvars = TcpClient.update_namespace(devobj, **kwargs)
         for _, tcp in TcpClient._OPEN_CLIENTS.copy().items():
             if tcp['obj']:
-                tcp['obj']._format(TcpClient._VARS)
+                tcp['obj']._format(dictvars)
+        return dictvars
 
     def _format(self, dct):
-        if not self.stopped and self.transport:
+        if not self.stopped:
             out = None
             if self.template:
                 try:
@@ -72,7 +98,11 @@ class TcpClient(asyncio.Protocol):
                     _LOGGER.error(f'VTL error {traceback.format_exc()}')
                 # self._VARS[self.vm_var] = 1
             if out:
-                self.transport.write(out.encode())
+                self.write_out(out)
+
+    def _network_write(self, out):
+        if self.transport:
+            self.transport.write(out.encode())
 
     def connection_made(self, transport):
         self.transport = transport

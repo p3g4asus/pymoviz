@@ -22,6 +22,7 @@ from device.manager import GenericDeviceManager
 from gui.typewidget import TypeWidget
 from gui.typewidget_cb import TypeWidgetCB
 from gui.useredit import UserWidget
+from gui.velocity_tab import VelocityTab
 from gui.viewedit import ViewPlayWidget, ViewWidget
 from kivy.app import App
 from kivy.lang import Builder
@@ -182,12 +183,13 @@ class MyTabs(MDTabs):
 
     def format(self, devobj, **kwargs):
         for tb in self.tab_list:
-            tb.format(devobj, **kwargs)
+            if isinstance(tb, ViewPlayWidget):
+                tb.format(devobj, **kwargs)
 
     def new_view_list(self, views):
         removel = list()
         for t in self.tab_list:
-            if t.view not in views:
+            if isinstance(t, ViewPlayWidget) and t.view not in views:
                 removel.append(t)
         for t in removel:
             self.remove_widget(t)
@@ -197,7 +199,7 @@ class MyTabs(MDTabs):
     def remove_widget(self, w, *args, **kwargs):
         if isinstance(w, View):
             w = self.already_present(w)
-        if w and isinstance(w, ViewPlayWidget):
+        if w and isinstance(w, (ViewPlayWidget, VelocityTab)):
             super(MyTabs, self).remove_widget(w)
             idx = -3
             try:
@@ -223,9 +225,10 @@ class MyTabs(MDTabs):
             self.remove_widget(w)
 
     def already_present(self, view):
-        for v in self.tab_list:
-            if v.view == view:
-                return v
+        if view:
+            for v in self.tab_list:
+                if isinstance(v, ViewPlayWidget) and v.view == view:
+                    return v
         return None
 
     def add_widget(self, tab, *args, **kwargs):
@@ -234,6 +237,8 @@ class MyTabs(MDTabs):
             tab = ViewPlayWidget(view=view)
         elif isinstance(tab, ViewPlayWidget):
             view = tab.view
+        elif isinstance(tab, VelocityTab):
+            view = None
         else:
             super(MyTabs, self).add_widget(tab, *args, **kwargs)
             return
@@ -643,38 +648,42 @@ class MainApp(MDApp):
         for file in os.listdir(dir_additonals):
             fp = join(dir_additonals, file)
             bn = basename(file)
-            if isfile(fp) and fnmatch.fnmatch(file, '*.vm') and bn[0] != '_':
-                section = bn[:-3]
-                title = section.title()
-                cnf = [
-                    {
-                        "type": "title",
-                        "title": fp
-                    },
-                    {
-                        "type": "string",
-                        "title": "Host",
-                        "desc": f"{title} Host",
-                        "section": section,
-                        "key": "host"
-                    },
-                    {
-                        "type": "numeric",
-                        "title": "Port",
-                        "desc": f"{title} Port",
-                        "section": section,
-                        "key": "port"
-                    }
-                ]
-                self.config.setdefaults(
-                    section,
-                    {'host': '127.0.0.1', 'port': 6000 + off})
-                off += 1
-                connectors_info.append(dict(section=section,
-                                            config=cnf,
-                                            temp=fp,
-                                            hp=(self.config.get(section, 'host'),
-                                                int(self.config.get(section, 'port')))))
+            if isfile(fp) and fnmatch.fnmatch(file, '*.vm'):
+                if bn[0] == '_':
+                    if bn == '_main.vm':
+                        self.velocity_tab = VelocityTab(velocity=fp, loop=self.loop)
+                else:
+                    section = bn[:-3]
+                    title = section.title()
+                    cnf = [
+                        {
+                            "type": "title",
+                            "title": fp
+                        },
+                        {
+                            "type": "string",
+                            "title": "Host",
+                            "desc": f"{title} Host",
+                            "section": section,
+                            "key": "host"
+                        },
+                        {
+                            "type": "numeric",
+                            "title": "Port",
+                            "desc": f"{title} Port",
+                            "section": section,
+                            "key": "port"
+                        }
+                    ]
+                    self.config.setdefaults(
+                        section,
+                        {'host': '127.0.0.1', 'port': 6000 + off})
+                    off += 1
+                    connectors_info.append(dict(section=section,
+                                                config=cnf,
+                                                temp=fp,
+                                                hp=(self.config.get(section, 'host'),
+                                                    int(self.config.get(section, 'port')))))
         return connectors_info
 
     def on_command_connectors_confirm(self, *args, timeout=False):
@@ -682,7 +691,9 @@ class MainApp(MDApp):
             self.all_format = [self.root.ids.id_tabcont.format, TcpClient.format]
             Timer(0, partial(TcpClient.init_connectors_async, self.loop, self.connectors_info))
         else:
-            self.all_format = [self.root.ids.id_tabcont.format]
+            self.all_format = [self.root.ids.id_tabcont.format]\
+                if not self.velocity_tab else\
+                [self.root.ids.id_tabcont.format, TcpClient.format]
         self.on_osc_init_ok_cmd_next(
             COMMAND_LISTDEVICES
             if not timeout else
@@ -801,6 +812,8 @@ class MainApp(MDApp):
             toast(f'Serivice connection OK ({hp[0]}:{hp[1]})')
 
     def on_start(self):
+        if self.velocity_tab:
+            self.root.ids.id_tabcont.add_widget(self.velocity_tab)
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
             for ci in self.connectors_info.copy():
@@ -855,6 +868,7 @@ class MainApp(MDApp):
         self.current_user = None
         self.connectors_info = []
         self.all_format = []
+        self.velocity_tab = None
         self.users = []
         self.current_widget = None
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
