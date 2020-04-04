@@ -29,6 +29,19 @@ _toast = None
 
 class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
+    __formatters__ = dict(
+        State=StateFormatter(),
+        Session=SessionFormatter(),
+        User=UserFormatter(),
+        Updates=SimpleFieldFormatter(
+            name='Updates',
+            pre='$D n: ',
+            format_str='%d',
+            example_conf=dict(updates=45),
+            fields=['updates']
+        )
+    )
+
     @classmethod
     def do_activity_pre_operations(cls, on_finish, loop):
         on_finish(True)
@@ -107,22 +120,11 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         return self.state
 
     def get_formatters(self):
-        ll = list(self.__formatters__)
-        ll.append(StateFormatter())
-        ll.append(SessionFormatter())
-        ll.append(UserFormatter())
-        ll.append(SimpleFieldFormatter(
-            name='Updates',
-            pre='$D n: ',
-            format_str='%d',
-            example_conf=dict(updates=45),
-            fields=['updates']
-        ))
-        out = []
-        for f in ll:
-            f = f.clone()
-            f.set_device(self.device)
-            out.append(f)
+        out = dict()
+        for nm, form in self.__formatters__.items():
+            form = form.clone()
+            form.set_device(self.device)
+            out[nm] = form
         return out
 
     def set_state(self, st, reason=-1):

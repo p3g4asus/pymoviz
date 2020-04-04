@@ -25,6 +25,7 @@ from gui.useredit import UserWidget
 from gui.velocity_tab import VelocityTab
 from gui.viewedit import ViewPlayWidget, ViewWidget
 from kivy.app import App
+from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.properties import StringProperty
 from kivy.uix.boxlayout import BoxLayout
@@ -636,7 +637,7 @@ class MainApp(MDApp):
     def get_formatters(self):
         formatters = []
         for _, dm in self.devicemanagers_by_uid.items():
-            formatters.extend(dm.get_formatters())
+            formatters.extend(dm.get_formatters().values())
         return formatters
 
     def find_connectors_info(self):
@@ -650,8 +651,11 @@ class MainApp(MDApp):
             bn = basename(file)
             if isfile(fp) and fnmatch.fnmatch(file, '*.vm'):
                 if bn[0] == '_':
-                    if bn == '_main.vm':
-                        self.velocity_tab = VelocityTab(velocity=fp, loop=self.loop)
+                    if bn.startswith('_main_'):
+                        try:
+                            self.velocity_tabs.append(VelocityTab(velocity=fp, loop=self.loop, name=bn[6:-3].title()))
+                        except Exception:
+                            _LOGGER.error(f'Template error {traceback.format_exc()}')
                 else:
                     section = bn[:-3]
                     title = section.title()
@@ -692,7 +696,7 @@ class MainApp(MDApp):
             Timer(0, partial(TcpClient.init_connectors_async, self.loop, self.connectors_info))
         else:
             self.all_format = [self.root.ids.id_tabcont.format]\
-                if not self.velocity_tab else\
+                if not self.velocity_tabs else\
                 [self.root.ids.id_tabcont.format, TcpClient.format]
         self.on_osc_init_ok_cmd_next(
             COMMAND_LISTDEVICES
@@ -744,17 +748,17 @@ class MainApp(MDApp):
     def on_state_transition(self, inst, oldstate, newstate, reason):
         dev = inst.get_device()
         for f in self.all_format:
-            f(dev, state=newstate)
+            f(dev, state=newstate, manager=inst)
 
     def on_command_handle(self, inst, command, exitv, *args):
         dev = inst.get_device()
         if command == COMMAND_NEWSESSION:
             _LOGGER.debug(f'New session received: {args[0]}')
             for f in self.all_format:
-                f(dev, session=args[0], user=self.current_user)
+                f(dev, session=args[0], user=self.current_user, manager=inst)
         elif command == COMMAND_DEVICEFIT:
             for f in self.all_format:
-                f(dev, device=args[0], fitobj=args[1], state=args[2])
+                f(dev, device=args[0], fitobj=args[1], state=args[2], manager=inst)
 
     def on_list_users_rv(self, *ld):
         self.users = list(ld)
@@ -811,9 +815,31 @@ class MainApp(MDApp):
                 self.devicemanagers_pre_init_done = True
             toast(f'Serivice connection OK ({hp[0]}:{hp[1]})')
 
+    def on_window_resize(self, inst, width, height):
+        self.config.set('size', 'width', width)
+        self.config.set('size', 'height', height)
+        self.config.write()
+
+    def on_window_touch_up(self, inst, *args):
+        _LOGGER.debug(f'Window pos ({Window.top}, {Window.left})')
+        self.config.set('pos', 'top', Window.top)
+        self.config.set('pos', 'left', Window.left)
+        self.config.write()
+        return False
+
     def on_start(self):
-        if self.velocity_tab:
-            self.root.ids.id_tabcont.add_widget(self.velocity_tab)
+        if platform != 'android':
+            width = int(self.config.get('size', 'width'))
+            if width > 0:
+                Window.size = (width, int(self.config.get('size', 'height')))
+            width = int(self.config.get('pos', 'left'))
+            if width >= -6000:
+                Window.top = int(self.config.get('pos', 'top'))
+                Window.left = width
+            Window.bind(on_resize=self.on_window_resize)
+            Window.bind(on_touch_up=self.on_window_touch_up)
+        for vt in self.velocity_tabs:
+            self.root.ids.id_tabcont.add_widget(vt)
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
             for ci in self.connectors_info.copy():
@@ -854,6 +880,9 @@ class MainApp(MDApp):
         Set the default values for the configs sections.
         """
         config.setdefaults('dbpars', {'user': -1})
+        if platform != 'android':
+            config.setdefaults('size', {'width': -200, 'height': -200})
+            config.setdefaults('pos', {'left': -20000, 'top': -20000})
         config.setdefaults('frontend',
                            {'host': '127.0.0.1', 'port': 11002})
         config.setdefaults('backend',
@@ -868,7 +897,7 @@ class MainApp(MDApp):
         self.current_user = None
         self.connectors_info = []
         self.all_format = []
-        self.velocity_tab = None
+        self.velocity_tabs = []
         self.users = []
         self.current_widget = None
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)

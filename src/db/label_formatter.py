@@ -78,6 +78,7 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
                                              **kwargs)
         if self.classname is None:
             self.classname = self.fullname()
+        self.wrappers = []
 
     def __lt__(self, other):
         return self.orderd < other.orderd
@@ -96,6 +97,24 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
             for key, val in settings.items():
                 setattr(self, key, val)
         self.settings = settings
+
+    def add_wrapper(self, tag, val, flag):
+        self.wrappers.append(dict(tag=tag, val=val, flag=flag))
+        return self
+
+    def wrap(self, stringtowrap, idxtowrap):
+        sret = ''
+        flagtowrap = 1 << idxtowrap
+        for w in self.wrappers:
+            if w["flag"] & flagtowrap:
+                val = w["val"]
+                sval = '' if val is None or val == '' else f'={val}'
+                sret += f'[{w["tag"]}{sval}]'
+        sret += stringtowrap
+        for w in reversed(self.wrappers):
+            if w["flag"] & flagtowrap:
+                sret += f'[/{w["tag"]}]'
+        return sret
 
     def _set_setting_field(self, **kwargs):
         for key, val in kwargs.items():
@@ -120,7 +139,7 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         return f'[color={col}]{txt}[/color]'
 
     def set_timeout(self):
-        return self.get_pre() + self.timeout
+        return self.wrap(self.get_pre(), 0) + self.wrap(self.timeout, 5)
 
     def reset(self):
         self.order = None
@@ -150,14 +169,17 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
 
     @staticmethod
     def get_fields(fldnamelst, obj):
-        rv = []
-        _LOGGER.debug(f'flds={fldnamelst} obj={obj}')
-        for i in fldnamelst:
-            if i in obj:
-                rv.append(obj[i])
-            else:
-                return None
-        return tuple(rv)
+        if not isinstance(obj, object) or obj is not None:
+            rv = []
+            _LOGGER.debug(f'flds={fldnamelst} obj={obj}')
+            for i in fldnamelst:
+                if i in obj:
+                    rv.append(obj[i])
+                else:
+                    return None
+            return tuple(rv)
+        else:
+            return None
 
 
 class SimpleFormatter(LabelFormatter):
@@ -176,8 +198,8 @@ class SimpleFormatter(LabelFormatter):
         elif kwargs:
             s = self.format_str.format(**kwargs)
         else:
-            s = self.format_str
-        return self.get_pre() + f'[color={self.col}]' + s + '[/color]'
+            return self.set_timeout()
+        return self.wrap(self.get_pre(), 0) + self.wrap(f'[color={self.col}]' + s + '[/color]', 1)
 
 
 class SimpleFieldFormatter(SimpleFormatter):
@@ -190,7 +212,7 @@ class SimpleFieldFormatter(SimpleFormatter):
     def format(self, fitobj, *args, **kwargs):
         flds = self.get_fields(self.fields, fitobj)
         if flds is None:
-            return ''
+            return self.set_timeout()
         else:
             return super(SimpleFieldFormatter, self).format(*flds, *args, **kwargs)
 
@@ -202,13 +224,17 @@ class TimeFieldFormatter(SimpleFormatter):
             timeout='[color=#f44336]-:--:--[/color]', fields=fields, **kwargs)
 
     def format(self, fitobj, *args, **kwargs):
-        tm = self.get_fields(self.fields, fitobj)[0]
-        hrs = tm // 3600
-        tm -= hrs * 3600
-        mins = tm // 60
-        tm -= mins * 60
-        secs = tm % 60
-        return super(TimeFieldFormatter, self).format(*(hrs, mins, secs), *args, **kwargs)
+        tm = self.get_fields(self.fields, fitobj)
+        if not tm:
+            return self.set_timeout()
+        else:
+            tm = tm[0]
+            hrs = tm // 3600
+            tm -= hrs * 3600
+            mins = tm // 60
+            tm -= mins * 60
+            secs = tm % 60
+            return super(TimeFieldFormatter, self).format(*(hrs, mins, secs), *args, **kwargs)
 
 
 class DoubleFormatter(LabelFormatter):
@@ -241,16 +267,11 @@ class DoubleFormatter(LabelFormatter):
         self._set_setting_field(colerror=colerror)
 
     def format(self, v1, v2, *args, **kwargs):
-        if v1 is None:
-            col1 = self.colerror
-            s1 = '--'
+        if v1 is None or v2 is None:
+            return self.set_timeout()
         else:
             col1 = self.col
             s1 = self.f1 % v1
-        if v2 is None:
-            col2 = self.colerror
-            s2 = '--'
-        else:
             s2 = self.f2 % v2
             if v1 is None or v1 == v2:
                 col2 = self.col
@@ -258,7 +279,10 @@ class DoubleFormatter(LabelFormatter):
                 col2 = self.colmax
             else:
                 col2 = self.colmin
-        return self.get_pre() + f'[color={col2}]{s1}[/color] [color={self.col}]([/color][color={col1}]{s2}[/color][color={self.col}])[/color]' + self.post
+            return self.wrap(self.get_pre(), 0) +\
+                self.wrap(f'[color={col2}]{s1}[/color] ', 1) +\
+                self.wrap(f'[color={self.col}]([/color][color={col1}]{s2}[/color][color={self.col}])[/color]', 2) +\
+                self.wrap(self.post, 4)
 
 
 class DoubleFieldFormatter(DoubleFormatter):
@@ -271,7 +295,7 @@ class DoubleFieldFormatter(DoubleFormatter):
     def format(self, fitobj, *args, **kwargs):
         flds = self.get_fields(self.fields, fitobj)
         if flds is None:
-            return ''
+            return self.set_timeout()
         else:
             return super(DoubleFieldFormatter, self).format(*flds, *args, **kwargs)
 
@@ -287,10 +311,15 @@ class SessionFormatter(LabelFormatter):
 
     def format(self, v1, *args, **kwargs):
         if not isinstance(v1, (int, float)):
-            v1 = self.get_fields(['datestart'], v1)[0]
+            v1 = self.get_fields(['datestart'], v1)
+            if not v1:
+                return self.set_timeout()
+            else:
+                v1 = v1[0]
         datepubo = datetime.fromtimestamp(v1 / 1000)
         datepub = datepubo.strftime('%Y-%m-%d %H:%M:%S.%f')
-        return self.get_pre() + f'[color={self.col}]{datepub}[/color]'
+        return self.wrap(self.get_pre(), 0) +\
+            self.wrap(f'[color={self.col}]{datepub}[/color]', 1)
 
 
 class UserFormatter(LabelFormatter):
@@ -304,9 +333,10 @@ class UserFormatter(LabelFormatter):
         if flds:
             datepubo = datetime.fromtimestamp(flds[3])
             years = int((datetime.now()-datepubo).days / 365.25)
-            return self.get_pre() + f"{flds[0]} {flds[1]}cm/{flds[2]}kg/{years}y"
+            return self.wrap(self.get_pre(), 0) +\
+                self.wrap(f"{flds[0]} {flds[1]}cm/{flds[2]}kg/{years}y", 1)
         else:
-            return ''
+            return self.set_timeout()
 
 
 class StateFormatter(LabelFormatter):
@@ -334,7 +364,11 @@ class StateFormatter(LabelFormatter):
 
     def format(self, v1, *args, **kwargs):
         if not isinstance(v1, int):
-            v1 = self.get_fields(['state'], v1)[0]
+            v1 = self.get_fields(['state'], v1)
+            if not v1:
+                return self.set_timeout()
+            else:
+                v1 = v1[0]
         if v1 == DEVSTATE_INVALIDSTEP:
             col1 = self.colerror
             s1 = 'invalid'
@@ -365,4 +399,6 @@ class StateFormatter(LabelFormatter):
         elif v1 == DEVSTATE_CONNECTED:
             col1 = self.colmax
             s1 = 'connected'
-        return self.get_pre() + f'[color={col1}]{s1}[/color]' + self.post
+        return self.wrap(self.get_pre(), 0) +\
+            self.wrap(f'[color={col1}]{s1}[/color]', 1) +\
+            self.wrap(self.post, 4)

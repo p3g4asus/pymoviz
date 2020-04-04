@@ -23,8 +23,8 @@ _LOGGER = init_logger(__name__)
 class KeiserM3iDeviceManager(GenericDeviceManager):
     __type__ = 'keiserm3i'
     __simulator_class__ = KeiserM3iDeviceSimulator
-    __formatters__ = [
-        DoubleFieldFormatter(
+    __formatters__ = dict(
+        Speed=DoubleFieldFormatter(
             name='Speed',
             example_conf=dict(speed=25, speedMn=27),
             f1='%.1f',
@@ -33,7 +33,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             post='Km/h',
             pre='$D SPD: ',
             fields=['speed', 'speedMn']),
-        DoubleFieldFormatter(
+        RPM=DoubleFieldFormatter(
             name='RPM',
             example_conf=dict(rpm=78, rpmMn=75),
             f1='%d',
@@ -42,7 +42,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             post='',
             pre='$D RPM: ',
             fields=['rpm', 'rpmMn']),
-        DoubleFieldFormatter(
+        Watt=DoubleFieldFormatter(
             name='Watt',
             example_conf=dict(watt=125, wattMn=127),
             f1='%d',
@@ -51,35 +51,35 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             post='',
             pre='$D WT: ',
             fields=['watt', 'wattMn']),
-        SimpleFieldFormatter(
+        Pulse=SimpleFieldFormatter(
             name='Pulse',
             example_conf=dict(pulse=152, pulseMn=160),
             format_str='%d (%d)',
             timeout='[color=#f44336]-- (--)[/color]',
             pre='$D Pul: ',
             fields=['pulse', 'pulseMn']),
-        SimpleFieldFormatter(
+        Distance=SimpleFieldFormatter(
             name='Distance',
             example_conf=dict(distance=34.6),
             format_str='%.2f Km',
             timeout='[color=#f44336]--.--[/color]',
             pre='$D Dist: ',
             fields=['distance']),
-        SimpleFieldFormatter(
+        Incline=SimpleFieldFormatter(
             name='Incline',
             example_conf=dict(incline=12),
             timeout='[color=#f44336]--[/color]',
             format_str='%d',
             pre='$D Inc: ',
             fields=['incline']),
-        SimpleFieldFormatter(
+        Calorie=SimpleFieldFormatter(
             name='Calorie',
             example_conf=dict(calorie=12),
             format_str='%d',
             timeout='[color=#f44336]--[/color]',
             pre='$D Cal: ',
             fields=['calorie']),
-        SimpleFieldFormatter(
+        Version=SimpleFieldFormatter(
             name='Version',
             example_conf={
                 DI_BLNAME: 'M3i',
@@ -89,9 +89,10 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             format_str='%s 0x%02X.0x%02X (%d)',
             pre='$D ver: ',
             fields=[DI_BLNAME, DI_FIRMWARE, DI_SOFTWARE, DI_SYSTEMID]),
-        TimeFieldFormatter(
-            pre='$D TM: ')
-    ]
+        Time=TimeFieldFormatter(
+            pre='$D TM: '),
+        **GenericDeviceManager.__formatters__
+    )
 
     @classmethod
     def do_activity_pre_operations(cls, on_finish, loop):

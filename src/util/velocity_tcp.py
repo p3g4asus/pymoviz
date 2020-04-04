@@ -16,7 +16,8 @@ class TcpClient(asyncio.Protocol):
     _OPEN_CLIENTS = dict()
     _LOCK = asyncio.Lock()
     _LOADER = None
-    _VARS = dict(const=util.const)
+    _TIMEOUTS = dict()
+    _VARS = dict(const=util.const, logger=_LOGGER)
 
     @staticmethod
     async def set_open_clients(hp, dct, action=None):
@@ -69,14 +70,23 @@ class TcpClient(asyncio.Protocol):
             return self._VARS[self.vm_var].get(v)
 
     @staticmethod
+    def set_timeout(alias):
+        TcpClient._VARS[alias]['fitobj'] = None
+
+    @staticmethod
     def update_namespace(devobj, **kwargs):
         v = TcpClient._VARS
+        alias = None
         if devobj:
             alias = devobj.get_alias()
             if alias not in v:
                 v[alias] = dict()
             v = v[alias]
         for key, value in kwargs.items():
+            if key == 'fitobj' and alias:
+                if alias in TcpClient._TIMEOUTS:
+                    TcpClient._TIMEOUTS[alias].cancel()
+                TcpClient._TIMEOUTS[alias] = Timer(5, partial(TcpClient.set_timeout, alias))
             v[key] = value
         return TcpClient._VARS
 
