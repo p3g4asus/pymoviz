@@ -260,7 +260,7 @@ class SerializableDBObj(object):
         key = self.f(self.__id__)
         cols = self.__columns__ if key is None else self.__update_columns__
         for t in cols:
-            v = self.f(self.fld(t))
+            v = self.f(t)
             if v is not None:
                 if isinstance(v, dict):
                     v = json.dumps(v)

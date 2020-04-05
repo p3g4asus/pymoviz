@@ -45,6 +45,7 @@ from util.const import (COMMAND_CONNECT, COMMAND_CONNECTORS, COMMAND_DELUSER,
                         COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV, COMMAND_LISTUSERS,
                         COMMAND_LISTUSERS_RV, COMMAND_LISTVIEWS,
                         COMMAND_LISTVIEWS_RV, COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
+                        COMMAND_PRINTMSG,
                         COMMAND_SAVEUSER, COMMAND_SAVEVIEW, COMMAND_STOP,
                         CONFIRM_FAILED_3, CONFIRM_OK, MSG_COMMAND_TIMEOUT)
 from util.osc_comunication import OSCManager
@@ -733,9 +734,13 @@ class MainApp(MDApp):
         self.oscer.handle(COMMAND_LISTDEVICES_RV, self.on_list_devices_rv)
         self.oscer.handle(COMMAND_LISTVIEWS_RV, self.on_list_views_rv)
         self.oscer.handle(COMMAND_LISTUSERS_RV, self.on_list_users_rv)
+        self.oscer.handle(COMMAND_PRINTMSG, self.on_printmsg)
         self.init_osc_cmd = COMMAND_CONNECTORS
         self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
         _LOGGER.debug('Osc init ok done')
+
+    def on_printmsg(self, msg):
+        toast(msg)
 
     def on_list_devices_rv(self, *ld):
         self.devicemanagers_by_uid.clear()

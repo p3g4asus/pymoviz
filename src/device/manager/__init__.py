@@ -150,8 +150,10 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
                 else:
                     self.simulator.reset(self.device.get_additionalsettings(), self.user)
             self.inner_connect()
+            return True
         else:
             _LOGGER.debug(f'Device {self.device.get_alias()} is not stopped ({self.state})')
+            return False
 
     def disconnect(self, *args):
         if self.is_connected_state() or self.state == DEVSTATE_CONNECTING:
@@ -401,7 +403,9 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     def on_state_transition(self, fromv, tov, rea):
         _LOGGER.debug(f'Device: transition from state {fromv} to {tov}')
-        if tov == DEVSTATE_DISCONNECTED and fromv != DEVSTATE_DISCONNECTING and self.simulator:
+        if tov == DEVSTATE_DISCONNECTED and\
+            (fromv != DEVSTATE_DISCONNECTING or rea != DEVREASON_REQUESTED)\
+                and self.simulator:
             self.simulator.set_offsets()
 
     def on_command_handle(self, command, exitv, *args):

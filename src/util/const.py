@@ -19,6 +19,7 @@ DEVREASON_BLE_DISABLED = 26
 
 
 MSG_CONNECTION_STATE_INVALID = 'Please disconnect all devices before'
+MSG_DEVICE_NOT_STOPPED = 'Device {} state not stopped'
 MSG_TYPE_DEVICE_UNKNOWN = 'Unknown device type'
 MSG_INVALID_VIEW = 'Invalid view'
 MSG_INVALID_USER = 'Invalid user'
@@ -62,6 +63,7 @@ COMMAND_SAVEVIEW = '/saveview'
 COMMAND_DELVIEW = '/delview'
 COMMAND_SAVEUSER = '/saveuser'
 COMMAND_DELUSER = '/deluser'
+COMMAND_PRINTMSG = '/printmsg'
 
 COMMAND_WBD_CHARACTERISTICCHANGED = '/wbd_characteristic_changed'
 COMMAND_WBD_CHARACTERISTICREAD = '/wbd_characteristic_read'

@@ -132,6 +132,8 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
     def __init__(self, *args, **kwargs):
         super(KeiserM3iDeviceManager, self).__init__(*args, **kwargs)
         self.force_rescan_timer = None
+        self.found_timer = None
+        self.disconnect_reason = DEVREASON_REQUESTED
 
     @classmethod
     def get_scan_settings(cls, scanning_for_new_devices=False):
@@ -176,6 +178,21 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         rssi = device.f('rssi')
         return ss + (f'RSSI {rssi}' if rssi else '')
 
+    def found_timer_init(self, timeout=False):
+        if self.found_timer:
+            self.found_timer.cancel()
+            self.found_timer = None
+        if timeout:
+            self.found_timer = Timer(timeout, self.set_disconnected)
+
+    async def set_disconnected(self):
+        if self.state != DEVSTATE_SEARCHING and self.state != DEVSTATE_DISCONNECTING and\
+                self.state != DEVSTATE_DISCONNECTED:
+            self.rescan_timer_init()
+            self.disconnect_reason = DEVREASON_TIMEOUT
+            self.set_state(DEVSTATE_DISCONNECTING, self.disconnect_reason)
+            self.stop_scan()
+
     def rescan_timer_init(self, timeout=False):
         if self.force_rescan_timer:
             _LOGGER.debug('Stopping rescan timer')
@@ -199,10 +216,13 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
 
     def inner_disconnect(self):
         self.rescan_timer_init()
+        self.found_timer_init()
+        self.disconnect_reason = DEVREASON_REQUESTED
         self.stop_scan()
 
     def inner_connect(self):
         self.rescan_timer_init(30)
+        self.found_timer_init()
         self.start_scan(self.get_scan_settings(), self.get_scan_filters())
 
     @staticmethod
@@ -212,7 +232,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
     def on_scan_completed(self):
         super(KeiserM3iDeviceManager, self).on_scan_completed()
         if self.state == DEVSTATE_DISCONNECTING:
-            self.set_state(DEVSTATE_DISCONNECTED, DEVREASON_REQUESTED)
+            self.set_state(DEVSTATE_DISCONNECTED, self.disconnect_reason)
         elif self.state == DEVSTATE_CONNECTING:
             self.set_state(DEVSTATE_DISCONNECTED, DEVREASON_TIMEOUT)
         elif self.is_connected_state():
@@ -271,6 +291,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
                     self.set_state(DEVSTATE_CONNECTED, DEVREASON_REQUESTED)
                     self.rescan_timer_init(1800)
                 if self.state != DEVSTATE_SEARCHING and self.state != DEVSTATE_DISCONNECTING:
+                    self.found_timer_init(5)
                     k3 = self.parse_adv(device.advertisement)
                     _LOGGER.debug(f'k3 Parse result {k3}')
                     if k3:

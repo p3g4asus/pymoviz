@@ -48,10 +48,14 @@ class DeviceSimulator(abc.ABC, EventDispatcher):
                     self.session.mainid = self.main_session_id
                     await self.session.to_db(self.db, True)
                 self.nUpdates = self.nUpdates + 1
-                commit = nowms - self.last_commit > 10000
-                await obj.to_db(self.db, commit)
-                if commit:
-                    self.last_commit = nowms
+                try:
+                    commit = nowms - self.last_commit > 10000
+                    obj.session = self.session.rowid
+                    await obj.to_db(self.db, commit)
+                    if commit:
+                        self.last_commit = nowms
+                except Exception:
+                    _LOGGER.error(f'Commit error: {traceback.format_exc()}')
                 obj.s('updates', self.nUpdates)
             return state
         except Exception:

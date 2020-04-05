@@ -18,14 +18,15 @@ from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_CONNECTORS,
                         COMMAND_DISCONNECT, COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV,
                         COMMAND_LISTUSERS, COMMAND_LISTUSERS_RV,
                         COMMAND_LISTVIEWS, COMMAND_LISTVIEWS_RV,
-                        COMMAND_NEWDEVICE, COMMAND_NEWSESSION, COMMAND_SAVEDEVICE,
+                        COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
+                        COMMAND_PRINTMSG, COMMAND_SAVEDEVICE,
                         COMMAND_SAVEUSER, COMMAND_SAVEVIEW, COMMAND_SEARCH,
                         COMMAND_STOP, CONFIRM_FAILED_1, CONFIRM_FAILED_2,
                         CONFIRM_OK, DEVREASON_BLE_DISABLED,
                         DEVREASON_PREPARE_ERROR, DEVREASON_REQUESTED,
-                        DEVSTATE_CONNECTING, DEVSTATE_DISCONNECTED,
+                        DEVSTATE_CONNECTING, DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_SEARCHING, MSG_CONNECTION_STATE_INVALID,
-                        MSG_DB_SAVE_ERROR, MSG_INVALID_ITEM,
+                        MSG_DB_SAVE_ERROR, MSG_DEVICE_NOT_STOPPED, MSG_INVALID_ITEM,
                         MSG_TYPE_DEVICE_UNKNOWN)
 from util.osc_comunication import OSCManager
 from util.velocity_tcp import TcpClient
@@ -392,7 +393,9 @@ class DeviceManagerService(object):
                 info = self.devicemanagers_active_info[dm.get_uid()]
                 _LOGGER.debug(f'Processing[{dm.get_uid()}] {dm.get_device()} -> {info["operation"]}')
                 if info['operation'] == 'd':
-                    if not dm.is_connected_state():
+                    if dm.get_state() == DEVSTATE_CONNECTING:
+                        break
+                    elif not dm.is_connected_state():
                         self.devicemanagers_active.remove(dm)
                         self.devicemanagers_active_done.append(dm)
                     else:
@@ -404,11 +407,15 @@ class DeviceManagerService(object):
                         self.devicemanagers_active_done.append(dm)
                     elif bytimer:
                         dm.set_user(self.last_user)
-                        dm.connect()
-                        break
+                        if dm.connect():
+                            break
+                        else:
+                            self.oscer.send(COMMAND_PRINTMSG, MSG_DEVICE_NOT_STOPPED.format(dm.get_device().get_alias()))
                     else:
                         if info['retry'] < self.connect_retry:
-                            self.timer_obj = Timer(self.connect_secs, self.start_remaining_connection_operations)
+                            self.timer_obj = Timer(
+                                0 if not info['retry'] else self.connect_secs,
+                                self.start_remaining_connection_operations)
                             info['retry'] += 1
                             break
                         else:
@@ -435,7 +442,9 @@ class DeviceManagerService(object):
                 Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
             elif oldstate == DEVSTATE_CONNECTING and newstate == DEVSTATE_DISCONNECTED:
                 Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
-            elif GenericDeviceManager.is_connected_state_s(oldstate) and newstate == DEVSTATE_DISCONNECTED:
+            elif (GenericDeviceManager.is_connected_state_s(oldstate) or
+                  (oldstate == DEVSTATE_DISCONNECTING and reason != DEVREASON_REQUESTED)) and\
+                    newstate == DEVSTATE_DISCONNECTED:
                 self.set_operation_ended(info)
                 if reason == DEVREASON_PREPARE_ERROR or reason == DEVREASON_BLE_DISABLED:
                     for dm in self.devicemanagers_active:
