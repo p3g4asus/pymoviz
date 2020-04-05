@@ -61,8 +61,8 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         Distance=SimpleFieldFormatter(
             name='Distance',
             example_conf=dict(distance=34.6),
-            format_str='%.2f Km',
-            timeout='[color=#f44336]--.--[/color]',
+            format_str='%.2fKm',
+            timeout='[color=#f44336]--.--Km[/color]',
             pre='$D Dist: ',
             fields=['distance']),
         Incline=SimpleFieldFormatter(

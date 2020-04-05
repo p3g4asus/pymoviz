@@ -18,9 +18,8 @@ async def asyncio_graceful_shutdown(loop, logger, perform_loop_stop=True):
 
         logger.debug(f"Shutdown: Cancelling {len(tasks)} outstanding tasks")
         await asyncio.gather(*tasks)
-    except Exception:
-        import traceback
-        logger.error("Shutdown: " + traceback.format_exc())
+    except (asyncio.exceptions.CancelledError, Exception):
+        logger.error(f"Shutdown: {traceback.format_exc()}")
     finally:
         if perform_loop_stop:
             logger.debug("Shutdown: Flushing metrics")

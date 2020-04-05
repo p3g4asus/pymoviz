@@ -119,10 +119,10 @@ class ViewPlayWidget(BoxLayout, MDTabsBase):
     def __init__(self, *args, **kwargs):
         init_formatter_colors()
         super(ViewPlayWidget, self).__init__(*args, **kwargs)
-        self.on_view(self.view)
+        self.set_view(self.view)
 
-    def on_view(self, *args):
-        _LOGGER.debug(f'On view {args[0]}')
+    def set_view(self, view):
+        self.view = view
         self.text = self.view.name
         try:
             for i in range(len(self.ids.id_formatters.children) - 1, -1, -1):

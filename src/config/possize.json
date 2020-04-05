@@ -1,0 +1,18 @@
+[
+  {
+      "type": "buttons",
+      "title": "Save Size",
+      "desc": "Save Size for restore",
+      "section": "possize",
+      "key": "size",
+      "buttons": [{"title":"Save","id":"btn_size"}]
+  },
+  {
+      "type": "buttons",
+      "title": "Save Position",
+      "desc": "Save Position for restore",
+      "section": "possize",
+      "key": "pos",
+      "buttons": [{"title":"Save","id":"btn_pos"}]
+  }
+]

@@ -1,4 +1,5 @@
 import asyncio
+from functools import partial
 
 
 class Timer:
@@ -6,6 +7,12 @@ class Timer:
         self._timeout = timeout
         self._callback = callback
         self._task = asyncio.ensure_future(self._job())
+        fname = callback.__name__ if not isinstance(callback, partial) else callback.func.__name__
+        self._task.name = f'_timer_{fname}'
+
+    @staticmethod
+    def task_is_timer(task):
+        return hasattr(task, 'name') and task.name.startswith('_timer_')
 
     async def _job(self):
         try:

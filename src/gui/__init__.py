@@ -19,6 +19,7 @@ from os.path import basename, dirname, exists, expanduser, isfile, join
 from db.user import User
 from db.view import View
 from device.manager import GenericDeviceManager
+from gui.settingbuttons import SettingButtons
 from gui.typewidget import TypeWidget
 from gui.typewidget_cb import TypeWidgetCB
 from gui.useredit import UserWidget
@@ -188,14 +189,19 @@ class MyTabs(MDTabs):
                 tb.format(devobj, **kwargs)
 
     def new_view_list(self, views):
+        set_tab = True
         removel = list()
         for t in self.tab_list:
-            if isinstance(t, ViewPlayWidget) and t.view not in views:
-                removel.append(t)
+            if isinstance(t, ViewPlayWidget):
+                set_tab = False
+                if t.view not in views:
+                    removel.append(t)
         for t in removel:
             self.remove_widget(t)
         for t in views:
             self.add_widget(t)
+        if set_tab:
+            self.simulate_tab_switch(0)
 
     def remove_widget(self, w, *args, **kwargs):
         if isinstance(w, View):
@@ -216,10 +222,13 @@ class MyTabs(MDTabs):
             elif idx == 0:
                 idx = 0
             if idx >= 0:
-                self.carousel.index = idx
-                tab = self.tab_list[idx]
-                tab.tab_label.state = "down"
-                tab.tab_label.on_release()
+                self.simulate_tab_switch(idx)
+
+    def simulate_tab_switch(self, idx):
+        self.carousel.index = idx
+        tab = self.tab_list[idx]
+        tab.tab_label.state = "down"
+        tab.tab_label.on_release()
 
     def clear_widgets(self):
         for w in self.tab_list:
@@ -246,8 +255,7 @@ class MyTabs(MDTabs):
         oldtab = self.already_present(view)
         if oldtab:
             _LOGGER.debug(f'Already present: {oldtab.view} -> {oldtab.view is view}')
-            oldtab.view = view
-            oldtab.on_view(view)
+            oldtab.set_view(view)
         else:
             _LOGGER.debug(f'TAB not present: {view}')
             super(MyTabs, self).add_widget(tab, *args, **kwargs)
@@ -815,17 +823,19 @@ class MainApp(MDApp):
                 self.devicemanagers_pre_init_done = True
             toast(f'Serivice connection OK ({hp[0]}:{hp[1]})')
 
-    def on_window_resize(self, inst, width, height):
-        self.config.set('size', 'width', width)
-        self.config.set('size', 'height', height)
+    def save_window_size(self):
+        _LOGGER.debug(f'Window size ({Window.width}, {Window.height})')
+        self.config.set('size', 'width', Window.width)
+        self.config.set('size', 'height', Window.height)
         self.config.write()
+        toast('Window size saved')
 
-    def on_window_touch_up(self, inst, *args):
+    def save_window_pos(self):
         _LOGGER.debug(f'Window pos ({Window.top}, {Window.left})')
         self.config.set('pos', 'top', Window.top)
         self.config.set('pos', 'left', Window.left)
         self.config.write()
-        return False
+        toast('Window position saved')
 
     def on_start(self):
         if platform != 'android':
@@ -836,8 +846,6 @@ class MainApp(MDApp):
             if width >= -6000:
                 Window.top = int(self.config.get('pos', 'top'))
                 Window.left = width
-            Window.bind(on_resize=self.on_window_resize)
-            Window.bind(on_touch_up=self.on_window_touch_up)
         for vt in self.velocity_tabs:
             self.root.ids.id_tabcont.add_widget(vt)
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
@@ -925,6 +933,9 @@ class MainApp(MDApp):
             settings.add_json_panel('Bluetooth', self.config, data=json.dumps(blue))  # data=json)
         for ci in self.connectors_info:
             settings.add_json_panel(ci['section'].title(), self.config, data=json.dumps(ci['config']))
+        if platform != "andorid":
+            settings.register_type('buttons', SettingButtons)
+            settings.add_json_panel('PosSize', self.config, join(dn, 'possize.json'))
 
     def check_host_port_config(self, name):
         host = self.config.get(name, "host")
@@ -988,8 +999,13 @@ class MainApp(MDApp):
         """
         _LOGGER.info("main.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
             config, section, key, value))
-        if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
-           self.check_other_config():
+        if section == 'possize':
+            if key == 'pos':
+                self.save_window_pos()
+            elif key == 'size':
+                self.save_window_size()
+        elif self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
+                self.check_other_config():
             if self.oscer:
                 snack_open("Configuration changes will be effective on restart", "Quit", self.on_nav_exit)
             else:
