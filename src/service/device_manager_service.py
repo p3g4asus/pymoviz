@@ -248,8 +248,7 @@ class DeviceManagerService(object):
                 db=self.db,
                 params=self.addit_params,
                 on_command_handle=self.on_event_command_handle,
-                on_state_transition=self.on_event_state_transition,
-                on_bluetooth_disabled=self.on_bluetooth_disabled)
+                on_state_transition=self.on_event_state_transition)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
 
     def on_command_stop(self, *args):
@@ -368,8 +367,7 @@ class DeviceManagerService(object):
                     device=d,
                     params=self.addit_params,
                     on_command_handle=self.on_event_command_handle,
-                    on_state_transition=self.on_event_state_transition,
-                    on_bluetooth_disabled=self.on_bluetooth_disabled)
+                    on_state_transition=self.on_event_state_transition)
                 self.devicemanagers_by_id[f'{d.get_id()}'] = dm
                 self.devicemanagers_by_uid[uid] = dm
         self.set_devicemanagers_active()
@@ -498,11 +496,10 @@ class DeviceManagerService(object):
         self.undo_enable_operations()
 
     def undo_enable_operations(self):
-        for _, dm in self.devicemanagers_by_uid.items():
-            if dm.__type__ in self.undo_info and self.undo_info[dm.__type__]:
-                del self.undo_info[dm.__type__]
-                dm.enable_ble_done = True
-                dm.undo_enable_operations()
+        for tp, cls in self.devicemanager_class_by_type.items():
+            if tp in self.undo_info and self.undo_info[tp]:
+                del self.undo_info[tp]
+                cls.undo_enable_operations(on_finish=self.on_bluetooth_disabled, loop=self.loop)
                 break
         self.stop_event.set()
 

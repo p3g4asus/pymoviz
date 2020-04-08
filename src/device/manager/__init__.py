@@ -6,6 +6,7 @@ import traceback
 from able import (REASON_DISCOVER_ERROR, REASON_NOT_ENABLED, STATE_CONNECTED, STATE_DISCONNECTED)
 from db.device import Device
 from db.label_formatter import SessionFormatter, SimpleFieldFormatter, StateFormatter, UserFormatter
+from kivy.utils import platform
 from util import init_logger
 from util.bluetooth_dispatcher import BluetoothDispatcher
 from util.const import (COMMAND_CONFIRM, COMMAND_DELDEVICE, COMMAND_DEVICEFIT,
@@ -27,6 +28,30 @@ _LOGGER = init_logger(__name__)
 _toast = None
 
 
+class PreBluetoothDispatcher(BluetoothDispatcher):
+    def __init__(self, cls=None, on_finish_handler=None, on_undo=None, force_undo=False, loop=None, *args, **kwargs):
+        super(PreBluetoothDispatcher, self).__init__(*args, **kwargs)
+        self.on_finish = on_finish_handler
+        self.loop = loop
+        self.enable_ble_done = force_undo
+        self.on_undo = on_undo
+        self.cls = cls
+
+    def on_bluetooth_disabled(self, done):
+        if self.on_undo:
+            self.loop.call_soon_threadsafe(self.on_undo, done)
+
+    def on_scan_started(self, success):
+        super(PreBluetoothDispatcher, self).on_scan_started(success)
+        if success:
+            self.stop_scan()
+        else:
+            self.loop.call_soon_threadsafe(self.on_finish, self.cls, False, self.enable_ble_done)
+
+    def on_scan_completed(self):
+        self.loop.call_soon_threadsafe(self.on_finish, self.cls, True, self.enable_ble_done)
+
+
 class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     __formatters__ = dict(
@@ -44,7 +69,19 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     @classmethod
     def do_activity_pre_operations(cls, on_finish, loop):
-        on_finish(True)
+        if platform == 'android':
+            pbd = PreBluetoothDispatcher(cls=cls, on_finish_handler=on_finish, loop=loop)
+            pbd.start_scan()
+        else:
+            on_finish(cls, True, False)
+
+    @classmethod
+    def undo_enable_operations(cls, on_finish, loop):
+        if platform == 'android':
+            pbd = PreBluetoothDispatcher(cls=cls, on_undo=on_finish, force_undo=True, loop=loop)
+            pbd.undo_enable_operations()
+        else:
+            on_finish(cls, True, False)
 
     @staticmethod
     def is_connected_state_s(st):
@@ -434,16 +471,13 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         return self.device.get_id()
 
     def __init__(self, oscer, uid, service=False, device=None, db=None, user=None,
-                 params=dict(), loop=None, on_command_handle=None, on_state_transition=None,
-                 on_bluetooth_disabled=None):
+                 params=dict(), loop=None, on_command_handle=None, on_state_transition=None):
         _LOGGER.info(f'Initing DM: {self.__class__.__name__} service={service} par={params}')
         super(GenericDeviceManager, self).__init__(**params)
         if on_command_handle:
             self.bind(on_command_handle=on_command_handle)
         if on_state_transition:
             self.bind(on_state_transition=on_state_transition)
-        if on_bluetooth_disabled:
-            self.bind(on_bluetooth_disabled=on_bluetooth_disabled)
         self._uid = uid
         self.device = device or Device(type=self.__type__)
         self.db = db

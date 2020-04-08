@@ -1,14 +1,11 @@
 from functools import partial
-import traceback
 
-from able import BluetoothDispatcher
 from db.keiser_m3i_output import KeiserM3iOutput
 from db.label_formatter import (DoubleFieldFormatter, SimpleFieldFormatter,
                                 TimeFieldFormatter)
 from device.simulator.keiser_m3i import \
     KeiserM3iDeviceSimulator
 from device.manager import GenericDeviceManager
-from kivy.utils import platform
 from util.const import (DEVREASON_REQUESTED, DEVREASON_TIMEOUT,
                         DEVSTATE_CONNECTED, DEVSTATE_CONNECTING,
                         DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
@@ -93,29 +90,6 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             pre='$D TM: '),
         **GenericDeviceManager.__formatters__
     )
-
-    @classmethod
-    def do_activity_pre_operations(cls, on_finish, loop):
-        if platform == 'android':
-            class PreBluetoothDispatcher(BluetoothDispatcher):
-                def __init__(self, on_finish_handler=None, loop=None, *args, **kwargs):
-                    super(PreBluetoothDispatcher, self).__init__(*args, **kwargs)
-                    self.on_finish = on_finish_handler
-                    self.loop = loop
-
-                def on_scan_started(self, success):
-                    super(PreBluetoothDispatcher, self).on_scan_started(success)
-                    if success:
-                        self.stop_scan()
-                    else:
-                        self.loop.call_soon_threadsafe(self.on_finish, cls, False, self.enable_ble_done)
-
-                def on_scan_completed(self):
-                    self.loop.call_soon_threadsafe(self.on_finish, cls, True, self.enable_ble_done)
-            pbd = PreBluetoothDispatcher(on_finish_handler=on_finish, loop=loop)
-            pbd.start_scan()
-        else:
-            on_finish(cls, True, False)
 
     @staticmethod
     def get_machine_id(bt):
