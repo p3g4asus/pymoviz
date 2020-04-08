@@ -530,7 +530,9 @@ def main():
     global _LOGGER
 
     if len(p4a):
+        print(f'Android service p4a {p4a}')
         args = json.loads(p4a)
+        print(f'Android service args {args}')
         # hostlisten
         # portlisten
         # hostconnect
@@ -570,6 +572,8 @@ def main():
     try:
         loop.run_until_complete(dms.start())
         loop.run_forever()
+    except Exception:
+        _LOGGER.error(f'DMS error {traceback.format_exc()}')
     finally:
         try:
             loop.run_until_complete(dms.stop())
