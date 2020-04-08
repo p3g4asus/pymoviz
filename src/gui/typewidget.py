@@ -52,7 +52,7 @@ class TypeWidget(Screen):
         self.ids.id_types.add_widget(b)
 
     def on_type(self, type, elem):
-        _LOGGER.debug(f"On type called {type}->{str(elem)}")
+        _LOGGER.info(f"On type called {type}->{str(elem)}")
 
     def dispatch_on_type(self, widget):
         self.manager.remove_widget(self)

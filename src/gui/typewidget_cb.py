@@ -78,7 +78,7 @@ class TypeWidgetCB(Screen):
             self.ids.id_types.add_widget(b)
 
     def on_type(self, lst):
-        _LOGGER.debug(f"On type called {str(lst)}")
+        _LOGGER.info(f"On type called {str(lst)}")
 
     def set_btn_enabled(self):
         if len(self._cptypes) > 0:

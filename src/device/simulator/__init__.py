@@ -55,15 +55,18 @@ class DeviceSimulator(abc.ABC, EventDispatcher):
                     if commit:
                         self.last_commit = nowms
                 except Exception:
-                    _LOGGER.error(f'Commit error: {traceback.format_exc()}')
+                    self.error(f'Commit error: {traceback.format_exc()}')
                 obj.s('updates', self.nUpdates)
             return state
         except Exception:
-            _LOGGER.error(f'Step error: {traceback.format_exc()}')
+            self.error(f'Step error: {traceback.format_exc()}')
             return DEVSTATE_INVALIDSTEP
 
     def log(self, s):
         _LOGGER.debug("%s: %s" % (self.__class__.__name__, s))
+
+    def error(self, s):
+        _LOGGER.error("%s: %s" % (self.__class__.__name__, s))
 
     def on_session(self, session):
         self.log("New session s=%s" % session)

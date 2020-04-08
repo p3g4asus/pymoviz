@@ -255,22 +255,22 @@ class MyTabs(MDTabs):
             return
         oldtab = self.already_present(view)
         if oldtab:
-            _LOGGER.debug(f'Already present: {oldtab.view} -> {oldtab.view is view}')
+            _LOGGER.info(f'Already present: {oldtab.view} -> {oldtab.view is view}')
             oldtab.set_view(view)
         else:
-            _LOGGER.debug(f'TAB not present: {view}')
+            _LOGGER.info(f'TAB not present: {view}')
             super(MyTabs, self).add_widget(tab, *args, **kwargs)
             self.tab_list.append(tab)
-            _LOGGER.debug(f"Gui: Adding tab len = {len(self.tab_list)}")
+            _LOGGER.info(f"Gui: Adding tab len = {len(self.tab_list)}")
             self.carousel.index = len(self.tab_list) - 1
             tab.tab_label.state = "down"
             tab.tab_label.on_release()
 
     def on_tab_switch(self, inst, text):
         super(MyTabs, self).on_tab_switch(inst, text)
-        _LOGGER.debug("On tab switch to %s" % str(text))
+        _LOGGER.info("On tab switch to %s" % str(text))
         self.current_tab = inst.tab
-        _LOGGER.debug("Gui: Currenttab = %s" % str(inst.tab))
+        _LOGGER.info("Gui: Currenttab = %s" % str(inst.tab))
 
 
 class MainApp(MDApp):
@@ -538,7 +538,7 @@ class MainApp(MDApp):
         self.root.ids.id_screen_manager.current = self.current_widget.name
 
     def on_confirm_add_item(self, inst, items, index=0, oscercmd='', lst=[], on_ok=None):
-        _LOGGER.debug(f'on_confirm_add_item items={items} index={index} oscercm={oscercmd}')
+        _LOGGER.info(f'on_confirm_add_item items={items} index={index} oscercm={oscercmd}')
         if items:
             if isinstance(items, list):
                 view = items[index] if index < len(items) else None
@@ -730,14 +730,14 @@ class MainApp(MDApp):
             self.oscer.send(self.init_osc_cmd)
 
     def on_osc_init_ok(self):
-        _LOGGER.debug('Osc init ok')
+        _LOGGER.info('Osc init ok')
         self.oscer.handle(COMMAND_LISTDEVICES_RV, self.on_list_devices_rv)
         self.oscer.handle(COMMAND_LISTVIEWS_RV, self.on_list_views_rv)
         self.oscer.handle(COMMAND_LISTUSERS_RV, self.on_list_users_rv)
         self.oscer.handle(COMMAND_PRINTMSG, self.on_printmsg)
         self.init_osc_cmd = COMMAND_CONNECTORS
         self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
-        _LOGGER.debug('Osc init ok done')
+        _LOGGER.info('Osc init ok done')
 
     def on_printmsg(self, msg):
         toast(msg)
@@ -766,7 +766,7 @@ class MainApp(MDApp):
     def on_command_handle(self, inst, command, exitv, *args):
         dev = inst.get_device()
         if command == COMMAND_NEWSESSION:
-            _LOGGER.debug(f'New session received: {args[0]}')
+            _LOGGER.info(f'New session received: {args[0]}')
             for f in self.all_format:
                 f(dev, session=args[0], user=self.current_user, manager=inst)
         elif command == COMMAND_DEVICEFIT:
@@ -787,7 +787,7 @@ class MainApp(MDApp):
         self.views = list(ld)
         self.root.ids.id_tabcont.new_view_list(self.views)
         self.on_osc_init_ok_cmd_next(None)
-        _LOGGER.debug(f'List of views {self.views}')
+        _LOGGER.info(f'List of views {self.views}')
 
     def is_pre_init_ok(self):
         for v in self.views:
@@ -987,7 +987,7 @@ class MainApp(MDApp):
                            connect_secs=int(self.config.getint('bluetooth', 'connect_secs')),
                            connect_retry=int(self.config.getint('bluetooth', 'connect_retry')),
                            undo_info=self.devicemanagers_pre_init,
-                           verbose=True)
+                           verbose=logging.DEBUG)
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))
                 service.start(mActivity, argument)
@@ -1035,7 +1035,7 @@ def main():
     app = MainApp(loop=loop)
     loop.run_until_complete(app.async_run())
     loop.run_until_complete(asyncio_graceful_shutdown(loop, _LOGGER, False))
-    _LOGGER.debug("Gui: Closing loop")
+    _LOGGER.info("Gui: Closing loop")
     loop.close()
 
 

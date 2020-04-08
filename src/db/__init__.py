@@ -296,12 +296,14 @@ class SerializableDBObj(object):
                 if it not in items:
                     rv = await it.delete(db, commit=False)
                     if not rv:
+                        _LOGGER.warning(f'Failed to save {query}')
                         return False
             for it in items:
                 it._set_single_field(self.__wherejoin__, self.rowid)
                 rv = await it.to_db(db, commit=False)
                 _LOGGER.debug(f'Saving item[{rv}] {it}')
                 if not rv:
+                    _LOGGER.warning(f'Failed to save {query}')
                     return False
         if commit:
             await db.commit()

@@ -46,7 +46,7 @@ class OSCManager(object):
                    on_init_ok=None):
         if not self.transport:
             try:
-                _LOGGER.debug(f"OSC trying to init conpars={self.hostlisten}:{self.portlisten} -> {self.hostconnect}:{self.portconnect}")
+                _LOGGER.info(f"OSC trying to init conpars={self.hostlisten}:{self.portlisten} -> {self.hostconnect}:{self.portconnect}")
                 self.user_on_connection_timeout = on_connection_timeout
                 self.server = AsyncIOOSCUDPServer(
                     (self.hostlisten, self.portlisten),
@@ -123,7 +123,7 @@ class OSCManager(object):
             new_connection = False
         if new_connection:
             self.on_connection_timeout(hp, False)
-            _LOGGER.debug(f'Connection to {hp[0]}:{hp[1]} estabilished')
+            _LOGGER.info(f'Connection to {hp[0]}:{hp[1]} estabilished')
         if send_command:
             # _LOGGER.debug(f'Sending connect command as {"client" if self.hostconnect else "server"} to {hp[0]}:{hp[1]} (port={self.portlisten})')
             self.connected_hosts[hpstr]['client'].send_message(COMMAND_CONNECTION, (self.portlisten,))
@@ -143,7 +143,7 @@ class OSCManager(object):
                 del self.connected_hosts[hpstr]
             if notifytimeout:
                 self.on_connection_timeout(hp, True)
-                _LOGGER.debug(f'Connection to {hp[0]}:{hp[1]} lost')
+                _LOGGER.info(f'Connection to {hp[0]}:{hp[1]} lost')
 
     def deserialize(self, args):
         if len(args) == 1 and args[0] == '()':

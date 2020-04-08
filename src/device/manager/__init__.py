@@ -135,7 +135,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             self.dispatch("on_state_transition", oldstate, st, reason)
 
     def connect(self, *args):
-        _LOGGER.debug(f'Connecting[{self.get_uid()}] {self.device.get_alias()}')
+        _LOGGER.info(f'Connecting[{self.get_uid()}] {self.device.get_alias()}')
         if self.is_stopped_state():
             self.set_state(DEVSTATE_CONNECTING, DEVREASON_REQUESTED)
             if self.simulator_needs_reset:
@@ -152,7 +152,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             self.inner_connect()
             return True
         else:
-            _LOGGER.debug(f'Device {self.device.get_alias()} is not stopped ({self.state})')
+            _LOGGER.info(f'Device {self.device.get_alias()} is not stopped ({self.state})')
             return False
 
     def disconnect(self, *args):
@@ -269,7 +269,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             exitv = CONFIRM_FAILED_3
         elif args[0] == CONFIRM_OK:
             self.device = args[1]
-            _LOGGER.debug(f'Saved device {self.device}')
+            _LOGGER.info(f'Saved device {self.device}')
             self.widget.exit()
             return
         else:
@@ -345,7 +345,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         _toast(f"[E {exitv}] {msg}")
 
     def search(self, val):
-        _LOGGER.debug(f'Search requested: state {self.state}, val={val}')
+        _LOGGER.info(f'Search requested: state {self.state}, val={val}')
         if val and self.state == DEVSTATE_UNINIT or self.state == DEVSTATE_DISCONNECTED:
             self.start_scan(self.get_scan_settings(scanning_for_new_devices=True),
                             self.get_scan_filters(scanning_for_new_devices=True))
@@ -402,7 +402,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     __events__ = tuple(__events__)
 
     def on_state_transition(self, fromv, tov, rea):
-        _LOGGER.debug(f'Device: transition from state {fromv} to {tov}')
+        _LOGGER.info(f'Device: transition from state {fromv} to {tov}')
         if tov == DEVSTATE_DISCONNECTED and\
             (fromv != DEVSTATE_DISCONNECTING or rea != DEVREASON_REQUESTED)\
                 and self.simulator:
@@ -436,7 +436,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def __init__(self, oscer, uid, service=False, device=None, db=None, user=None,
                  params=dict(), loop=None, on_command_handle=None, on_state_transition=None,
                  on_bluetooth_disabled=None):
-        _LOGGER.debug(f'Initing DM: {self.__class__.__name__} service={service} par={params}')
+        _LOGGER.info(f'Initing DM: {self.__class__.__name__} service={service} par={params}')
         super(GenericDeviceManager, self).__init__(**params)
         if on_command_handle:
             self.bind(on_command_handle=on_command_handle)

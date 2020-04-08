@@ -121,7 +121,7 @@ class KeiserM3iDeviceSimulator(DeviceSimulator):
             self.log(f"Returning {out}")
             return out
         except Exception:
-            self.log(f'Step error {traceback.format_exc()}')
+            self.error(f'Step error {traceback.format_exc()}')
             return DEVSTATE_INVALIDSTEP
 
     def step_cyc(self, f, nowms):

@@ -41,7 +41,7 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
                     hostconnect=hostconnect,
                     portconnect=portconnect
                 )
-        _LOGGER.debug(f'Constructing BluetoothDispatcherW {kwargs} events={self.__events__}')
+        _LOGGER.info(f'Constructing BluetoothDispatcherW {kwargs} events={self.__events__}')
         super(BluetoothDispatcherW, self).__init__(**kwargs)
 
     def _set_ble_interface(self):
@@ -57,9 +57,9 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
 
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
-            _LOGGER.debug(f'Backend connection Timeout ({hp[0]}:{hp[1]})')
+            _LOGGER.info(f'Backend connection Timeout ({hp[0]}:{hp[1]})')
         else:
-            _LOGGER.debug(f'Backend connection OK ({hp[0]}:{hp[1]})')
+            _LOGGER.info(f'Backend connection OK ({hp[0]}:{hp[1]})')
 
     def start_scan(self, scan_settings=None, scan_filters=None):
         """Start a scan for devices.
@@ -220,7 +220,7 @@ if platform == 'android':
             )
 
         def stop_scan_wrap(self, *args):
-            _LOGGER.debug('Calling stop_scan')
+            _LOGGER.info('Calling stop_scan')
             self.stop_scan()
 
         def on_osc_init_ok(self):

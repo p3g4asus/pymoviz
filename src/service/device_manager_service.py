@@ -97,7 +97,7 @@ class DeviceManagerService(object):
         self.create_device_managers()
 
     def on_command_condisc(self, cmd, *args):
-        _LOGGER.debug(f'On Command condisc: {cmd}')
+        _LOGGER.info(f'On Command condisc: {cmd}')
         if cmd == 'c':
             self.last_user = args[0]
         for dm in self.devicemanagers_active_done.copy():
@@ -111,9 +111,9 @@ class DeviceManagerService(object):
         Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
 
     def on_command_listviews(self, *args):
-        _LOGGER.debug('List view before send:')
+        _LOGGER.info('List view before send:')
         for v in self.views:
-            _LOGGER.debug(f'View = {v}')
+            _LOGGER.info(f'View = {v}')
         self.oscer.send(COMMAND_LISTVIEWS_RV, *self.views)
 
     def on_command_listusers(self, *args):
@@ -139,7 +139,7 @@ class DeviceManagerService(object):
 
     async def on_command_delelem_async(self, elem, *args, lst=None, on_ok=None):
         try:
-            _LOGGER.debug(f'on_command_delelem_async {elem}')
+            _LOGGER.info(f'on_command_delelem_async {elem}')
             rv = await elem.delete(self.db)
             if rv:
                 if elem in lst:
@@ -154,7 +154,7 @@ class DeviceManagerService(object):
 
     async def on_command_saveelem_async(self, elem, *args, lst=None, on_ok=None):
         try:
-            _LOGGER.debug(f'on_command_saveelem_async {elem}')
+            _LOGGER.info(f'on_command_saveelem_async {elem}')
             rv = await elem.to_db(self.db)
             if rv:
                 if elem not in lst:
@@ -170,7 +170,7 @@ class DeviceManagerService(object):
             _LOGGER.error(f'on_command_saveelem_async exception {traceback.format_exc()}')
 
     def on_command_dbelem(self, elem, *args, asyncmethod=None, lst=None, cls=None, on_ok=None):
-        _LOGGER.debug(f'on_command_dbelem {elem}')
+        _LOGGER.info(f'on_command_dbelem {elem}')
         if isinstance(elem, cls):
             if self.devicemanagers_all_stopped():
                 Timer(0, partial(asyncmethod, elem, lst=lst, on_ok=on_ok))
@@ -352,7 +352,7 @@ class DeviceManagerService(object):
     async def save_modified_views(self, views2save):
         for v in views2save:
             rv = await v.to_db(self.db)
-            _LOGGER.debug(f'Saving view {v} -> {rv}')
+            _LOGGER.info(f'Saving view {v} -> {rv}')
         self.on_command_listviews()
 
     def create_device_managers(self):
@@ -386,7 +386,7 @@ class DeviceManagerService(object):
 
     async def start_remaining_connection_operations(self, bytimer=True):
         try:
-            _LOGGER.debug(f'Starting remaining con timer={bytimer}')
+            _LOGGER.info(f'Starting remaining con timer={bytimer}')
             if bytimer:
                 self.timer_obj = None
             elif self.timer_obj:
@@ -394,7 +394,7 @@ class DeviceManagerService(object):
                 self.timer_obj = None
             for dm in self.devicemanagers_active.copy():
                 info = self.devicemanagers_active_info[dm.get_uid()]
-                _LOGGER.debug(f'Processing[{dm.get_uid()}] {dm.get_device()} -> {info["operation"]}')
+                _LOGGER.info(f'Processing[{dm.get_uid()}] {dm.get_device()} -> {info["operation"]}')
                 if info['operation'] == 'd':
                     if dm.get_state() == DEVSTATE_CONNECTING:
                         break
@@ -422,7 +422,7 @@ class DeviceManagerService(object):
                             info['retry'] += 1
                             break
                         else:
-                            _LOGGER.debug(f'Retry FINISH for device[{dm.get_uid()}] {dm.get_device()}')
+                            _LOGGER.info(f'Retry FINISH for device[{dm.get_uid()}] {dm.get_device()}')
         except Exception:
             _LOGGER.error(f'Rem op error {traceback.format_exc()}')
 
@@ -557,8 +557,12 @@ def main():
         import sys
         sys.argv[1:] = argall[1]
     args['android'] = len(p4a)
-    _LOGGER = init_logger(__name__,
-                          level=logging.DEBUG if args['verbose'] else logging.WARNING)
+    verb = args['verbose']
+    if type(verb) == bool:
+        level = logging.DEBUG if verb else logging.INFO
+    else:
+        level = verb
+    _LOGGER = init_logger(__name__, level)
     _LOGGER.info(f"Server: p4a = {p4a}")
     _LOGGER.debug(f"Server: test debug {args}")
     loop = asyncio.get_event_loop()
@@ -569,7 +573,7 @@ def main():
     finally:
         try:
             loop.run_until_complete(dms.stop())
-            _LOGGER.debug("Server: Closing loop")
+            _LOGGER.info("Server: Closing loop")
             loop.close()
         except Exception:
             _LOGGER.error("Server: " + traceback.format_exc())

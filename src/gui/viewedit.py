@@ -196,7 +196,7 @@ class FormatterAdd(Screen):
         self.dispatch('on_confirm', inst.formatter.clone() if inst else None)
 
     def on_confirm(self, formatter, *args):
-        _LOGGER.debug(f"On confirm called f={formatter}")
+        _LOGGER.info(f"On confirm called f={formatter}")
 
     def __init__(self, *args, **kwargs):
         self.register_event_type('on_confirm')
@@ -259,11 +259,11 @@ class ViewWidget(Screen):
         self.formatter_add = None
 
     def on_confirm(self, view):
-        _LOGGER.debug(f"On confirm called {str(view)}")
+        _LOGGER.info(f"On confirm called {str(view)}")
 
     def on_view(self, *args):
         self.view2gui()
-        _LOGGER.debug(f"On view called {str(self.view)}")
+        _LOGGER.info(f"On view called {str(self.view)}")
 
     def callback_card(self, elem, *args, formatter=None):
         self.view.items.remove(formatter)

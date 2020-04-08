@@ -10,19 +10,19 @@ import traceback
 async def asyncio_graceful_shutdown(loop, logger, perform_loop_stop=True):
     """Cleanup tasks tied to the service's shutdown."""
     try:
-        logger.debug("Shutdown: Performing graceful stop")
+        logger.info("Shutdown: Performing graceful stop")
         tasks = [t for t in asyncio.all_tasks() if t is not
                  asyncio.current_task()]
 
         [task.cancel() for task in tasks]
 
-        logger.debug(f"Shutdown: Cancelling {len(tasks)} outstanding tasks")
+        logger.info(f"Shutdown: Cancelling {len(tasks)} outstanding tasks")
         await asyncio.gather(*tasks)
     except (asyncio.exceptions.CancelledError, Exception):
         logger.error(f"Shutdown: {traceback.format_exc()}")
     finally:
         if perform_loop_stop:
-            logger.debug("Shutdown: Flushing metrics")
+            logger.info("Shutdown: Flushing metrics")
             loop.stop()
 
 
@@ -45,8 +45,10 @@ def init_logger(name, level=None, hp=None, loggerobj=None):
         if _socket_handler:
             _socket_handler.setLevel(_loglevel)
         for _, log in _LOGGERS.items():
+            # print(f'Resetting level {nm} level {_loglevel}')
             log['lo'].setLevel(_loglevel)
             log['ha'].setLevel(_loglevel)
+    # print(f'Init logger {name} level {_loglevel}')
     if loggerobj:
         return loggerobj
     nm = f'PY_{name}'
@@ -75,16 +77,16 @@ def find_devicemanager_classes(_LOGGER):
     for x in pls:
         if not x.startswith('__') and not x.endswith('widget'):
             try:
-                _LOGGER.debug(f'Processing {x}...')
+                _LOGGER.info(f'Processing {x}...')
                 m = importlib.import_module(f"device.manager.{x}")
                 clsmembers = inspect.getmembers(m, inspect.isclass)
                 for cla in clsmembers:
                     try:
-                        _LOGGER.debug(f'...Processing {cla[1]}')
+                        _LOGGER.info(f'...Processing {cla[1]}')
                         typev = getattr(cla[1], '__type__')
                         if typev:
                             out[typev] = cla[1]
-                            _LOGGER.debug(f'Adding {cla[1]}')
+                            _LOGGER.info(f'Adding {cla[1]}')
                     except Exception:
                         # _LOGGER.warning(traceback.format_exc())
                         pass

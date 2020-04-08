@@ -195,19 +195,15 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
 
     def rescan_timer_init(self, timeout=False):
         if self.force_rescan_timer:
-            _LOGGER.debug('Stopping rescan timer')
-            try:
-                self.force_rescan_timer.cancel()
-            except Exception:
-                _LOGGER.error(f'Stop timer error {traceback.format_exc()}')
-            _LOGGER.debug('Stopped')
+            _LOGGER.info('Stopping rescan timer')
+            self.force_rescan_timer.cancel()
             self.force_rescan_timer = None
         if timeout:
-            _LOGGER.debug(f'Starting rescan timer({timeout})')
+            _LOGGER.info(f'Starting rescan timer({timeout})')
             self.force_rescan_timer = Timer(timeout, self.restart_scan)
 
     async def restart_scan(self):
-        _LOGGER.debug(f'Rescan timer done: state={self.state}')
+        _LOGGER.info(f'Rescan timer done: state={self.state}')
         if self.state == DEVSTATE_CONNECTING:
             self.rescan_timer_init()
             self.stop_scan()

@@ -28,7 +28,7 @@ class BrandItemSimple(OneLineListItem):
         self.register_event_type('on_brand')
 
     def dispatch_on_brand(self, inst, active):
-        _LOGGER.debug(f"BrandItem: Dispatching on brand->{str(active)}")
+        _LOGGER.info(f"BrandItem: Dispatching on brand->{str(active)}")
         self.dispatch("on_brand", self.brandinfo, active)
 
     def brandinfo2gui(self, b):
@@ -65,11 +65,10 @@ class BrandItemCB(OneLineRightIconListItem):
         self.brandinfo2gui(v)
 
     def dispatch_on_brand(self, inst, active):
-        _LOGGER.debug(f"BrandItem: Dispatching on brand->{str(active)}")
         self.dispatch("on_brand", self.brandinfo, active)
 
     def on_brand(self, brandinfo, active):
-        _LOGGER.debug(f"BrandItem: On brand {str(brandinfo)}->{active}")
+        _LOGGER.info(f"BrandItem: On brand {str(brandinfo)}->{active}")
 
 
 class BrandCheckbox(MDCheckbox, IRightBodyTouch):

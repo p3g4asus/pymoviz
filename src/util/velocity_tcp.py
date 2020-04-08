@@ -116,7 +116,7 @@ class TcpClient(asyncio.Protocol):
 
     def connection_made(self, transport):
         self.transport = transport
-        _LOGGER.debug(f'Connection to {self.hp[0]}:{self.hp[1]} estabilished')
+        _LOGGER.info(f'Connection to {self.hp[0]}:{self.hp[1]} estabilished')
 
     def data_received(self, data):
         _LOGGER.debug(f'Data received {data.decode()}')
@@ -125,7 +125,7 @@ class TcpClient(asyncio.Protocol):
         self.transport.write(data.encode())
 
     def _stop(self):
-        _LOGGER.debug('Stop called')
+        _LOGGER.info('Stop called')
         self.stopped = True
         if self.transport:
             try:
@@ -155,7 +155,7 @@ class TcpClient(asyncio.Protocol):
     @staticmethod
     async def init_connectors_async(loop, connectors_info):
         for ci in connectors_info:
-            _LOGGER.debug(f'Init connectors {ci["hp"][0]}:{ci["hp"][1]} ({ci["temp"]})')
+            _LOGGER.info(f'Init connectors {ci["hp"][0]}:{ci["hp"][1]} ({ci["temp"]})')
             await TcpClient.do_connect(ci['hp'], loop, ci['temp'])
 
     @staticmethod
@@ -209,12 +209,12 @@ class TcpClient(asyncio.Protocol):
 
     def on_connection_lost_done(self):
         hpstr = f'{self.hp[0]}:{self.hp[1]}'
-        _LOGGER.debug(f'Connection to {hpstr} LOST')
+        _LOGGER.info(f'Connection to {hpstr} LOST')
         if self.stopped:
-            _LOGGER.debug(f'{hpstr} Stopped: exiting')
+            _LOGGER.info(f'{hpstr} Stopped: exiting')
             self.stop_event.set()
         else:
-            _LOGGER.debug(f'{hpstr} Trying to reconnect in {self.RECONNECT_INTERVAL}s')
+            _LOGGER.info(f'{hpstr} Trying to reconnect in {self.RECONNECT_INTERVAL}s')
             self.stop_event.set()
             Timer(self.RECONNECT_INTERVAL, partial(self.do_connect, self.hp, self.loop, self.template_file))
 

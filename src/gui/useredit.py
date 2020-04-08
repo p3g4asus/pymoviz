@@ -93,7 +93,7 @@ class UserWidget(Screen):
 
     def on_user(self, *args):
         self.user2gui()
-        _LOGGER.debug(f"On user called {str(self.user)}")
+        _LOGGER.info(f"On user called {str(self.user)}")
 
     def set_birthday(self, dt):
         _LOGGER.debug(f'Set birthday {dt}')
@@ -125,7 +125,7 @@ class UserWidget(Screen):
 
     def on_confirm(self, user):
         # self.manager.remove_widget(self)
-        _LOGGER.debug(f"On confirm called {str(user)}")
+        _LOGGER.info(f"On confirm called {str(user)}")
 
     def enable_buttons(self, inst, text, *args, **kwargs):
         dis = not text or not re.search(r"[A-Za-z]", text)
