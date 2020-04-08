@@ -199,10 +199,11 @@ class MyTabs(MDTabs):
                     removel.append(t)
         for t in removel:
             self.remove_widget(t)
-        for t in views:
-            self.add_widget(t)
-        if set_tab:
-            self.simulate_tab_switch(0)
+        if self.tab_list or views:
+            for t in views:
+                self.add_widget(t)
+            if set_tab:
+                self.simulate_tab_switch(0)
 
     def remove_widget(self, w, *args, **kwargs):
         if isinstance(w, View):
@@ -994,7 +995,7 @@ class MainApp(MDApp):
             except Exception:
                 _LOGGER.error(traceback.format_exc())
 
-    async def stop_server(self):
+    def stop_server(self):
         if self.oscer:
             self.oscer.send(COMMAND_STOP)
             self.oscer.uninit()
