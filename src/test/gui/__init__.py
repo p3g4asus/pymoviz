@@ -71,11 +71,36 @@ def snack_open(msg, btn_text, btn_callback):
     sn.show()
 
 
+class PreBluetoothDispatcher(BluetoothDispatcher):
+    def __init__(self, on_finish_handler=None, on_undo=None, loop=None, *args, **kwargs):
+        super(PreBluetoothDispatcher, self).__init__(*args, **kwargs)
+        self.on_finish = on_finish_handler
+        self.loop = loop
+        self.on_undo = on_undo
+
+    def on_bluetooth_disabled(self, done):
+        if self.on_undo:
+            self.loop.call_soon_threadsafe(self.on_undo, done)
+
+    def on_scan_started(self, success):
+        super(PreBluetoothDispatcher, self).on_scan_started(success)
+        _LOGGER.info(f"On scan started {success}")
+        if success:
+            self.stop_scan()
+        else:
+            self.loop.call_soon_threadsafe(self.on_finish, False, self.enable_ble_done)
+
+    def on_scan_completed(self):
+        _LOGGER.info("On scan completed")
+        self.loop.call_soon_threadsafe(self.on_finish, True, self.enable_ble_done)
+
+
 class MainApp(MDApp):
 
     def __init__(self, *args, **kwargs):
         super(MainApp, self).__init__(*args, **kwargs)
         self.loop = asyncio.get_event_loop()
+        self.pbd = PreBluetoothDispatcher(on_finish_handler=self.on_pre_finish, on_undo=self.on_undo, loop=self.loop)
 
     def build(self):
         """
@@ -119,27 +144,9 @@ class MainApp(MDApp):
             _LOGGER.debug(f"GUI1: OSC timeout OK ({hp[0]}:{hp[1]})")
             toast(f'OSC comunication OK ({hp[0]}:{hp[1]})')
 
-    def do_pre(self, on_finish, loop):
-        class PreBluetoothDispatcher(BluetoothDispatcher):
-            def __init__(self, on_finish_handler=None, loop=None, *args, **kwargs):
-                super(PreBluetoothDispatcher, self).__init__(*args, **kwargs)
-                self.on_finish = on_finish_handler
-                self.loop = loop
-
-            def on_scan_started(self, success):
-                super(PreBluetoothDispatcher, self).on_scan_started(success)
-                _LOGGER.info(f"On scan started {success}")
-                if success:
-                    self.stop_scan()
-                else:
-                    self.loop.call_soon_threadsafe(self.on_finish, False)
-
-            def on_scan_completed(self):
-                _LOGGER.info("On scan completed")
-                self.loop.call_soon_threadsafe(self.on_finish, True)
-        pbd = PreBluetoothDispatcher(on_finish_handler=on_finish, loop=loop)
+    def do_pre(self):
         _LOGGER.info("Starting scan")
-        pbd.start_scan()
+        self.pbd.start_scan()
 
     def on_start(self):
         init_logger(__name__,
@@ -151,9 +158,9 @@ class MainApp(MDApp):
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
             _LOGGER.debug("On Start conf OK")
-            self.do_pre(self.on_pre_finish, self.loop)
+            self.do_pre()
 
-    def on_pre_finish(self, success, *args):
+    def on_pre_finish(self, success, undo, *args):
         _LOGGER.info(f"On pre init finish loop {success}")
         if success:
             _LOGGER.debug("GUI1: Starting osc init in loop")
@@ -167,6 +174,9 @@ class MainApp(MDApp):
 
     def true_stop(self):
         self.stop_server()
+        self.pdb.undo_enable_operations()
+
+    def on_undo(self, done):
         self.stop()
 
     def build_config(self, config):

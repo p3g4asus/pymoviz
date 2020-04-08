@@ -433,13 +433,17 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def get_id(self):
         return self.device.get_id()
 
-    def __init__(self, oscer, uid, service=False, device=None, db=None, user=None, params=dict(), loop=None, on_command_handle=None, on_state_transition=None):
+    def __init__(self, oscer, uid, service=False, device=None, db=None, user=None,
+                 params=dict(), loop=None, on_command_handle=None, on_state_transition=None,
+                 on_bluetooth_disabled=None):
         _LOGGER.debug(f'Initing DM: {self.__class__.__name__} service={service} par={params}')
         super(GenericDeviceManager, self).__init__(**params)
         if on_command_handle:
             self.bind(on_command_handle=on_command_handle)
         if on_state_transition:
             self.bind(on_state_transition=on_state_transition)
+        if on_bluetooth_disabled:
+            self.bind(on_bluetooth_disabled=on_bluetooth_disabled)
         self._uid = uid
         self.device = device or Device(type=self.__type__)
         self.db = db

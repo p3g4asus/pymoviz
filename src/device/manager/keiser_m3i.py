@@ -108,14 +108,14 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
                     if success:
                         self.stop_scan()
                     else:
-                        self.loop.call_soon_threadsafe(self.on_finish, cls, False)
+                        self.loop.call_soon_threadsafe(self.on_finish, cls, False, self.enable_ble_done)
 
                 def on_scan_completed(self):
-                    self.loop.call_soon_threadsafe(self.on_finish, cls, True)
+                    self.loop.call_soon_threadsafe(self.on_finish, cls, True, self.enable_ble_done)
             pbd = PreBluetoothDispatcher(on_finish_handler=on_finish, loop=loop)
             pbd.start_scan()
         else:
-            on_finish(cls, True)
+            on_finish(cls, True, False)
 
     @staticmethod
     def get_machine_id(bt):

@@ -61,6 +61,7 @@ class DeviceManagerService(object):
         self.main_session = None
         self.last_user = None
         self.devicemanagers_active_info = dict()
+        self.stop_event = asyncio.Event()
 
     async def init_osc(self):
         self.oscer = OSCManager(hostlisten=self.hostlisten, portlisten=self.portlisten)
@@ -247,7 +248,8 @@ class DeviceManagerService(object):
                 db=self.db,
                 params=self.addit_params,
                 on_command_handle=self.on_event_command_handle,
-                on_state_transition=self.on_event_state_transition)
+                on_state_transition=self.on_event_state_transition,
+                on_bluetooth_disabled=self.on_bluetooth_disabled)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
 
     def on_command_stop(self, *args):
@@ -366,7 +368,8 @@ class DeviceManagerService(object):
                     device=d,
                     params=self.addit_params,
                     on_command_handle=self.on_event_command_handle,
-                    on_state_transition=self.on_event_state_transition)
+                    on_state_transition=self.on_event_state_transition,
+                    on_bluetooth_disabled=self.on_bluetooth_disabled)
                 self.devicemanagers_by_id[f'{d.get_id()}'] = dm
                 self.devicemanagers_by_uid[uid] = dm
         self.set_devicemanagers_active()
@@ -491,13 +494,30 @@ class DeviceManagerService(object):
                     _LOGGER.warning(traceback.format_exc())
             await self.db.commit()
 
+    def on_bluetooth_disabled(self, inst, wasdisabled):
+        self.undo_enable_operations()
+
+    def undo_enable_operations(self):
+        for _, dm in self.devicemanagers_by_uid.items():
+            if dm.__type__ in self.undo_info and self.undo_info[dm.__type__]:
+                del self.undo_info[dm.__type__]
+                dm.enable_ble_done = True
+                dm.undo_enable_operations()
+                break
+        self.stop_event.set()
+
     async def uninit_db(self):
         if self.db:
             await self.db.close()
 
     async def stop(self):
+        self.undo_enable_operations()
+        await self.stop_event.wait()
         self.oscer.uninit()
         await self.uninit_db()
+        self.stop_service()
+
+    def stop_service(self):
         if self.android:
             from jnius import autoclass
             service = autoclass('org.kivy.android.PythonService').mService
@@ -532,7 +552,8 @@ def main():
         parser.add_argument("-v", "--verbose", help="increase output verbosity",
                             action="store_true")
         argall = parser.parse_known_args()
-        args = vars(argall[0])
+        args = dict(vars(argall[0]))
+        args['undo_info'] = dict()
         import sys
         sys.argv[1:] = argall[1]
     args['android'] = len(p4a)
