@@ -161,7 +161,7 @@ class MainApp(MDApp):
             self.do_pre()
 
     def on_pre_finish(self, success, undo, *args):
-        _LOGGER.info(f"On pre init finish loop {success}")
+        _LOGGER.info(f"On pre init finish loop {success} / {undo}")
         if success:
             _LOGGER.debug("GUI1: Starting osc init in loop")
             Timer(0, self.init_osc)
@@ -174,7 +174,7 @@ class MainApp(MDApp):
 
     def true_stop(self):
         self.stop_server()
-        self.pdb.undo_enable_operations()
+        self.pbd.undo_enable_operations()
 
     def on_undo(self, done):
         self.stop()

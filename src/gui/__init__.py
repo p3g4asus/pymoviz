@@ -824,7 +824,7 @@ class MainApp(MDApp):
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init.keys():
                     if self.devicemanagers_pre_init[d] is None:
-                        self.devicemanagers_pre_init[d] = True
+                        self.devicemanagers_pre_init[d] = False
                 self.devicemanagers_pre_init_done = True
             toast(f'Serivice connection OK ({hp[0]}:{hp[1]})')
 
