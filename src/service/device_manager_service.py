@@ -530,9 +530,7 @@ def main():
     global _LOGGER
 
     if len(p4a):
-        print(f'Android service p4a {p4a}')
         args = json.loads(p4a)
-        print(f'Android service args {args}')
         # hostlisten
         # portlisten
         # hostconnect
@@ -581,3 +579,7 @@ def main():
             loop.close()
         except Exception:
             _LOGGER.error("Server: " + traceback.format_exc())
+
+
+if __name__ == '__main__':
+    main()
