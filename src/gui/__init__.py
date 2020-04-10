@@ -820,7 +820,8 @@ class MainApp(MDApp):
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
             self.do_pre()
-            toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
+            if self.devicemanagers_pre_init_done or platform != 'andorid':
+                toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
         else:
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init.keys():

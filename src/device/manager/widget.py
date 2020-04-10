@@ -1,12 +1,9 @@
-from functools import partial
 import re
 
 from kivy.lang import Builder
-from kivy.properties import BooleanProperty, DictProperty, ObjectProperty, StringProperty
-from kivy.uix.boxlayout import BoxLayout
+from kivy.properties import DictProperty, ObjectProperty, StringProperty
 from kivy.uix.screenmanager import Screen
-from kivymd.uix.list import IRightBodyTouch, ThreeLineRightIconListItem
-from kivymd.uix.selectioncontrol import MDCheckbox
+from kivymd.uix.list import ThreeLineListItem
 from util import init_logger
 from util.timer import Timer
 
@@ -14,62 +11,74 @@ from util.timer import Timer
 Builder.load_string(
     '''
 <BTLESearchItem>:
-    on_release: id_cb.trigger_action()
-    MyCheckbox:
-        id: id_cb
-        disabled: root.disabled
-        group: 'devices'
-        on_active: root.dispatch_on_sel(self, self.active)
 
-<SearchSettingsScreen>:
-    GridLayout:
-        cols: 1
-        rows: 5
-        height: self.minimum_height
-        id: id_grid
+<SearchResultsScreen>:
+    name: 'search_result'
+    BoxLayout:
+        orientation: 'vertical'
         MDToolbar:
             id: id_toolbar
-            title: 'Device'
+            title: 'Search Results'
             md_bg_color: app.theme_cls.primary_color
-            left_action_items: [["arrow-left", lambda x: root.exit()]]
-            right_action_items: []
+            left_action_items: [["arrow-left", lambda x: root.dispatch('on_search_stop', None)]]
             elevation: 10
         BoxLayout:
-            size_hint: (1, 0.4)
+            size_hint: (1, 0.05)
+            height: self.minimum_height
             padding: [dp(30), dp(20)]
-            MDTextField:
-                id: id_alias
-                hint_text: 'Device alias'
-                error: True
-                helper_text_mode: "on_error"
-                helper_text: 'Please insert a valid alias'
-                on_text: root.check_alias(self, self.text)
-        ScrollView:
-            size_hint: (1, 0.5)
-            MDList:
-                id: id_btds
-        GridLayout:
-            rows: 2
-            cols: 2
-            padding: [dp(30), dp(20)]
-            MDLabel:
-                text: "Priority"
-                markup: True
-            MDSlider:
-                id: id_orderd
-                min: 1
-                max: 100
-                value: 50
-            MDRectangleFlatIconButton:
-                pos_hint: {'top': 1}
-                id: id_search
-                on_release: root.start_search()
-                icon: "folder-search"
-                text: "Search"
             MDProgressBar:
                 min: 0
                 max: 99
+                value: 0
                 id: id_progress
+        ScrollView:
+            MDList:
+                id: id_btds
+
+<SearchSettingsScreen>:
+    ScrollView:
+        GridLayout:
+            orientation: 'vertical'
+            cols: 1
+            height: self.minimum_height
+            id: id_grid
+            MDToolbar:
+                id: id_toolbar
+                title: 'Search Results'
+                md_bg_color: app.theme_cls.primary_color
+                left_action_items: [["arrow-left", lambda x: root.exit()]]
+                right_action_items: [["folder-search", lambda x: root.start_search()]]
+                elevation: 10
+            BoxLayout:
+                height: self.minimum_height
+                size_hint_y: None
+                padding: [dp(30), dp(20)]
+                MDTextField:
+                    pos_hint: {'top': 1}
+                    id: id_alias
+                    hint_text: 'Device alias'
+                    error: True
+                    helper_text_mode: "on_error"
+                    helper_text: 'Please insert a valid alias'
+                    on_text: root.check_alias(self, self.text)
+            ThreeLineListItem:
+                id: id_label
+            GridLayout:
+                rows: 1
+                cols: 2
+                size_hint_y: None
+                height: self.minimum_height
+                padding: [dp(30), dp(20)]
+                MDLabel:
+                    size_hint_x: 0.4
+                    text: "Priority"
+                    markup: True
+                MDSlider:
+                    size_hint_x: 0.6
+                    id: id_orderd
+                    min: 1
+                    max: 100
+                    value: 50
     '''
 )
 
@@ -77,7 +86,7 @@ Builder.load_string(
 _LOGGER = init_logger(__name__)
 
 
-class ConfWidget(BoxLayout):
+class ConfWidget(object):
     conf = DictProperty(dict())
 
     def __init__(self, **kwargs):
@@ -100,35 +109,47 @@ class ConfWidget(BoxLayout):
         pass
 
 
-class MyCheckbox(MDCheckbox, IRightBodyTouch):
-    pass
-
-
-class BTLESearchItem(ThreeLineRightIconListItem):
+class BTLESearchItem(ThreeLineListItem):
     device = ObjectProperty()
-    disabled = BooleanProperty(False)
 
-    def __init__(self, *args, **kwargs):
-        self.register_event_type('on_sel')
-        if 'active' in kwargs:
-            act = kwargs['active']
-            del kwargs['active']
+
+class SearchResultsScreen(Screen):
+    def __init__(self, **kwargs):
+        self.register_event_type('on_search_stop')
+        super(SearchResultsScreen, self).__init__(**kwargs)
+        self.timer_search = None
+        self.set_searching()
+
+    def on_search_stop(self, select):
+        _LOGGER.info(f'on_search_stop {select}')
+
+    def set_searching(self, reset=False):
+        if reset:
+            self.ids.id_progress.value = 0
         else:
-            act = False
-        super(BTLESearchItem, self).__init__(*args, **kwargs)
-        self.set_active(act)
+            self.ids.id_progress.value = (self.ids.id_progress.value + 10) % 100
+        if self.timer_search:
+            self.timer_search.cancel()
+            self.timer_search = None
+        if not reset:
+            self.timer_search = Timer(0.10, self.set_searching)
 
-    def set_active(self, value):
-        self.ids.id_cb.active = value
+    def stop(self):
+        self.set_searching(reset=True)
+        self.manager.remove_widget(self)
 
-    def is_active(self):
-        return self.ids.id_cb.active
+    def add_result(self, item):
+        lst = self.ids.id_btds.children
+        addr = item.device.get_address()
+        for i in range(len(lst)-1, -1, -1):
+            if addr == lst[i].device.get_address():
+                self.ids.id_btds.remove_widget(lst[i])
+                break
+        self.ids.id_btds.add_widget(item)
+        item.bind(on_release=self.on_device_selected)
 
-    def dispatch_on_sel(self, inst, active):
-        self.dispatch("on_sel", self.device, active)
-
-    def on_sel(self, btd, active):
-        _LOGGER.debug("On on_sel %s (%s)" % (str(self.device.get_address()), str(active)))
+    def on_device_selected(self, inst):
+        self.dispatch('on_search_stop', inst)
 
 
 class SearchSettingsScreen(Screen):
@@ -142,7 +163,7 @@ class SearchSettingsScreen(Screen):
         self.register_event_type('on_search')
         super(SearchSettingsScreen, self).__init__(**kwargs)
         self.name = 'conf_d' + self.devicetype
-        self.timer_search = None
+        self.search_screen = None
         if self.conf_widget:
             self.ids.id_grid.add_widget(self.conf_widget)
         self.conf2gui()
@@ -157,10 +178,9 @@ class SearchSettingsScreen(Screen):
         _LOGGER.debug('Saved device %s' % str(device))
 
     def conf2gui(self):
-        self.clear_results()
+        self.device2label(self.deviceitem)
         if self.deviceitem:
             self._device = self.deviceitem.device
-            self.add_result(self.deviceitem)
             self.ids.id_toolbar.title = f'{self._device.get_alias()} Configuration'
             self.ids.id_alias.text = self._device.get_alias()
             self.ids.id_orderd.value = self._device.get_orderd()
@@ -173,12 +193,6 @@ class SearchSettingsScreen(Screen):
             self.ids.id_orderd.value = 50
             if self.conf_widget:
                 self.conf_widget.clear()
-
-    def clear_results(self):
-        lst = self.ids.id_btds.children
-        self._device = None
-        for i in range(len(lst)-1, -1, -1):
-            self.ids.id_btds.remove_widget(lst[i])
 
     def check_alias(self, field, txt):
         if re.search(r'[a-zA-Z0-9_]+', txt):
@@ -194,26 +208,17 @@ class SearchSettingsScreen(Screen):
             self.check_all_ok()
 
     def add_result(self, item):
-        lst = self.ids.id_btds.children
-        addr = item.device.get_address()
-        for i in range(len(lst)-1, -1, -1):
-            if addr == lst[i].device.get_address():
-                active = lst[i].is_active()
-                self.ids.id_btds.remove_widget(lst[i])
-                if active:
-                    item.set_active(True)
-                    self._device = item.device
-                break
-        self.ids.id_btds.add_widget(item)
-        item.bind(on_sel=self.on_device_selected)
+        if self.search_screen:
+            self.search_screen.add_result(item)
 
     def check_all_ok(self):
         if self.ids.id_alias.error or not self._device or \
            (self.conf_widget and not self.conf_widget.is_ok()):
-            del self.ids.id_toolbar.right_action_items[:]
+            if len(self.ids.id_toolbar.right_action_items) > 1:
+                del self.ids.id_toolbar.right_action_items[1]
         else:
-            self.ids.id_toolbar.right_action_items =\
-                [["content-save", lambda x: self.save_conf()]]
+            self.ids.id_toolbar.right_action_items.append(
+                ["content-save", lambda x: self.save_conf()])
 
     def save_conf(self):
         self.gui2conf()
@@ -225,33 +230,33 @@ class SearchSettingsScreen(Screen):
         if self.conf_widget:
             self._device.set_additionalsettings(self.conf_widget.gui2conf())
 
-    def on_device_selected(self, inst, device, active):
-        if active:
-            self._device = device
-        else:
-            self._device = None
-        self.check_all_ok()
+    def on_search_stop(self, inst, deviceitem):
+        if deviceitem:
+            self.deviceitem = deviceitem
+            self._device = deviceitem.device
+            self.device2label(deviceitem)
+            self.check_all_ok()
+        self.dispatch('on_search', False)
 
-    def set_searching(self, val=True, reset=True):
-        if reset:
-            self.ids.id_progress.value = 0
+    def device2label(self, deviceitem):
+        if deviceitem:
+            self.ids.id_label.text = deviceitem.text
+            self.ids.id_label.secondary_text = deviceitem.secondary_text
+            self.ids.id_label.tertiary_text = deviceitem.tertiary_text
         else:
-            self.ids.id_progress.value = (self.ids.id_progress.value + 10) % 100
-        if self.timer_search:
-            self.timer_search.cancel()
-            self.timer_search = None
-        elif val:
-            self.clear_results()
-            self.ids.id_search.text = "Stop"
-            self.ids.id_search.icon = "stop"
-        if val:
-            self.timer_search = Timer(0.10, partial(self.set_searching, reset=False))
-        else:
-            self.ids.id_search.text = "Search"
-            self.ids.id_search.icon = "folder-search"
+            self.ids.id_label.text = 'Please click search'
+            self.ids.id_label.secondary_text = 'UP Right'
+            self.ids.id_label.tertiary_text = 'to find device'
 
-    def start_search(self):
-        if self.ids.id_search.text == "Search":
-            self.dispatch('on_search', True)
-        else:
-            self.dispatch('on_search', False)
+    def set_searching(self, val=True):
+        if val and not self.search_screen:
+            self.search_screen = SearchResultsScreen(on_search_stop=self.on_search_stop)
+            self.manager.add_widget(self.search_screen)
+            self.manager.current = self.search_screen.name
+        elif not val and self.search_screen:
+            self.search_screen.stop()
+            self.manager.current = self.name
+            self.search_screen = None
+
+    def start_search(self, start=True):
+        self.dispatch('on_search', start)

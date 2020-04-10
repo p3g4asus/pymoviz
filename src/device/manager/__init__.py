@@ -425,7 +425,6 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         add = device.get_address()
         return BTLESearchItem(
             device=device,
-            active=active,
             text=self.device2line1(device) if add else '',
             secondary_text=self.device2line2(device) if add else '',
             tertiary_text=self.device2line3(device) if add else '') if add else None

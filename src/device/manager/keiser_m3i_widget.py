@@ -1,34 +1,38 @@
 from kivy.lang import Builder
+from kivy.uix.gridlayout import GridLayout
 from device.manager.widget import ConfWidget
 
 
 Builder.load_string(
     '''
 <KeiserM3iConfWidget>:
-    orientation: 'vertical'
-    GridLayout:
-        cols: 2
-        rows: 2
-        padding: [dp(30), dp(20)]
-        MDLabel:
-            text: 'Machine ID'
-        MDSlider:
-            id: id_machine
-            min: 1
-            max: 254
-            value: root.DEFAULT_MACHINE
-        MDLabel:
-            text: 'Buffer distanza'
-        MDSlider:
-            id: id_buffer
-            min: 1
-            max: 1000
-            value: root.DEFAULT_BUFFER
+    cols: 2
+    rows: 2
+    padding: [dp(30), dp(20)]
+    height: self.minimum_height
+    MDLabel:
+        size_hint_x: 0.4
+        text: 'Machine ID'
+    MDSlider:
+        size_hint_x: 0.6
+        id: id_machine
+        min: 1
+        max: 254
+        value: root.DEFAULT_MACHINE
+    MDLabel:
+        size_hint_x: 0.4
+        text: 'Buffer distanza'
+    MDSlider:
+        size_hint_x: 0.6
+        id: id_buffer
+        min: 1
+        max: 1000
+        value: root.DEFAULT_BUFFER
     '''
 )
 
 
-class KeiserM3iConfWidget(ConfWidget):
+class KeiserM3iConfWidget(GridLayout, ConfWidget):
     DEFAULT_BUFFER = 150
     DEFAULT_MACHINE = 99
 

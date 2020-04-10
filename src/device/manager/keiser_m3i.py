@@ -124,7 +124,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
 
     @classmethod
     def get_scan_filters(cls, scanning_for_new_devices=False):
-        # return None
+        return None
         return [
             dict(deviceName="M3"),
             dict(deviceName="M3i"),
