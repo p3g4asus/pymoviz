@@ -823,7 +823,7 @@ class MainApp(MDApp):
         if is_timeout:
             _LOGGER.info(f'Timeout comunicating with the service ({hp[0]}:{hp[1]}) id={self.devicemanagers_pre_init_done} plf={platform}')
             self.do_pre()
-            if self.devicemanagers_pre_init_done or platform != 'andorid':
+            if self.devicemanagers_pre_init_done or platform != 'android':
                 toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
         else:
             if not self.devicemanagers_pre_init_done:
@@ -943,7 +943,7 @@ class MainApp(MDApp):
             settings.add_json_panel('Bluetooth', self.config, data=json.dumps(blue))  # data=json)
         for ci in self.connectors_info:
             settings.add_json_panel(ci['section'].title(), self.config, data=json.dumps(ci['config']))
-        if platform != "andorid":
+        if platform != "android":
             settings.register_type('buttons', SettingButtons)
             settings.add_json_panel('PosSize', self.config, join(dn, 'possize.json'))
 
