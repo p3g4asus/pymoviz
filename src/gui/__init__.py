@@ -796,7 +796,7 @@ class MainApp(MDApp):
                 for _, dm in self.devicemanagers_by_uid.items():
                     dev = dm.get_device()
                     if did == dev.get_id():
-                        if not self.devicemanagers_pre_init[dev.get_type()]:
+                        if not self.devicemanagers_pre_init_ok[dev.get_type()]:
                             return False
                         break
         return True
@@ -804,11 +804,12 @@ class MainApp(MDApp):
     def do_pre_finish(self, cls, ok, undo):
         toast(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"}')
         _LOGGER.info(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"} undo={undo}')
-        self.devicemanagers_pre_init[cls.__type__] = undo
+        self.devicemanagers_pre_init_undo[cls.__type__] = undo
+        self.devicemanagers_pre_init_ok[cls.__type__] = ok
         self.do_pre()
 
     def do_pre(self):
-        for d, init in self.devicemanagers_pre_init.items():
+        for d, init in self.devicemanagers_pre_init_undo.items():
             if init is None:
                 cls = self.devicemanager_class_by_type[d]
                 _LOGGER.info(f"Pre operations for devices of type {cls.__type__}...")
@@ -827,9 +828,10 @@ class MainApp(MDApp):
                 toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
         else:
             if not self.devicemanagers_pre_init_done:
-                for d in self.devicemanagers_pre_init.keys():
-                    if self.devicemanagers_pre_init[d] is None:
-                        self.devicemanagers_pre_init[d] = False
+                for d in self.devicemanagers_pre_init_undo.keys():
+                    if self.devicemanagers_pre_init_undo[d] is None:
+                        self.devicemanagers_pre_init_undo[d] = False
+                        self.devicemanagers_pre_init_ok[d] = True
                 self.devicemanagers_pre_init_done = True
             toast(f'Serivice connection OK ({hp[0]}:{hp[1]})')
 
@@ -924,7 +926,8 @@ class MainApp(MDApp):
         self.init_osc_cmd = None
         self.init_osc_timer = None
         self.devicemanagers_pre_init_done = False
-        self.devicemanagers_pre_init = dict.fromkeys(self.devicemanager_class_by_type.keys(), None)
+        self.devicemanagers_pre_init_undo = dict.fromkeys(self.devicemanager_class_by_type.keys(), None)
+        self.devicemanagers_pre_init_ok = dict.fromkeys(self.devicemanager_class_by_type.keys(), False)
 
     def build_settings(self, settings):
         """
@@ -991,7 +994,7 @@ class MainApp(MDApp):
                            portlisten=int(self.config.getint('backend', 'port')),
                            connect_secs=int(self.config.getint('bluetooth', 'connect_secs')),
                            connect_retry=int(self.config.getint('bluetooth', 'connect_retry')),
-                           undo_info=self.devicemanagers_pre_init,
+                           undo_info=self.devicemanagers_pre_init_undo,
                            verbose=logging.DEBUG)
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))

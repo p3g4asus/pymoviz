@@ -103,6 +103,7 @@ class TcpClient(asyncio.Protocol):
             out = None
             if self.template:
                 try:
+                    # _LOGGER.debug(f'Merging {self.vm_var} with {dct}')
                     out = self.template.merge(dct, loader=self._LOADER)
                 except Exception:
                     _LOGGER.error(f'VTL error {traceback.format_exc()}')
