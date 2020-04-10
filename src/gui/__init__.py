@@ -803,6 +803,7 @@ class MainApp(MDApp):
 
     def do_pre_finish(self, cls, ok, undo):
         toast(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"}')
+        _LOGGER.info(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"} undo={undo}')
         self.devicemanagers_pre_init[cls.__type__] = undo
         self.do_pre()
 
@@ -810,15 +811,17 @@ class MainApp(MDApp):
         for d, init in self.devicemanagers_pre_init.items():
             if init is None:
                 cls = self.devicemanager_class_by_type[d]
-                toast(f"Pre operations for devices of type {cls.__type__}...")
+                _LOGGER.info(f"Pre operations for devices of type {cls.__type__}...")
                 cls.do_activity_pre_operations(on_finish=self.do_pre_finish, loop=self.loop)
                 return
         if not self.devicemanagers_pre_init_done:
+            _LOGGER.info('Pre init done: starting server')
             self.devicemanagers_pre_init_done = True
             self.start_server()
 
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
+            _LOGGER.info(f'Timeout comunicating with the service ({hp[0]}:{hp[1]}) id={self.devicemanagers_pre_init_done} plf={platform}')
             self.do_pre()
             if self.devicemanagers_pre_init_done or platform != 'andorid':
                 toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
