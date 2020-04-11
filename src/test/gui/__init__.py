@@ -27,7 +27,7 @@ from kivymd.uix.snackbar import Snackbar
 from util.const import COMMAND_STOP
 from util.osc_comunication import OSCManager
 from util.timer import Timer
-from util import asyncio_graceful_shutdown, init_logger
+from util import asyncio_graceful_shutdown, get_verbosity, init_logger
 
 
 _LOGGER = init_logger(__name__, level=logging.DEBUG)
@@ -149,11 +149,7 @@ class MainApp(MDApp):
         self.pbd.start_scan()
 
     def on_start(self):
-        init_logger(__name__,
-                    loggerobj=_LOGGER,
-                    hp=(
-                      self.config.get('log', 'host'),
-                      int(self.config.get('log', 'port'))))
+        init_logger(__name__, get_verbosity(self.config))
         _LOGGER.debug("On Start")
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
@@ -186,7 +182,7 @@ class MainApp(MDApp):
         config.setdefaults('frontend',
                            {'host': '127.0.0.1', 'port': 33218})
         config.setdefaults('log',
-                           {'host': '127.0.0.1', 'port': 60113})
+                           {'verbosity': 'INFO'})
         config.setdefaults('local',
                            {'frontendport': 9002, 'backendport': 9001})
         config.setdefaults('backend',
@@ -253,9 +249,7 @@ class MainApp(MDApp):
                 arg = dict(hostlisten=self.config.get('backend', 'host'),
                            portlisten=self.config.getint('backend', 'port'),
                            portlistenlocal=int(self.config.getint('local', 'backendport')),
-                           loghost=self.config.get('log', 'host'),
-                           logport=int(self.config.get('log', 'port')),
-                           verbose=True)
+                           verbose=get_verbosity(self.config))
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))
                 service.start(mActivity, argument)

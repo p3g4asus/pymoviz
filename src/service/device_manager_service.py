@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import glob
 import json
-import logging
 import os
 import traceback
 from functools import partial
@@ -12,12 +11,12 @@ import aiosqlite
 from db.device import Device
 from db.user import User
 from db.view import View
-from util import find_devicemanager_classes, init_logger
+from util import find_devicemanager_classes, get_verbosity, init_logger
 from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_CONNECTORS,
                         COMMAND_DEVICEFIT, COMMAND_DELDEVICE, COMMAND_DELUSER, COMMAND_DELVIEW,
                         COMMAND_DISCONNECT, COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV,
                         COMMAND_LISTUSERS, COMMAND_LISTUSERS_RV,
-                        COMMAND_LISTVIEWS, COMMAND_LISTVIEWS_RV,
+                        COMMAND_LISTVIEWS, COMMAND_LISTVIEWS_RV, COMMAND_LOGLEVEL,
                         COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
                         COMMAND_PRINTMSG, COMMAND_SAVEDEVICE,
                         COMMAND_SAVEUSER, COMMAND_SAVEVIEW, COMMAND_SEARCH,
@@ -69,6 +68,7 @@ class DeviceManagerService(object):
 
     def on_osc_init_ok(self):
         self.oscer.handle(COMMAND_STOP, self.on_command_stop)
+        self.oscer.handle(COMMAND_LOGLEVEL, self.on_command_loglevel)
         self.oscer.handle(COMMAND_NEWDEVICE, self.on_command_newdevice)
         self.oscer.handle(COMMAND_CONNECT, self.on_command_condisc, 'c')
         self.oscer.handle(COMMAND_DISCONNECT, self.on_command_condisc, 'd')
@@ -250,6 +250,9 @@ class DeviceManagerService(object):
                 on_command_handle=self.on_event_command_handle,
                 on_state_transition=self.on_event_state_transition)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
+
+    def on_command_loglevel(self, level, *args):
+        init_logger(__name__, level)
 
     def on_command_stop(self, *args):
         self.loop.stop()
@@ -546,20 +549,14 @@ def main():
         parser.add_argument('--connect_retry', type=int, help='connect retry', required=False, default=10)
         parser.add_argument('--connect_secs', type=int, help='connect secs', required=False, default=5)
         parser.add_argument('--db_fname', required=False, help='DB file path', default=join(dirname(__file__), '..', 'maindb.db'))
-        parser.add_argument("-v", "--verbose", help="increase output verbosity",
-                            action="store_true")
+        parser.add_argument('--verbose', required=False, default="INFO")
         argall = parser.parse_known_args()
         args = dict(vars(argall[0]))
         args['undo_info'] = dict()
         import sys
         sys.argv[1:] = argall[1]
     args['android'] = len(p4a)
-    verb = args['verbose']
-    if type(verb) == bool:
-        level = logging.DEBUG if verb else logging.INFO
-    else:
-        level = verb
-    _LOGGER = init_logger(__name__, level)
+    _LOGGER = init_logger(__name__, get_verbosity(args['verbose']))
     _LOGGER.info(f"Server: p4a = {p4a}")
     _LOGGER.debug(f"Server: test debug {args}")
     loop = asyncio.get_event_loop()

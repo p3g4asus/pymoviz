@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import os
 import traceback
 from os.path import dirname, join
@@ -8,7 +7,7 @@ from os.path import dirname, join
 from util.bluetooth_dispatcher import BluetoothDispatcherWC
 from util.const import COMMAND_STOP
 from util.osc_comunication import OSCManager
-from util import init_logger
+from util import get_verbosity, init_logger
 
 _LOGGER = None
 
@@ -121,9 +120,7 @@ def main():
     p4a = os.environ.get('PYTHON_SERVICE_ARGUMENT', '')
     args = json.loads(p4a)
     global _LOGGER
-    _LOGGER = init_logger(__name__,
-                          level=logging.DEBUG if args['verbose'] else logging.WARNING,
-                          hp=(args['loghost'], args['logport']))
+    _LOGGER = init_logger(__name__, level=get_verbosity(args['verbose']))
     _LOGGER.info(f"Server: p4a = {p4a}")
     _LOGGER.debug(f"Server: test debug")
     loop = asyncio.get_event_loop()

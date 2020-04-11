@@ -1,16 +1,10 @@
 [
     {
-        "type": "string",
-        "title": "Host",
-        "desc": "LOG Host",
+        "type": "options",
+        "options": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        "title": "Debug",
+        "desc": "Debug verbosity",
         "section": "log",
-        "key": "host"
-    },
-    {
-        "type": "numeric",
-        "title": "LOG Port",
-        "desc": "LOG port",
-        "section": "log",
-        "key": "port"
+        "key": "verbosity"
     }
 ]

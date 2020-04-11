@@ -31,16 +31,18 @@ _LOGGERS = dict()
 _socket_handler = None
 
 
-def init_logger(name, level=None, hp=None, loggerobj=None):
+def init_logger(name, level=None, hp=None):
     global _LOGGERS
     global _loglevel
     global _socket_handler
+    nm = f'PY_{name}'
+    loggerobj = _LOGGERS.get(nm, None)
     if hp is not None and _socket_handler is None:
         _socket_handler = SocketHandler(*hp)
         _socket_handler.setLevel(_loglevel)
         for _, log in _LOGGERS.items():
             log['lo'].addHandler(_socket_handler)
-    if level is not None:
+    if level is not None and level != _loglevel:
         _loglevel = level
         if _socket_handler:
             _socket_handler.setLevel(_loglevel)
@@ -51,7 +53,6 @@ def init_logger(name, level=None, hp=None, loggerobj=None):
     # print(f'Init logger {name} level {_loglevel}')
     if loggerobj:
         return loggerobj
-    nm = f'PY_{name}'
     _LOGGER = logging.getLogger(nm)
     _LOGGER.setLevel(_loglevel)
     handler = logging.StreamHandler(sys.stdout)
@@ -101,3 +102,19 @@ def get_natural_color(hex=True):
     from kivymd.color_definitions import colors
     hexval = '#' + colors[App.get_running_app().theme_cls.theme_style]["Background"]
     return hexval if hex else get_color_from_hex(hexval)
+
+
+def get_verbosity(config):
+    if isinstance(config, str):
+        verb = config
+    elif isinstance(config, int):
+        return config
+    else:
+        verb = config.get('log', 'verbosity')
+    verbosity_table = dict(CRITICAL=logging.CRITICAL,
+                           ERROR=logging.ERROR,
+                           WARNING=logging.WARNING,
+                           INFO=logging.INFO,
+                           DEBUG=logging.DEBUG,
+                           NOTSET=logging.NOTSET)
+    return verbosity_table.get(verb, logging.INFO)

@@ -43,15 +43,16 @@ from kivymd.uix.tab import MDTabs
 from util.const import (COMMAND_CONNECT, COMMAND_CONNECTORS, COMMAND_DELUSER,
                         COMMAND_DELVIEW, COMMAND_DEVICEFIT, COMMAND_DISCONNECT,
                         COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV, COMMAND_LISTUSERS,
-                        COMMAND_LISTUSERS_RV, COMMAND_LISTVIEWS,
-                        COMMAND_LISTVIEWS_RV, COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
+                        COMMAND_LISTUSERS_RV, COMMAND_LISTVIEWS, COMMAND_LISTVIEWS_RV,
+                        COMMAND_LOGLEVEL, COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
                         COMMAND_PRINTMSG,
                         COMMAND_SAVEUSER, COMMAND_SAVEVIEW, COMMAND_STOP,
                         CONFIRM_FAILED_3, CONFIRM_OK, MSG_COMMAND_TIMEOUT)
 from util.osc_comunication import OSCManager
 from util.timer import Timer
 from util.velocity_tcp import TcpClient
-from util import asyncio_graceful_shutdown, find_devicemanager_classes, init_logger
+from util import asyncio_graceful_shutdown, find_devicemanager_classes,\
+    get_verbosity, init_logger
 
 
 _LOGGER = init_logger(__name__, level=logging.DEBUG)
@@ -801,6 +802,10 @@ class MainApp(MDApp):
                         break
         return True
 
+    def on_pause(self):
+        self.notify_timeout = False
+        return True
+
     def do_pre_finish(self, cls, ok, undo):
         toast(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"}')
         _LOGGER.info(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"} undo={undo}')
@@ -824,16 +829,20 @@ class MainApp(MDApp):
         if is_timeout:
             _LOGGER.info(f'Timeout comunicating with the service ({hp[0]}:{hp[1]}) id={self.devicemanagers_pre_init_done} plf={platform}')
             self.do_pre()
-            if self.devicemanagers_pre_init_done or platform != 'android':
+            if self.notify_timeout and (self.devicemanagers_pre_init_done or platform != 'android'):
                 toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
         else:
+            self.oscer.send(COMMAND_LOGLEVEL, get_verbosity(self.config))
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init_undo.keys():
                     if self.devicemanagers_pre_init_undo[d] is None:
                         self.devicemanagers_pre_init_undo[d] = False
                         self.devicemanagers_pre_init_ok[d] = True
                 self.devicemanagers_pre_init_done = True
-            toast(f'Serivice connection OK ({hp[0]}:{hp[1]})')
+            if self.notify_timeout:
+                toast(f'Serivice connection OK ({hp[0]}:{hp[1]})')
+            else:
+                self.notify_timeout = True
 
     def save_window_size(self):
         _LOGGER.debug(f'Window size ({Window.width}, {Window.height})')
@@ -850,6 +859,7 @@ class MainApp(MDApp):
         toast('Window position saved')
 
     def on_start(self):
+        init_logger(__name__, get_verbosity(self.config))
         if platform != 'android':
             width = int(self.config.get('size', 'width'))
             if width > 0:
@@ -909,6 +919,8 @@ class MainApp(MDApp):
                            {'host': '127.0.0.1', 'port': 11001})
         config.setdefaults('bluetooth',
                            {'connect_secs': 5, 'connect_retry': 10})
+        config.setdefaults('log',
+                           {'verbosity': 'INFO'})
         self.connectors_info = self.find_connectors_info()
 
     def _init_fields(self):
@@ -918,6 +930,7 @@ class MainApp(MDApp):
         self.connectors_info = []
         self.all_format = []
         self.velocity_tabs = []
+        self.notify_timeout = True
         self.users = []
         self.current_widget = None
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
@@ -949,6 +962,7 @@ class MainApp(MDApp):
         if platform != "android":
             settings.register_type('buttons', SettingButtons)
             settings.add_json_panel('PosSize', self.config, join(dn, 'possize.json'))
+        settings.add_json_panel('Log', self.config, join(dn, 'log.json'))
 
     def check_host_port_config(self, name):
         host = self.config.get(name, "host")
@@ -995,7 +1009,7 @@ class MainApp(MDApp):
                            connect_secs=int(self.config.getint('bluetooth', 'connect_secs')),
                            connect_retry=int(self.config.getint('bluetooth', 'connect_retry')),
                            undo_info=self.devicemanagers_pre_init_undo,
-                           verbose=logging.DEBUG)
+                           verbose=get_verbosity(self.config))
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))
                 service.start(mActivity, argument)
@@ -1018,6 +1032,11 @@ class MainApp(MDApp):
                 self.save_window_pos()
             elif key == 'size':
                 self.save_window_size()
+        elif section == 'log' and key == 'verbosity':
+            verb = get_verbosity(self.config)
+            init_logger(__name__, verb)
+            if self.oscer:
+                self.oscer.send(COMMAND_LOGLEVEL, verb)
         elif self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
                 self.check_other_config():
             if self.oscer:
