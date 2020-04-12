@@ -652,13 +652,12 @@ class MainApp(MDApp):
         return formatters
 
     def find_connectors_info(self):
-        dir_additonals = join(self.db_dir(), 'connectors')
         connectors_info = []
         off = 0
-        if not exists(dir_additonals):
-            os.mkdir(dir_additonals)
-        for file in os.listdir(dir_additonals):
-            fp = join(dir_additonals, file)
+        if not exists(self.connectors_path):
+            os.mkdir(self.connectors_path)
+        for file in os.listdir(self.connectors_path):
+            fp = join(self.connectors_path, file)
             bn = basename(file)
             if isfile(fp) and fnmatch.fnmatch(file, '*.vm'):
                 if bn[0] == '_':
@@ -921,6 +920,8 @@ class MainApp(MDApp):
                            {'connect_secs': 5, 'connect_retry': 10})
         config.setdefaults('log',
                            {'verbosity': 'INFO'})
+        self.db_path = self.db_dir()
+        self.connectors_path = join(self.db_path, 'connectors')
         self.connectors_info = self.find_connectors_info()
 
     def _init_fields(self):
@@ -938,6 +939,8 @@ class MainApp(MDApp):
         self.views = []
         self.init_osc_cmd = None
         self.init_osc_timer = None
+        self.db_path = ''
+        self.connectors_path = ''
         self.devicemanagers_pre_init_done = False
         self.devicemanagers_pre_init_undo = dict.fromkeys(self.devicemanager_class_by_type.keys(), None)
         self.devicemanagers_pre_init_ok = dict.fromkeys(self.devicemanager_class_by_type.keys(), False)
@@ -947,20 +950,19 @@ class MainApp(MDApp):
         Add our custom section to the default configuration object.
         """
         dn = join(dirname(__file__), '..', 'config')
-        dir_additonals = join(self.db_dir(), 'connectors')
         # We use the string defined above for our JSON, but it could also be
         # loaded from a file as follows:
         #     settings.add_json_panel('My Label', self.config, 'settings.json')
+        settings.register_type('buttons', SettingButtons)
         settings.add_json_panel('Backend', self.config, join(dn, 'backend.json'))  # data=json)
         settings.add_json_panel('Frontend', self.config, join(dn, 'frontend.json'))
         with open(join(dn, 'bluetooth.json')) as json_file:
             blue = json.load(json_file)
-            blue[2]['title'] += dir_additonals
+            blue[2]['desc'] = self.connectors_path
             settings.add_json_panel('Bluetooth', self.config, data=json.dumps(blue))  # data=json)
         for ci in self.connectors_info:
             settings.add_json_panel(ci['section'].title(), self.config, data=json.dumps(ci['config']))
         if platform != "android":
-            settings.register_type('buttons', SettingButtons)
             settings.add_json_panel('PosSize', self.config, join(dn, 'possize.json'))
         settings.add_json_panel('Log', self.config, join(dn, 'log.json'))
 
@@ -1003,7 +1005,7 @@ class MainApp(MDApp):
                 service = autoclass(service_class)
                 mActivity = autoclass('org.kivy.android.PythonActivity').mActivity
 
-                arg = dict(db_fname=join(MainApp.db_dir(), 'maindb.db'),
+                arg = dict(db_fname=join(self.db_path, 'maindb.db'),
                            hostlisten=self.config.get('backend', 'host'),
                            portlisten=int(self.config.getint('backend', 'port')),
                            connect_secs=int(self.config.getint('bluetooth', 'connect_secs')),
@@ -1021,6 +1023,22 @@ class MainApp(MDApp):
             self.oscer.send(COMMAND_STOP)
             self.oscer.uninit()
 
+    async def start_windows_explorer(self):
+        await asyncio.create_subprocess_shell(
+            f'start "ciao" "{self.connectors_path}"')
+
+    def start_android_explorer(self):
+        from jnius import autoclass, cast
+        Intent = autoclass('android.content.Intent')
+        Uri = autoclass('android.net.Uri')
+        u = Uri.parse(self.connectors_path)
+        intent = Intent(Intent.ACTION_VIEW, u)
+        intent.setDataAndType(u, "resource/folder")
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
+        if intent.resolveActivityInfo(currentActivity.getPackageManager(), 0):
+            currentActivity.startActivity(intent)
+
     def on_config_change(self, config, section, key, value):
         """
         Respond to changes in the configuration.
@@ -1032,6 +1050,11 @@ class MainApp(MDApp):
                 self.save_window_pos()
             elif key == 'size':
                 self.save_window_size()
+        elif section == 'bluetooth' and key == 'connectors':
+            if platform == 'android':
+                self.start_android_explorer()
+            elif platform == 'win':
+                Timer(0, self.start_windows_explorer)
         elif section == 'log' and key == 'verbosity':
             verb = get_verbosity(self.config)
             init_logger(__name__, verb)

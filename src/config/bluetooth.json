@@ -14,7 +14,11 @@
         "key": "connect_retry"
     },
     {
-        "type": "title",
-        "title": "Formatters dir: "
+        "type": "buttons",
+        "title": "Formatters dir",
+        "desc": "dir",
+        "section": "bluetooth",
+        "key": "connectors",
+        "buttons": [{"title":"Open","id":"btn_open"}]
     }
 ]
