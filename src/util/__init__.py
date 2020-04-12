@@ -36,7 +36,12 @@ def init_logger(name, level=None, hp=None):
     global _loglevel
     global _socket_handler
     nm = f'PY_{name}'
-    loggerobj = _LOGGERS.get(nm, None)
+    idx = nm.find('.')
+    if idx > 0:
+        nmref = nm[0:idx-1]
+    else:
+        nmref = nm
+    loggerobj = _LOGGERS.get(nmref, None)
     if hp is not None and _socket_handler is None:
         _socket_handler = SocketHandler(*hp)
         _socket_handler.setLevel(_loglevel)
@@ -51,13 +56,13 @@ def init_logger(name, level=None, hp=None):
             log['lo'].setLevel(_loglevel)
             log['ha'].setLevel(_loglevel)
     # print(f'Init logger {name} level {_loglevel}')
+    _LOGGER = logging.getLogger(nmref)
     if loggerobj:
-        return loggerobj
-    _LOGGER = logging.getLogger(nm)
+        return logging.getLogger(nm) if nmref != nm else _LOGGER
     _LOGGER.setLevel(_loglevel)
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(_loglevel)
-    _LOGGERS[nm] = dict(lo=_LOGGER, ha=handler)
+    _LOGGERS[nmref] = dict(lo=_LOGGER, ha=handler)
     # if platform == 'android':
     formatter = logging.Formatter('[%(name)s][%(levelname)s]: %(message)s')
     # else:
@@ -66,7 +71,7 @@ def init_logger(name, level=None, hp=None):
     _LOGGER.addHandler(handler)
     if _socket_handler is not None:
         _LOGGER.addHandler(_socket_handler)
-    return _LOGGER
+    return logging.getLogger(nm) if nmref != nm else _LOGGER
 
 
 def find_devicemanager_classes(_LOGGER):
