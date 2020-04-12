@@ -59,11 +59,12 @@ class TcpClient(asyncio.Protocol):
             action()
 
     @staticmethod
-    def load_template(template_file, vm_var):
+    def load_template(template_file, vm_var, **kwargs):
         dir = dirname(template_file)
         if TcpClient._LOADER is None:
             TcpClient._LOADER = CachingFileLoader(dir)
-        TcpClient._VARS[vm_var] = dict(macro=0)
+        if vm_var not in TcpClient._VARS:
+            TcpClient._VARS[vm_var] = dict(macro=0, **kwargs)
         return TcpClient._LOADER.load_template(template_file)
 
     def __init__(self,
@@ -79,12 +80,10 @@ class TcpClient(asyncio.Protocol):
         self.loop = loop
         self.template_file = template_file
         self.vm_var = f'_{basename(template_file)[:-3]}_m'
-        self.template = TcpClient.load_template(template_file, self.vm_var)
+        self.template = TcpClient.load_template(template_file, self.vm_var, **kwargs)
         self.stopped = False
         self.stop_event = asyncio.Event()
         self.write_out = write_out if write_out else self._network_write
-        for k, v in kwargs.items():
-            TcpClient._VARS[self.vm_var][k] = v
         Timer(0, partial(TcpClient.set_open_clients, hp, dict(obj=self)))
         super(TcpClient, self).__init__()
 
