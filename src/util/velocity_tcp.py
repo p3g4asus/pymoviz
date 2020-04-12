@@ -36,6 +36,7 @@ class TcpClient(asyncio.Protocol):
     _LOADER = None
     _TIMEOUTS = dict()
     _VARS = dict(const=util.const,
+                 devs=dict(),
                  util=VelocityUtils,
                  stastr=_STASTR,
                  stostr=_STOSTR,
@@ -105,6 +106,7 @@ class TcpClient(asyncio.Protocol):
             alias = devobj.get_alias()
             if alias not in v:
                 v[alias] = dict()
+                v['devs'][alias] = v[alias]
                 TcpClient._VARS['aliases'].append(alias)
             v = v[alias]
         for key, value in kwargs.items():
