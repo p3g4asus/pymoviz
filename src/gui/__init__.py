@@ -831,6 +831,7 @@ class MainApp(MDApp):
             if self.notify_timeout and (self.devicemanagers_pre_init_done or platform != 'android'):
                 toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
         else:
+            _LOGGER.info(f'Debug verb = {get_verbosity(self.config)}')
             self.oscer.send(COMMAND_LOGLEVEL, get_verbosity(self.config))
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init_undo.keys():

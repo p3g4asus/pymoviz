@@ -1,4 +1,5 @@
 import asyncio
+import re
 import traceback
 from functools import partial
 from os.path import basename, dirname
@@ -11,13 +12,36 @@ from util.timer import Timer
 _LOGGER = init_logger(__name__)
 
 
+class VelocityUtils(object):
+    @staticmethod
+    def format(s, *args):
+        return s % args
+
+    @staticmethod
+    def print_time(tm):
+        hrs = tm // 3600
+        tm -= hrs * 3600
+        mins = tm // 60
+        tm -= mins * 60
+        secs = tm % 60
+        return '%d:%02d:%02d' % (hrs, mins, secs)
+
+
 class TcpClient(asyncio.Protocol):
     RECONNECT_INTERVAL = 5.0
+    _STASTR = '_________sta_________'
+    _STOSTR = '_________sto_________'
     _OPEN_CLIENTS = dict()
     _LOCK = asyncio.Lock()
     _LOADER = None
     _TIMEOUTS = dict()
-    _VARS = dict(const=util.const, macros=dict(), logger=_LOGGER, aliases=[])
+    _VARS = dict(const=util.const,
+                 util=VelocityUtils,
+                 stastr=_STASTR,
+                 stostr=_STOSTR,
+                 macros=dict(),
+                 logger=_LOGGER,
+                 aliases=[])
 
     @staticmethod
     async def set_open_clients(hp, dct, action=None):
@@ -101,16 +125,33 @@ class TcpClient(asyncio.Protocol):
 
     def _format(self, dct):
         if not self.stopped:
-            out = None
+            rv = ''
             if self.template:
                 try:
-                    # _LOGGER.debug(f'Merging {self.vm_var} with {dct}')
+                    _LOGGER.debug(f'Merging {self.vm_var} with {dct}')
                     out = self.template.merge(dct, loader=self._LOADER)
+                    if 'stastr' in dct[self.vm_var] and 'stostr' in dct[self.vm_var]:
+                        stastr = dct[self.vm_var]['stastr']
+                        stostr = dct[self.vm_var]['stostr']
+                        while True:
+                            mo = re.search(stastr + r'[\n\r]*', out)
+                            if mo:
+                                out = out[mo.end():]
+                            else:
+                                break
+                            mo = re.search(stostr + r'[\n\r]*', out)
+                            if mo:
+                                rv += out[:mo.start()]
+                                out = out[mo.end():]
+                            else:
+                                break
+                    else:
+                        rv = out
                 except Exception:
                     _LOGGER.error(f'VTL error {traceback.format_exc()}')
                 # self._VARS[self.vm_var] = 1
-            if out:
-                self.write_out(out)
+            if rv:
+                self.write_out(rv)
 
     def _network_write(self, out):
         if self.transport:

@@ -184,14 +184,14 @@ class DeviceManagerService(object):
         exitv = args[0] if args else None
         if command == COMMAND_NEWSESSION and exitv == CONFIRM_OK:
             if self.connectors_format:
-                TcpClient.format(dm.get_device(), session=args[2], user=self.last_user)
+                TcpClient.format(dm.get_device(), manager=dm, session=args[2], user=self.last_user)
             if self.main_session:
                 args[1].set_main_session_id(self.main_session.get_id())
             else:
                 self.main_session = args[2]
         elif command == COMMAND_DEVICEFIT and exitv == CONFIRM_OK:
             if self.connectors_format:
-                TcpClient.format(args[1], fitobj=args[2])
+                TcpClient.format(args[1], fitobj=args[2], manager=dm)
         elif command == COMMAND_DELDEVICE and exitv == CONFIRM_OK:
             ids = f'{dm.get_id()}'
             if ids in self.devicemanagers_by_id:
@@ -433,7 +433,7 @@ class DeviceManagerService(object):
 
     def on_event_state_transition(self, dm, oldstate, newstate, reason):
         if self.connectors_format:
-            TcpClient.format(dm.get_device(), state=newstate)
+            TcpClient.format(dm.get_device(), state=newstate, manager=dm)
         uid = dm.get_uid()
         if uid in self.devicemanagers_active_info:  # assenza significa che stiamo facendo una ricerca
             info = self.devicemanagers_active_info[uid]

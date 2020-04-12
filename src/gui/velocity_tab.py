@@ -1,4 +1,3 @@
-import re
 import traceback
 
 from kivy.lang import Builder
@@ -31,37 +30,20 @@ class VelocityTab(BoxLayout, MDTabsBase):
     name = StringProperty()
     loop = ObjectProperty(None, allownone=True)
     _template = ObjectProperty(None, allownone=True)
-    _STASTR = '_________sta_________'
-    _STOSTR = '_________sto_________'
 
     def __init__(self, **kwargs):
         super(VelocityTab, self).__init__(**kwargs)
         self._template = TcpClient(template_file=self.velocity,
                                    loop=self.loop,
-                                   write_out=self.fill_label,
-                                   stastr=VelocityTab._STASTR,
-                                   stostr=VelocityTab._STOSTR)
+                                   write_out=self.fill_label)
         self.text = f'V - {self.name}'
 
     def fill_label(self, out):
         ttl = self._template.get_var('title')
         if ttl:
             self.text = ttl
-        rv = ''
-        while True:
-            mo = re.search(VelocityTab._STASTR + r'[\n\r]+', out)
-            if mo:
-                out = out[mo.end():]
-            else:
-                break
-            mo = re.search(VelocityTab._STOSTR + r'[\n\r]+', out)
-            if mo:
-                rv += out[:mo.start()]
-                out = out[mo.end():]
-            else:
-                break
-        if rv:
+        if out:
             try:
-                self.ids.id_label.text = rv
+                self.ids.id_label.text = out
             except Exception:
                 _LOGGER.error(f'Expansion error: {traceback.format_exc()}')

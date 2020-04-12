@@ -98,8 +98,8 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
                 setattr(self, key, val)
         self.settings = settings
 
-    def add_wrapper(self, tag, val, flag):
-        self.wrappers.append(dict(tag=tag, val=val, flag=flag))
+    def add_wrapper(self, tag, val, flag, pre='', post=''):
+        self.wrappers.append(dict(tag=tag, val=val, flag=flag, pre=pre, post=post))
         return self
 
     def wrap(self, stringtowrap, idxtowrap):
@@ -107,23 +107,41 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         flagtowrap = 1 << idxtowrap
         for w in self.wrappers:
             if w["flag"] & flagtowrap:
-                val = w["val"]
-                sval = '' if val is None or val == '' else f'={val}'
-                sret += f'[{w["tag"]}{sval}]'
+                if w["tag"]:
+                    val = w["val"]
+                    sval = '' if val is None or val == '' else f'={val}'
+                    sret += f'[{w["tag"]}{sval}]'
+                sret += w["pre"]
         sret += stringtowrap
         for w in reversed(self.wrappers):
             if w["flag"] & flagtowrap:
-                sret += f'[/{w["tag"]}]'
+                sret += w["post"]
+                if w["tag"]:
+                    sret += f'[/{w["tag"]}]'
         return sret
 
-    def _set_setting_field(self, **kwargs):
+    def change_fields(self, *args, **kwargs):
+        if args:
+            kwargs = args[0]
         for key, val in kwargs.items():
-            try:
-                getattr(self, 'settings')
-            except AttributeError:
-                self.settings = dict()
-            if self.settings is None:
-                self.settings = dict()
+            if key in self.settings:
+                setattr(self, key, val)
+                self.settings[key] = val
+            else:
+                try:
+                    self.__getitem__(key)
+                    self.s(key, val)
+                except Exception:
+                    pass
+
+    def _set_setting_field(self, **kwargs):
+        try:
+            getattr(self, 'settings')
+        except AttributeError:
+            self.settings = dict()
+        if self.settings is None:
+            self.settings = dict()
+        for key, val in kwargs.items():
             if key in self.settings:
                 setattr(self, key, self.settings[key])
             else:
@@ -199,7 +217,8 @@ class SimpleFormatter(LabelFormatter):
             s = self.format_str.format(**kwargs)
         else:
             return self.set_timeout()
-        return self.wrap(self.get_pre(), 0) + self.wrap(f'[color={self.col}]' + s + '[/color]', 1)
+        return self.wrap(self.get_pre(), 0) +\
+            self.wrap(f'[color={self.col}]{s}[/color]' if self.col else f'{s}', 1)
 
 
 class SimpleFieldFormatter(SimpleFormatter):
@@ -279,10 +298,16 @@ class DoubleFormatter(LabelFormatter):
                 col2 = self.colmax
             else:
                 col2 = self.colmin
-            return self.wrap(self.get_pre(), 0) +\
-                self.wrap(f'[color={col2}]{s1}[/color] ', 1) +\
-                self.wrap(f'[color={self.col}]([/color][color={col1}]{s2}[/color][color={self.col}])[/color]', 2) +\
-                self.wrap(self.post, 4)
+            if not col1 or not col2 or not self.col:
+                return self.wrap(self.get_pre(), 0) +\
+                    self.wrap(f'{s1}', 1) +\
+                    self.wrap(f'({s2})', 2) +\
+                    self.wrap(self.post, 4)
+            else:
+                return self.wrap(self.get_pre(), 0) +\
+                    self.wrap(f'[color={col2}]{s1}[/color] ', 1) +\
+                    self.wrap(f'[color={self.col}]([/color][color={col1}]{s2}[/color][color={self.col}])[/color]', 2) +\
+                    self.wrap(self.post, 4)
 
 
 class DoubleFieldFormatter(DoubleFormatter):
@@ -319,7 +344,7 @@ class SessionFormatter(LabelFormatter):
         datepubo = datetime.fromtimestamp(v1 / 1000)
         datepub = datepubo.strftime('%Y-%m-%d %H:%M:%S.%f')
         return self.wrap(self.get_pre(), 0) +\
-            self.wrap(f'[color={self.col}]{datepub}[/color]', 1)
+            self.wrap(f'[color={self.col}]{datepub}[/color]' if self.col else f'{datepub}', 1)
 
 
 class UserFormatter(LabelFormatter):
@@ -400,5 +425,5 @@ class StateFormatter(LabelFormatter):
             col1 = self.colmax
             s1 = 'connected'
         return self.wrap(self.get_pre(), 0) +\
-            self.wrap(f'[color={col1}]{s1}[/color]', 1) +\
+            self.wrap(f'[color={col1}]{s1}[/color]' if col1 else f'{s1}', 1) +\
             self.wrap(self.post, 4)
