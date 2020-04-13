@@ -236,6 +236,9 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         pass
 
     def on_device(self, device, rssi, advertisement):
+        self.loop.call_soon_threadsafe(self.main_loop_on_device, device, rssi, advertisement)
+
+    def main_loop_on_device(self, device, rssi, advertisement):
         adv = []
         if advertisement:
             if isinstance(advertisement, str):

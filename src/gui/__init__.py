@@ -697,8 +697,7 @@ class MainApp(MDApp):
                     connectors_info.append(dict(section=section,
                                                 config=cnf,
                                                 temp=fp,
-                                                hp=(self.config.get(section, 'host'),
-                                                    int(self.config.get(section, 'port')))))
+                                                hp=None))
         return connectors_info
 
     def on_command_connectors_confirm(self, *args, timeout=False):
@@ -874,8 +873,12 @@ class MainApp(MDApp):
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
            self.check_other_config():
             for ci in self.connectors_info.copy():
-                if not self.check_host_port_config(ci['section']):
+                section = ci['section']
+                if not self.check_host_port_config(section):
                     self.connectors_info.remove(ci)
+                else:
+                    ci['hp'] = (self.config.get(section, 'host'),
+                                int(self.config.get(section, 'port')))
             Timer(0, self.init_osc)
 
         self.root.ids.content_drawer.image_path = join(
