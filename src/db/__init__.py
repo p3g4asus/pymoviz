@@ -157,7 +157,7 @@ class SerializableDBObj(object):
             # _LOGGER.debug(f'SetMethod not found for {fln} ({traceback.format_exc()})')
             setattr(self, fln, v)
 
-    def _process_kwargs(self, dbitem, kwargs=dict()):
+    def _process_kwargs(self, dbitem):
         if dbitem:
             for key in dbitem.keys():
                 self._set_single_field(key, dbitem[key])
