@@ -158,7 +158,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             self.found_timer.cancel()
             self.found_timer = None
         if timeout:
-            self.found_timer = Timer(timeout, self.set_disconnected)
+            self.found_timer = Timer(timeout, self.set_disconnected, loop=self.loop)
 
     async def set_disconnected(self):
         if self.state != DEVSTATE_SEARCHING and self.state != DEVSTATE_DISCONNECTING and\
@@ -175,7 +175,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             self.force_rescan_timer = None
         if timeout:
             _LOGGER.info(f'Starting rescan timer({timeout})')
-            self.force_rescan_timer = Timer(timeout, self.restart_scan)
+            self.force_rescan_timer = Timer(timeout, self.restart_scan, loop=self.loop)
 
     async def restart_scan(self):
         _LOGGER.info(f'Rescan timer done: state={self.state}')
@@ -266,4 +266,4 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
                     k3 = self.parse_adv(device.advertisement)
                     _LOGGER.debug(f'k3 Parse result {k3}')
                     if k3:
-                        Timer(0, partial(self.step, k3))
+                        Timer(0, partial(self.step, k3), loop=self.loop)

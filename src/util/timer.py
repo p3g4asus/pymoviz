@@ -3,10 +3,10 @@ from functools import partial
 
 
 class Timer:
-    def __init__(self, timeout, callback):
+    def __init__(self, timeout, callback, loop=None):
         self._timeout = timeout
         self._callback = callback
-        self._task = asyncio.ensure_future(self._job())
+        self._task = asyncio.ensure_future(self._job(), loop=loop)
         fname = callback.__name__ if not isinstance(callback, partial) else callback.func.__name__
         self._task.name = f'_timer_{fname}'
 
