@@ -60,8 +60,8 @@ class TcpClient(asyncio.Protocol):
 
     @staticmethod
     def load_template(template_file, vm_var, **kwargs):
-        dir = dirname(template_file)
         if TcpClient._LOADER is None:
+            dir = dirname(template_file)
             TcpClient._LOADER = CachingFileLoader(dir)
         if vm_var not in TcpClient._VARS:
             TcpClient._VARS[vm_var] = dict(macro=0, **kwargs)
