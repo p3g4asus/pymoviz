@@ -90,6 +90,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             pre='$D TM: '),
         **GenericDeviceManager.__formatters__
     )
+    RESCAN_TIMEOUT = 120
 
     @staticmethod
     def get_machine_id(bt):
@@ -207,7 +208,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             self.set_state(DEVSTATE_DISCONNECTED, DEVREASON_TIMEOUT)
         elif self.is_connected_state():
             self.start_scan(self.get_scan_settings(), self.get_scan_filters())
-            self.rescan_timer_init(1800)
+            self.rescan_timer_init(KeiserM3iDeviceManager.RESCAN_TIMEOUT)
 
     def parse_adv(self, arr):
         if len(arr) < 4 or len(arr) > 19:
@@ -259,7 +260,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             if device.get_address() == self.device.get_address():
                 if self.state == DEVSTATE_CONNECTING:
                     self.set_state(DEVSTATE_CONNECTED, DEVREASON_REQUESTED)
-                    self.rescan_timer_init(1800)
+                    self.rescan_timer_init(KeiserM3iDeviceManager.RESCAN_TIMEOUT)
                 if self.state != DEVSTATE_SEARCHING and self.state != DEVSTATE_DISCONNECTING:
                     self.found_timer_init(5)
                     k3 = self.parse_adv(device.advertisement)
