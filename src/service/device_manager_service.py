@@ -246,6 +246,7 @@ class DeviceManagerService(object):
                 uid,
                 service=True,
                 db=self.db,
+                loop=self.loop,
                 params=self.addit_params,
                 on_command_handle=self.on_event_command_handle,
                 on_state_transition=self.on_event_state_transition)
@@ -366,6 +367,7 @@ class DeviceManagerService(object):
                     self.oscer,
                     uid,
                     service=True,
+                    loop=self.loop,
                     db=self.db,
                     device=d,
                     params=self.addit_params,
