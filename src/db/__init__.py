@@ -117,12 +117,29 @@ class SerializableDBObj(object):
     def set_items(self, items):
         self.items = items
 
+    @staticmethod
+    def _clone(el):
+        rv = el
+        if isinstance(el, dict):
+            rv = el.copy()
+            for k, v in el.items():
+                rv[k] = SerializableDBObj._clone(v)
+        elif isinstance(el, list):
+            rv = list(el)
+            k = 0
+            for v in el:
+                rv[k] = SerializableDBObj._clone(v)
+                k += 1
+        elif isinstance(el, tuple):
+            rv = tuple()
+            for v in el:
+                rv += (SerializableDBObj._clone(v),)
+        elif isinstance(el, SerializableDBObj):
+            rv = el.clone()
+        return rv
+
     def clone(self):
-        dct = dict(vars(self))
-        if 'items' in dct and dct['items']:
-            dct['items'] = list(dct['items'])
-            for i in range(len(dct['items'])):
-                dct['items'][i] = dct['items'][i].clone()
+        dct = SerializableDBObj._clone(vars(self))
         cl = self.__class__()
         cl._process_kwargs(dct)
         return cl
