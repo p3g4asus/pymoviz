@@ -228,10 +228,11 @@ class MyTabs(MDTabs):
                 self.simulate_tab_switch(idx)
 
     def simulate_tab_switch(self, idx):
-        self.carousel.index = idx
-        tab = self.tab_list[idx]
-        tab.tab_label.state = "down"
-        tab.tab_label.on_release()
+        if idx < len(self.tab_list):
+            self.carousel.index = idx
+            tab = self.tab_list[idx]
+            tab.tab_label.state = "down"
+            tab.tab_label.on_release()
 
     def clear_widgets(self):
         for w in self.tab_list:
@@ -893,7 +894,8 @@ class MainApp(MDApp):
             )
 
     def on_nav_home(self, *args, **kwargs):
-        _LOGGER.debug("On Nav Home")
+        self.root.ids.nav_drawer.toggle_nav_drawer()
+        self.root.ids.id_tabcont.simulate_tab_switch(0)
 
     def on_nav_exit(self, *args, **kwargs):
         self.true_stop()

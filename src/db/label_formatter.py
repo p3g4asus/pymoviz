@@ -1,4 +1,5 @@
 import abc
+import re
 from datetime import datetime
 
 from db import SerializableDBObj
@@ -99,25 +100,36 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         self.settings = settings
 
     def add_wrapper(self, tag, val, flag, pre='', post=''):
-        self.wrappers.append(dict(tag=tag, val=val, flag=flag, pre=pre, post=post))
+        if tag:
+            mo = re.search(r'^<([a-z0-9\-_]+)', tag)
+            tagend = f'</{mo.group(1)}>' if mo else f'[/{tag}]'
+        else:
+            tagend = ''
+        self.wrappers.append(dict(tag=tag, tagend=tagend, val=val, flag=flag, pre=pre, post=post))
         return self
 
-    def wrap(self, stringtowrap, idxtowrap):
+    def wrap(self, stringtowrap, idxtowrap, pref='norm'):
         sret = ''
         flagtowrap = 1 << idxtowrap
         for w in self.wrappers:
             if w["flag"] & flagtowrap:
-                if w["tag"]:
+                tag = w["tag"]
+                if tag:
                     val = w["val"]
-                    sval = '' if val is None or val == '' else f'={val}'
-                    sret += f'[{w["tag"]}{sval}]'
+                    if val is None or isinstance(val, str):
+                        sval = '' if val is None or val == '' else f'={val}'
+                        sret += f'[{tag}{sval}]'
+                    elif isinstance(val, dict):
+                        for repid, repstr in val.items():
+                            if not pref or repid.startswith(pref):
+                                repid = repid[len(pref):]
+                                tag = tag.replace(f'%{repid}%', repstr)
+                        sret += tag
                 sret += w["pre"]
         sret += stringtowrap
         for w in reversed(self.wrappers):
             if w["flag"] & flagtowrap:
-                sret += w["post"]
-                if w["tag"]:
-                    sret += f'[/{w["tag"]}]'
+                sret += (w["post"] + w["tagend"])
         return sret
 
     def change_fields(self, *args, **kwargs):
@@ -157,7 +169,7 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         return f'[color={col}]{txt}[/color]'
 
     def set_timeout(self):
-        return self.wrap(self.get_pre(), 0) + self.wrap(self.timeout, 5)
+        return self.wrap(self.get_pre(), 0) + self.wrap(self.timeout, 5, pref='error')
 
     def reset(self):
         self.order = None
@@ -294,13 +306,16 @@ class DoubleFormatter(LabelFormatter):
             s2 = self.f2 % v2
             if v1 is None or v1 == v2:
                 col2 = self.col
+                pre = 'norm'
             elif v1 > v2:
                 col2 = self.colmax
+                pre = 'max'
             else:
                 col2 = self.colmin
+                pre = 'min'
             if not col1 or not col2 or not self.col:
                 return self.wrap(self.get_pre(), 0) +\
-                    self.wrap(f'{s1}', 1) +\
+                    self.wrap(f'{s1}', 1, pref=pre) +\
                     self.wrap(f'({s2})', 2) +\
                     self.wrap(self.post, 4)
             else:
@@ -394,21 +409,26 @@ class StateFormatter(LabelFormatter):
                 return self.set_timeout()
             else:
                 v1 = v1[0]
+        pref = 'min'
         if v1 == DEVSTATE_INVALIDSTEP:
             col1 = self.colerror
             s1 = 'invalid'
+            pref = 'error'
         elif v1 == DEVSTATE_DISCONNECTED:
             col1 = self.colerror
             s1 = 'disconnected'
+            pref = 'error'
         elif v1 == DEVSTATE_UNINIT:
             col1 = self.col
             s1 = 'uninit'
+            pref = 'norm'
         elif v1 == DEVSTATE_IDLE:
             col1 = self.colmin
             s1 = 'idle'
         elif v1 == DEVSTATE_ONLINE:
             col1 = self.colmax
             s1 = 'online'
+            pref = 'max'
         elif v1 == DEVSTATE_CONNECTING:
             col1 = self.colmin
             s1 = 'connecting'
@@ -424,6 +444,7 @@ class StateFormatter(LabelFormatter):
         elif v1 == DEVSTATE_CONNECTED:
             col1 = self.colmax
             s1 = 'connected'
+            pref = 'max'
         return self.wrap(self.get_pre(), 0) +\
-            self.wrap(f'[color={col1}]{s1}[/color]' if col1 else f'{s1}', 1) +\
+            self.wrap(f'[color={col1}]{s1}[/color]' if col1 else f'{s1}', 1, pref=pref) +\
             self.wrap(self.post, 4)
