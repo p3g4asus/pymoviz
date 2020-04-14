@@ -806,7 +806,7 @@ class MainApp(MDApp):
         return True
 
     def do_pre_finish(self, cls, ok, undo):
-        toast(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"}')
+        # toast(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"}')
         _LOGGER.info(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"} undo={undo}')
         self.devicemanagers_pre_init_undo[cls.__type__] = undo
         self.devicemanagers_pre_init_ok[cls.__type__] = ok
