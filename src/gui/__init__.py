@@ -929,7 +929,7 @@ class MainApp(MDApp):
         self.db_path = self.db_dir()
         self.connectors_path = join(self.db_path, 'connectors')
         self.connectors_info = self.find_connectors_info()
-        for _, actdata in self.devicemanagers_pre_actions:
+        for _, actdata in self.devicemanagers_pre_actions.items():
             actdata['cls'].build_config(config)
 
     def _init_fields(self):
@@ -951,7 +951,7 @@ class MainApp(MDApp):
         self.connectors_path = ''
         self.devicemanagers_pre_init_done = False
         self.devicemanagers_pre_actions = dict()
-        for tp, cls in self.devicemanager_class_by_type:
+        for tp, cls in self.devicemanager_class_by_type.items():
             if cls.__pre_action__:
                 nm = cls.__pre_action__.__name__
                 if nm in self.devicemanagers_pre_actions:
@@ -981,7 +981,7 @@ class MainApp(MDApp):
             blue[2]['desc'] = self.connectors_path
             settings.add_json_panel('Bluetooth', self.config, data=json.dumps(blue))  # data=json)
         lst = [dict(type='title', title='Preliminary actions rules')]
-        for _, actdata in self.devicemanagers_pre_actions:
+        for _, actdata in self.devicemanagers_pre_actions.items():
             sett = actdata['cls'].build_settings()
             if sett:
                 lst.apend(sett)
