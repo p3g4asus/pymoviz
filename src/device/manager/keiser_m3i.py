@@ -6,6 +6,7 @@ from db.label_formatter import (DoubleFieldFormatter, SimpleFieldFormatter,
 from device.simulator.keiser_m3i import \
     KeiserM3iDeviceSimulator
 from device.manager import GenericDeviceManager
+from device.manager.preaction.enable_bluetooth import EnableBluetooth
 from util.const import (DEVREASON_REQUESTED, DEVREASON_TIMEOUT,
                         DEVSTATE_CONNECTED, DEVSTATE_CONNECTING,
                         DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
@@ -90,6 +91,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             pre='$D TM: '),
         **GenericDeviceManager.__formatters__
     )
+    __pre_action__ = EnableBluetooth
     RESCAN_TIMEOUT = 120
 
     @staticmethod

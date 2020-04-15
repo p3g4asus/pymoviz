@@ -28,30 +28,6 @@ _LOGGER = init_logger(__name__)
 _toast = None
 
 
-class PreBluetoothDispatcher(BluetoothDispatcher):
-    def __init__(self, cls=None, on_finish_handler=None, on_undo=None, force_undo=False, loop=None, *args, **kwargs):
-        super(PreBluetoothDispatcher, self).__init__(*args, **kwargs)
-        self.on_finish = on_finish_handler
-        self.loop = loop
-        self.enable_ble_done = force_undo
-        self.on_undo = on_undo
-        self.cls = cls
-
-    def on_bluetooth_disabled(self, done):
-        if self.on_undo:
-            self.loop.call_soon_threadsafe(self.on_undo, done)
-
-    def on_scan_started(self, success):
-        super(PreBluetoothDispatcher, self).on_scan_started(success)
-        if success:
-            self.stop_scan()
-        else:
-            self.loop.call_soon_threadsafe(self.on_finish, self.cls, False, self.enable_ble_done)
-
-    def on_scan_completed(self):
-        self.loop.call_soon_threadsafe(self.on_finish, self.cls, True, self.enable_ble_done)
-
-
 class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     __formatters__ = dict(
@@ -66,22 +42,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             fields=['updates']
         )
     )
-
-    @classmethod
-    def do_activity_pre_operations(cls, on_finish, loop):
-        if platform == 'android':
-            pbd = PreBluetoothDispatcher(cls=cls, on_finish_handler=on_finish, loop=loop)
-            pbd.start_scan()
-        else:
-            on_finish(cls, True, False)
-
-    @classmethod
-    def undo_enable_operations(cls, on_finish, loop):
-        if platform == 'android':
-            pbd = PreBluetoothDispatcher(cls=cls, on_undo=on_finish, force_undo=True, loop=loop)
-            pbd.undo_enable_operations()
-        else:
-            on_finish(cls, True, False)
+    __pre_action__ = None
 
     @staticmethod
     def is_connected_state_s(st):

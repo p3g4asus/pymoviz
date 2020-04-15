@@ -795,8 +795,9 @@ class MainApp(MDApp):
             for did in v.get_connected_devices():
                 for _, dm in self.devicemanagers_by_uid.items():
                     dev = dm.get_device()
-                    if did == dev.get_id():
-                        if not self.devicemanagers_pre_init_ok[dev.get_type()]:
+                    pa = dm.__pre_action__
+                    if did == dev.get_id() and pa:
+                        if not self.devicemanagers_pre_init_ok[pa.__name__]:
                             return False
                         break
         return True
@@ -805,20 +806,19 @@ class MainApp(MDApp):
         self.notify_timeout = False
         return True
 
-    def do_pre_finish(self, cls, ok, undo):
+    def do_pre_finish(self, cls, undo, ok):
         # toast(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"}')
-        _LOGGER.info(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"} undo={undo}')
-        self.devicemanagers_pre_init_undo[cls.__type__] = undo
-        self.devicemanagers_pre_init_ok[cls.__type__] = ok
+        _LOGGER.info(f'Pre operations {cls.__name__}...{"OK" if ok else "FAIL"} undo={undo}')
+        self.devicemanagers_pre_init_undo[cls.__name__] = undo
+        self.devicemanagers_pre_init_ok[cls.__name__] = ok
         self.do_pre()
 
     def do_pre(self):
-        for d, init in self.devicemanagers_pre_init_undo.items():
-            if init is None:
-                cls = self.devicemanager_class_by_type[d]
-                _LOGGER.info(f"Pre operations for devices of type {cls.__type__}...")
-                cls.do_activity_pre_operations(on_finish=self.do_pre_finish, loop=self.loop)
-                return
+        for nmact, actdata in self.devicemanagers_pre_actions.items():
+            if self.devicemanagers_pre_init_undo[nmact] is None:
+                _LOGGER.info(f"Pre operations {nmact}...")
+                preact = actdata['cls']()
+                preact.execute(self.config, actdata['types'], self.do_pre_finish)
         if not self.devicemanagers_pre_init_done:
             _LOGGER.info('Pre init done: starting server')
             self.devicemanagers_pre_init_done = True
@@ -929,6 +929,8 @@ class MainApp(MDApp):
         self.db_path = self.db_dir()
         self.connectors_path = join(self.db_path, 'connectors')
         self.connectors_info = self.find_connectors_info()
+        for _, actdata in self.devicemanagers_pre_actions:
+            actdata['cls'].build_config(config)
 
     def _init_fields(self):
         self.title = __prog__
@@ -948,8 +950,20 @@ class MainApp(MDApp):
         self.db_path = ''
         self.connectors_path = ''
         self.devicemanagers_pre_init_done = False
-        self.devicemanagers_pre_init_undo = dict.fromkeys(self.devicemanager_class_by_type.keys(), None)
-        self.devicemanagers_pre_init_ok = dict.fromkeys(self.devicemanager_class_by_type.keys(), False)
+        self.devicemanagers_pre_actions = dict()
+        for tp, cls in self.devicemanager_class_by_type:
+            if cls.__pre_action__:
+                nm = cls.__pre_action__.__name__
+                if nm in self.devicemanagers_pre_actions:
+                    self.devicemanagers_pre_actions[nm]['types'].append(tp)
+                else:
+                    self.devicemanagers_pre_actions[nm] = dict(
+                        types=[tp],
+                        done=False,
+                        cls=cls.__pre_action__
+                    )
+        self.devicemanagers_pre_init_undo = dict.fromkeys(self.devicemanagers_pre_actions.keys(), None)
+        self.devicemanagers_pre_init_ok = dict.fromkeys(self.devicemanagers_pre_actions.keys(), False)
 
     def build_settings(self, settings):
         """
@@ -966,6 +980,12 @@ class MainApp(MDApp):
             blue = json.load(json_file)
             blue[2]['desc'] = self.connectors_path
             settings.add_json_panel('Bluetooth', self.config, data=json.dumps(blue))  # data=json)
+        lst = [dict(type='title', title='Preliminary actions rules')]
+        for _, actdata in self.devicemanagers_pre_actions:
+            sett = actdata['cls'].build_settings()
+            if sett:
+                lst.apend(sett)
+        settings.add_json_panel('Pre-Actions', self.config, data=json.dumps(lst))
         for ci in self.connectors_info:
             settings.add_json_panel(ci['section'].title(), self.config, data=json.dumps(ci['config']))
         if platform != "android":

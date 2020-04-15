@@ -48,6 +48,7 @@ class DeviceManagerService(object):
         self.oscer = None
         self.connectors_format = False
         self.devicemanager_class_by_type = dict()
+        self.devicemanagers_pre_actions = dict()
         self.devicemanagers_by_id = dict()
         self.devicemanagers_by_uid = dict()
         self.connectors_info = []
@@ -318,6 +319,11 @@ class DeviceManagerService(object):
         if self.android:
             self.insert_notification()
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
+        for tp, cls in self.devicemanager_class_by_type:
+            if cls.__pre_action__:
+                nm = cls.__pre_action__.__name__
+                if nm in self.devicemanagers_pre_actions:
+                    self.devicemanagers_pre_actions[nm] = cls
         await self.init_db(self.db_fname)
         await self.load_db()
         await self.init_osc()
@@ -497,14 +503,15 @@ class DeviceManagerService(object):
                     _LOGGER.warning(traceback.format_exc())
             await self.db.commit()
 
-    def on_bluetooth_disabled(self, inst, wasdisabled):
+    def on_bluetooth_disabled(self, inst, wasdisabled, ok):
         self.undo_enable_operations()
 
     def undo_enable_operations(self):
-        for tp, cls in self.devicemanager_class_by_type.items():
-            if tp in self.undo_info and self.undo_info[tp]:
-                del self.undo_info[tp]
-                cls.undo_enable_operations(on_finish=self.on_bluetooth_disabled, loop=self.loop)
+        for nm, act in self.devicemanagers_pre_actions.items():
+            if self.undo_info[nm]:
+                del self.undo_info[nm]
+                preact = act()
+                preact.undo(self.on_bluetooth_disabled)
                 break
         self.stop_event.set()
 
