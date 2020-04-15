@@ -35,7 +35,7 @@ class EnableBluetooth(Action):
     def _do_execute(self, *args, config=None):
         if args is not None:
             if args[0].find('never') >= 0:
-                config.set('preaction', 'ask_enable_bluetooth', False)
+                config.set('preaction', 'ask_enable_bluetooth', '0')
                 config.write()
             self.dispatcher.enable()
         else:
@@ -53,7 +53,10 @@ class EnableBluetooth(Action):
 
     def execute(self, config, device_types, on_finish):
         self.on_enable = on_finish
-        self.ask_for_enable = int(config.get('preaction', 'ask_enable_bluetooth'))
+        try:
+            self.ask_for_enable = int(config.get('preaction', 'ask_enable_bluetooth'))
+        except Exception:
+            self.ask_for_enable = 1
         _LOGGER.info(f'ask_for_enable={self.ask_for_enable} be={self.dispatcher.is_bluetooth_enabled()} oe={on_finish}')
         if not self.dispatcher.is_bluetooth_enabled():
             if self.ask_for_enable:
