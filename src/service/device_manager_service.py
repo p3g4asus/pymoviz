@@ -322,7 +322,7 @@ class DeviceManagerService(object):
         for tp, cls in self.devicemanager_class_by_type.items():
             if cls.__pre_action__:
                 nm = cls.__pre_action__.__name__
-                if nm in self.devicemanagers_pre_actions:
+                if nm not in self.devicemanagers_pre_actions:
                     self.devicemanagers_pre_actions[nm] = cls
         await self.init_db(self.db_fname)
         await self.load_db()
