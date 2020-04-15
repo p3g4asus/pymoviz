@@ -1,6 +1,9 @@
 from functools import partial
 from . import Action
 from util.bluetooth_dispatcher import BluetoothDispatcher
+from util import init_logger
+
+_LOGGER = init_logger(__name__)
 
 
 class MyBluetoothDispatcher(BluetoothDispatcher):
@@ -29,11 +32,10 @@ class EnableBluetooth(Action):
         self.on_enable = None
         self.on_disable = None
 
-    def _do_execute(self, alwaysask=None, config=None):
-        self.dialog.close()
-        if alwaysask is not None:
-            if alwaysask is False:
-                config.set('bluetooth', 'ask_enable_bluetooth', False)
+    def _do_execute(self, *args, config=None):
+        if args is not None:
+            if args[0].find('never') >= 0:
+                config.set('preaction', 'ask_enable_bluetooth', False)
                 config.write()
             self.dispatcher.enable()
         else:
@@ -51,45 +53,34 @@ class EnableBluetooth(Action):
 
     def execute(self, config, device_types, on_finish):
         self.on_enable = on_finish
-        self.ask_for_enable = config.get('bluetooth', 'ask_enable_bluetooth')
-        if self.ask_for_enable and not self.dispatcher.is_bluetooth_enabled():
-            from kivymd.uix.button import MDFlatButton
-            from kivymd.uix.dialog import MDDialog
-            tp = ''
-            for i, devt in enumerate(device_types):
-                if len(device_types) > 1 and i == len(device_types) - 1:
-                    tp += f'and {devt}'
-                elif i > 0:
-                    tp += f', {devt}'
-                else:
-                    tp += devt
-            self.dialog = MDDialog(
-                    text=f"Enaling Bluetooth is required for devices of type {tp}",
-                    buttons=[
-                        MDFlatButton(
-                            text="CANCEL",
-                            text_color=self.theme_cls.primary_color,
-                            on_release=partial(self._do_execute, alwaysask=None)
-                        ),
-                        MDFlatButton(
-                            text="ENABLE (always ask)",
-                            text_color=self.theme_cls.primary_color,
-                            on_release=partial(self._do_execute, alwaysask=True)
-                        ),
-                        MDFlatButton(
-                            text="ENABLE (don't ask again)",
-                            text_color=self.theme_cls.primary_color,
-                            on_release=partial(self._do_execute, alwaysask=False, config=config)
-                        ),
-                    ],
+        self.ask_for_enable = int(config.get('preaction', 'ask_enable_bluetooth'))
+        _LOGGER.info(f'ask_for_enable={self.ask_for_enable} be={self.dispatcher.is_bluetooth_enabled()} oe={on_finish}')
+        if not self.dispatcher.is_bluetooth_enabled():
+            if self.ask_for_enable:
+                from kivymd.uix.dialog import MDDialog
+                tp = ''
+                for i, devt in enumerate(device_types):
+                    if len(device_types) > 1 and i == len(device_types) - 1:
+                        tp += f'and {devt}'
+                    elif i > 0:
+                        tp += f', {devt}'
+                    else:
+                        tp += devt
+                self.dialog = MDDialog(
+                        text=f"Enabling Bluetooth is required for devices of type {tp}.\nPress back to avoid.",
+                        text_button_ok="ENABLE (always ask)",
+                        text_button_cancel="ENABLE (never ask again)",
+                        events_callback=partial(self._do_execute, config=config)
                 )
-            self.dialog.open()
+                self.dialog.open()
+            else:
+                self.dispatcher.enable()
         else:
-            self.dispatcher.enable()
+            self.on_bluetooth_enabled(False)
 
     @classmethod
     def build_config(cls, config):
-        config.setdefaults('preaction', {'ask_enable_bluetooth': True})
+        config.setdefaults('preaction', {'ask_enable_bluetooth': '1'})
 
     @classmethod
     def build_settings(cls):

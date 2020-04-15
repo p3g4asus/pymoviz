@@ -319,7 +319,7 @@ class DeviceManagerService(object):
         if self.android:
             self.insert_notification()
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
-        for tp, cls in self.devicemanager_class_by_type:
+        for tp, cls in self.devicemanager_class_by_type.items():
             if cls.__pre_action__:
                 nm = cls.__pre_action__.__name__
                 if nm in self.devicemanagers_pre_actions:

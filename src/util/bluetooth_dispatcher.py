@@ -108,13 +108,13 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         self._oscer.send(COMMAND_WBD_DISCONNECTGATT)
 
     def is_bluetooth_enabled(self):
-        return True
+        return False
 
     def enable(self):
-        pass
+        self.dispatch('on_bluetooth_enabled', False)
 
     def disable(self):
-        pass
+        self.dispatch('on_bluetooth_disabled', False)
 
     def on_scan_started_wrap(self, *args, timeout=False):
         if timeout:

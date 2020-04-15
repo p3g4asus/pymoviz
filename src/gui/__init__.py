@@ -816,9 +816,13 @@ class MainApp(MDApp):
     def do_pre(self):
         for nmact, actdata in self.devicemanagers_pre_actions.items():
             if self.devicemanagers_pre_init_undo[nmact] is None:
-                _LOGGER.info(f"Pre operations {nmact}...")
-                preact = actdata['cls']()
-                preact.execute(self.config, actdata['types'], self.do_pre_finish)
+                try:
+                    _LOGGER.info(f"Pre operations {nmact}...")
+                    preact = actdata['cls']()
+                    preact.execute(self.config, actdata['types'], self.do_pre_finish)
+                    return
+                except Exception:
+                    _LOGGER.error(f'Pre action error {traceback.format_exc()}')
         if not self.devicemanagers_pre_init_done:
             _LOGGER.info('Pre init done: starting server')
             self.devicemanagers_pre_init_done = True
@@ -984,7 +988,7 @@ class MainApp(MDApp):
         for _, actdata in self.devicemanagers_pre_actions.items():
             sett = actdata['cls'].build_settings()
             if sett:
-                lst.apend(sett)
+                lst.append(sett)
         settings.add_json_panel('Pre-Actions', self.config, data=json.dumps(lst))
         for ci in self.connectors_info:
             settings.add_json_panel(ci['section'].title(), self.config, data=json.dumps(ci['config']))
