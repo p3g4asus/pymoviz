@@ -1,6 +1,6 @@
 from functools import partial
 from . import Action
-from util import BluetoothDispatcher
+from util.bluetooth_dispatcher import BluetoothDispatcher
 
 
 class MyBluetoothDispatcher(BluetoothDispatcher):

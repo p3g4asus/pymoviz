@@ -6,7 +6,6 @@ import traceback
 from able import (REASON_DISCOVER_ERROR, REASON_NOT_ENABLED, STATE_CONNECTED, STATE_DISCONNECTED)
 from db.device import Device
 from db.label_formatter import SessionFormatter, SimpleFieldFormatter, StateFormatter, UserFormatter
-from kivy.utils import platform
 from util import init_logger
 from util.bluetooth_dispatcher import BluetoothDispatcher
 from util.const import (COMMAND_CONFIRM, COMMAND_DELDEVICE, COMMAND_DEVICEFIT,
