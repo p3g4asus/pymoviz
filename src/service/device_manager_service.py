@@ -323,7 +323,7 @@ class DeviceManagerService(object):
             if cls.__pre_action__:
                 nm = cls.__pre_action__.__name__
                 if nm not in self.devicemanagers_pre_actions:
-                    self.devicemanagers_pre_actions[nm] = cls
+                    self.devicemanagers_pre_actions[nm] = cls.__pre_action__
         await self.init_db(self.db_fname)
         await self.load_db()
         await self.init_osc()
