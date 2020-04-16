@@ -108,7 +108,7 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         self._oscer.send(COMMAND_WBD_DISCONNECTGATT)
 
     def is_bluetooth_enabled(self):
-        return False
+        return True
 
     def enable(self):
         self.dispatch('on_bluetooth_enabled', False)
