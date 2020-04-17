@@ -73,18 +73,19 @@ class DeviceManagerService(object):
             self.PythonActivity = autoclass('org.kivy.android.PythonActivity')
             self.service = autoclass('org.kivy.android.PythonService').mService
             self.NOTIFICATION_CHANNEL_ID = self.AndroidString(self.service.getPackageName().encode('utf-8'))
+            self.FOREGROUND_NOTIFICATION_ID = 1462
             self.app_context = self.service.getApplication().getApplicationContext()
+            self.notification_service = self.service.getSystemService(self.Context.NOTIFICATION_SERVICE)
 
             Notification = autoclass('android.app.Notification')
             Color = autoclass("android.graphics.Color")
             NotificationChannel = autoclass('android.app.NotificationChannel')
             NotificationManager = autoclass('android.app.NotificationManager')
-            notificationService = self.service.getSystemService(self.Context.NOTIFICATION_SERVICE)
             channelName = self.AndroidString('DeviceManagerService'.encode('utf-8'))
             chan = NotificationChannel(self.NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_DEFAULT)
             chan.setLightColor(Color.BLUE)
             chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE)
-            notificationService.createNotificationChannel(chan)
+            self.notification_service.createNotificationChannel(chan)
             BitmapFactory = autoclass("android.graphics.BitmapFactory")
             Icon = autoclass("android.graphics.drawable.Icon")
             BitmapFactoryOptions = autoclass("android.graphics.BitmapFactory$Options")
@@ -125,12 +126,12 @@ class DeviceManagerService(object):
                 if txt:
                     alias = m.get_device().get_alias()
                     _LOGGER.debug(f'Changing notification {alias}-> {txt}')
-                    self.change_service_notification(alias, txt)
+                    self.set_service_notification(self.build_service_notification(alias, txt))
 
     async def clear_notification_formatter(self):
         txt = self.notification_formatter_info['inst'].set_timeout()
         m = self.notification_formatter_info['manager']
-        self.change_service_notification(m.get_device().get_alias(), txt)
+        self.set_service_notification(self.build_service_notification(m.get_device().get_alias(), txt))
         self.notification_formatter_info['inst'] = None
         self.notification_formatter_info['manager'] = None
         self.notification_formatter_info['timer'] = None
@@ -333,7 +334,10 @@ class DeviceManagerService(object):
     def on_command_stop(self, *args):
         self.loop.stop()
 
-    def build_notification(self, title, message):
+    def set_service_notification(self, notif):
+        self.notification_service.notify(self.FOREGROUND_NOTIFICATION_ID, notif)
+
+    def build_service_notification(self, title, message):
         notification_builder = self.NotificationBuilder(self.app_context, self.NOTIFICATION_CHANNEL_ID)
         # app_class = service.getApplication().getClass()
         notification_intent = self.Intent(self.app_context, self.PythonActivity)
@@ -352,13 +356,13 @@ class DeviceManagerService(object):
         notification_builder.setAutoCancel(True)
         return notification_builder.getNotification()
 
-    def insert_notification(self):
+    def insert_service_notification(self):
         self.service.setAutoRestartService(False)
-        self.service.startForeground(1, self.build_notification("Fit.py", "DeviceManagerService"))
+        self.service.startForeground(self.FOREGROUND_NOTIFICATION_ID, self.build_service_notification("Fit.py", "DeviceManagerService"))
 
     async def start(self):
         if self.android:
-            self.insert_notification()
+            self.insert_service_notification()
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
         for tp, cls in self.devicemanager_class_by_type.items():
             if cls.__pre_action__:
