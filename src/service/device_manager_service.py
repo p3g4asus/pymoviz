@@ -103,7 +103,7 @@ class DeviceManagerService(object):
         if self.android:
             m = self.notification_formatter_info['manager']
             newman = None
-            if m and dm is m or not m:
+            if (m and dm is m) or not m:
                 if not m:
                     m = newman = dm
             elif m.get_priority() < dm.get_priority():
@@ -123,7 +123,9 @@ class DeviceManagerService(object):
                     if (m.get_id() == f.device) and types == f.type:
                         txt = f.format(obj)
                 if txt:
-                    self.change_service_notification(m.get_device().get_alias(), txt)
+                    alias = m.get_device().get_alias()
+                    _LOGGER.debug(f'Changing notification {alias}-> {txt}')
+                    self.change_service_notification(alias, txt)
 
     async def clear_notification_formatter(self):
         txt = self.notification_formatter_info['inst'].set_timeout()
