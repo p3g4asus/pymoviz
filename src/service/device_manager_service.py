@@ -117,7 +117,7 @@ class DeviceManagerService(object):
             if m:
                 if self.notification_formatter_info['timer']:
                     self.notification_formatter_info['timer'].cancel()
-                self.notification_formatter_info['timer'] = Timer(5, self.clear_notification_formatter)
+                self.notification_formatter_info['timer'] = Timer(45, self.clear_notification_formatter)
                 txt = ''
                 f = self.notification_formatter_info['inst']
                 for types, obj in kwargs.items():
