@@ -136,6 +136,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         if self.__notification_formatter__:
             form = self.__notification_formatter__.clone()
             form.set_device(self.device)
+            return form
         else:
             return None
 
