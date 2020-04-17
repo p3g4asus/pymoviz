@@ -202,7 +202,8 @@ class MyTabs(MDTabs):
             self.remove_widget(t)
         if self.tab_list or views:
             for t in views:
-                self.add_widget(t)
+                if isinstance(t, View) and t.active:
+                    self.add_widget(t)
             if set_tab:
                 self.simulate_tab_switch(0)
 
@@ -827,6 +828,7 @@ class MainApp(MDApp):
             _LOGGER.info('Pre init done: starting server')
             self.devicemanagers_pre_init_done = True
             self.start_server()
+            self.auto_connect_done = -1
 
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
@@ -837,6 +839,9 @@ class MainApp(MDApp):
         else:
             _LOGGER.info(f'Debug verb = {get_verbosity(self.config)}')
             self.oscer.send(COMMAND_LOGLEVEL, get_verbosity(self.config))
+            if self.auto_connect_done == -1 and int(self.config.get('preaction', 'autoconnect')):
+                self.auto_connect_done = 0
+                self.connect_active_views()
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init_undo.keys():
                     if self.devicemanagers_pre_init_undo[d] is None:
@@ -930,6 +935,8 @@ class MainApp(MDApp):
                            {'connect_secs': 5, 'connect_retry': 10})
         config.setdefaults('log',
                            {'verbosity': 'INFO'})
+        config.setdefaults('preaction',
+                           {'autoconnect': '0'})
         self.db_path = self.db_dir()
         self.connectors_path = join(self.db_path, 'connectors')
         self.connectors_info = self.find_connectors_info()
@@ -953,6 +960,7 @@ class MainApp(MDApp):
         self.init_osc_timer = None
         self.db_path = ''
         self.connectors_path = ''
+        self.auto_connect_done = 0
         self.devicemanagers_pre_init_done = False
         self.devicemanagers_pre_actions = dict()
         for tp, cls in self.devicemanager_class_by_type.items():
@@ -984,7 +992,13 @@ class MainApp(MDApp):
             blue = json.load(json_file)
             blue[2]['desc'] = self.connectors_path
             settings.add_json_panel('Bluetooth', self.config, data=json.dumps(blue))  # data=json)
-        lst = [dict(type='title', title='Preliminary actions rules')]
+        lst = [dict(type='title',
+                    title='Preliminary actions rules'),
+               dict(type='bool',
+                    title='Auto-Connect',
+                    desc='Auto-Connect active views on start',
+                    section='preaction',
+                    key='autoconnect')]
         for _, actdata in self.devicemanagers_pre_actions.items():
             sett = actdata['cls'].build_settings()
             if sett:

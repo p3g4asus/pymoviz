@@ -51,8 +51,8 @@ _GUI = '''
     BoxLayout:
         orientation: 'vertical'
         id: box_buttons
-        size_hint_x: None
-        width: dp(90)
+        size_hint_y: None
+        height: dp(120)
         spacing: dp(10)
         MDFlatButton:
             id: id_cancelbtn

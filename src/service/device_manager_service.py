@@ -46,6 +46,7 @@ class DeviceManagerService(object):
         _LOGGER.debug(f'Addit params for DM {self.addit_params}')
         self.db = None
         self.oscer = None
+        self.notification_formatter_info = dict(inst=None, timer=None, manager=None)
         self.connectors_format = False
         self.devicemanager_class_by_type = dict()
         self.devicemanagers_pre_actions = dict()
@@ -62,6 +63,75 @@ class DeviceManagerService(object):
         self.last_user = None
         self.devicemanagers_active_info = dict()
         self.stop_event = asyncio.Event()
+        if self.android:
+            from jnius import autoclass
+            self.Context = autoclass('android.content.Context')
+            self.Intent = autoclass('android.content.Intent')
+            self.PendingIntent = autoclass('android.app.PendingIntent')
+            self.AndroidString = autoclass('java.lang.String')
+            self.NotificationBuilder = autoclass('android.app.Notification$Builder')
+            self.PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            self.service = autoclass('org.kivy.android.PythonService').mService
+            self.NOTIFICATION_CHANNEL_ID = self.AndroidString(self.service.getPackageName().encode('utf-8'))
+            self.app_context = self.service.getApplication().getApplicationContext()
+
+            Notification = autoclass('android.app.Notification')
+            Color = autoclass("android.graphics.Color")
+            NotificationChannel = autoclass('android.app.NotificationChannel')
+            NotificationManager = autoclass('android.app.NotificationManager')
+            notificationService = self.service.getSystemService(self.Context.NOTIFICATION_SERVICE)
+            channelName = self.AndroidString('DeviceManagerService'.encode('utf-8'))
+            chan = NotificationChannel(self.NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_DEFAULT)
+            chan.setLightColor(Color.BLUE)
+            chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE)
+            notificationService.createNotificationChannel(chan)
+            BitmapFactory = autoclass("android.graphics.BitmapFactory")
+            Icon = autoclass("android.graphics.drawable.Icon")
+            BitmapFactoryOptions = autoclass("android.graphics.BitmapFactory$Options")
+            # Drawable = jnius.autoclass("{}.R$drawable".format(service.getPackageName()))
+            # icon = getattr(Drawable, 'icon')
+            options = BitmapFactoryOptions()
+            # options.inMutable = True
+            # declaredField = options.getClass().getDeclaredField("inPreferredConfig")
+            # declaredField.set(cast('java.lang.Object',options), cast('java.lang.Object', BitmapConfig.ARGB_8888))
+            # options.inPreferredConfig = BitmapConfig.ARGB_8888;
+            notification_image = join(dirname(__file__), '..', 'images', 'device_manager.png')
+            bm = BitmapFactory.decodeFile(notification_image, options)
+            self.notification_icon = Icon.createWithBitmap(bm)
+
+    def change_service_notification(self, dm, **kwargs):
+        if self.android:
+            m = self.notification_formatter_info['manager']
+            newman = None
+            if m and dm is m or not m:
+                if not m:
+                    m = newman = dm
+            elif m.get_priority() < dm.get_priority():
+                m = newman = dm
+            else:
+                m = None
+            if newman:
+                self.notification_formatter_info['manager'] = newman
+                self.notification_formatter_info['inst'] = newman.get_notification_formatter()
+            if m:
+                if self.notification_formatter_info['timer']:
+                    self.notification_formatter_info['timer'].cancel()
+                self.notification_formatter_info['timer'] = Timer(5, self.clear_notification_formatter)
+                txt = ''
+                f = self.notification_formatter_info['inst']
+                for types, obj in kwargs.items():
+                    if (m.get_id() == f.device) and types == f.type:
+                        txt = f.format(obj)
+                if txt:
+                    self.change_service_notification(m.get_device().get_alias(), txt)
+
+    async def clear_notification_formatter(self):
+        txt = self.notification_formatter_info['inst'].set_timeout()
+        m = self.notification_formatter_info['manager']
+        self.change_service_notification(m.get_device().get_alias(), txt)
+        self.notification_formatter_info['inst'] = None
+        self.notification_formatter_info['manager'] = None
+        self.notification_formatter_info['timer'] = None
 
     async def init_osc(self):
         self.oscer = OSCManager(hostlisten=self.hostlisten, portlisten=self.portlisten)
@@ -186,6 +256,7 @@ class DeviceManagerService(object):
         if command == COMMAND_NEWSESSION and exitv == CONFIRM_OK:
             if self.connectors_format:
                 TcpClient.format(dm.get_device(), manager=dm, session=args[2], user=self.last_user)
+            self.change_service_notification(dm, manager=dm, session=args[2], user=self.last_user)
             if self.main_session:
                 args[1].set_main_session_id(self.main_session.get_id())
             else:
@@ -193,6 +264,7 @@ class DeviceManagerService(object):
         elif command == COMMAND_DEVICEFIT and exitv == CONFIRM_OK:
             if self.connectors_format:
                 TcpClient.format(args[1], fitobj=args[2], manager=dm)
+            self.change_service_notification(dm, fitobj=args[2], manager=dm)
         elif command == COMMAND_DELDEVICE and exitv == CONFIRM_OK:
             ids = f'{dm.get_id()}'
             if ids in self.devicemanagers_by_id:
@@ -259,61 +331,28 @@ class DeviceManagerService(object):
     def on_command_stop(self, *args):
         self.loop.stop()
 
-    def insert_notification(self):
-        from jnius import autoclass
-        fim = join(dirname(__file__), '..', 'images', 'device_manager.png')
-        Context = autoclass('android.content.Context')
-        Color = autoclass("android.graphics.Color")
-        Intent = autoclass('android.content.Intent')
-        PendingIntent = autoclass('android.app.PendingIntent')
-        AndroidString = autoclass('java.lang.String')
-        NotificationBuilder = autoclass('android.app.Notification$Builder')
-        Notification = autoclass('android.app.Notification')
-        NotificationChannel = autoclass('android.app.NotificationChannel')
-        NotificationManager = autoclass('android.app.NotificationManager')
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        service = autoclass('org.kivy.android.PythonService').mService
-
-        NOTIFICATION_CHANNEL_ID = AndroidString(service.getPackageName().encode('utf-8'))
-        channelName = AndroidString('DeviceManagerService'.encode('utf-8'))
-        chan = NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_DEFAULT)
-        chan.setLightColor(Color.BLUE)
-        chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE)
-        manager = service.getSystemService(Context.NOTIFICATION_SERVICE)
-        manager.createNotificationChannel(chan)
-        app_context = service.getApplication().getApplicationContext()
-        notification_builder = NotificationBuilder(app_context, NOTIFICATION_CHANNEL_ID)
-        title = AndroidString("Fit.py".encode('utf-8'))
-        message = AndroidString("DeviceManagerService".encode('utf-8'))
+    def build_notification(self, title, message):
+        notification_builder = self.NotificationBuilder(self.app_context, self.NOTIFICATION_CHANNEL_ID)
         # app_class = service.getApplication().getClass()
-        notification_intent = Intent(app_context, PythonActivity)
-        notification_intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP |
-                                     Intent.FLAG_ACTIVITY_SINGLE_TOP |
-                                     Intent.FLAG_ACTIVITY_NEW_TASK)
-        notification_intent.setAction(Intent.ACTION_MAIN)
-        notification_intent.addCategory(Intent.CATEGORY_LAUNCHER)
-        intent = PendingIntent.getActivity(service, 0, notification_intent, 0)
+        notification_intent = self.Intent(self.app_context, self.PythonActivity)
+        notification_intent.setFlags(self.Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                                     self.Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                                     self.Intent.FLAG_ACTIVITY_NEW_TASK)
+        notification_intent.setAction(self.Intent.ACTION_MAIN)
+        notification_intent.addCategory(self.Intent.CATEGORY_LAUNCHER)
+        intent = self.PendingIntent.getActivity(self.service, 0, notification_intent, 0)
+        title = self.AndroidString(title.encode('utf-8'))
+        message = self.AndroidString(message.encode('utf-8'))
         notification_builder.setContentTitle(title)
         notification_builder.setContentText(message)
         notification_builder.setContentIntent(intent)
-        BitmapFactory = autoclass("android.graphics.BitmapFactory")
-        Icon = autoclass("android.graphics.drawable.Icon")
-        BitmapFactoryOptions = autoclass("android.graphics.BitmapFactory$Options")
-        # Drawable = jnius.autoclass("{}.R$drawable".format(service.getPackageName()))
-        # icon = getattr(Drawable, 'icon')
-        options = BitmapFactoryOptions()
-        # options.inMutable = True
-        # declaredField = options.getClass().getDeclaredField("inPreferredConfig")
-        # declaredField.set(cast('java.lang.Object',options), cast('java.lang.Object', BitmapConfig.ARGB_8888))
-        # options.inPreferredConfig = BitmapConfig.ARGB_8888;
-        bm = BitmapFactory.decodeFile(fim, options)
-        notification_builder.setSmallIcon(Icon.createWithBitmap(bm))
+        notification_builder.setSmallIcon(self.notification_icon)
         notification_builder.setAutoCancel(True)
-        new_notification = notification_builder.getNotification()
-        # Below sends the notification to the notification bar; nice but not a foreground service.
-        # notification_service.notify(0, new_noti)
-        service.setAutoRestartService(False)
-        service.startForeground(1, new_notification)
+        return notification_builder.getNotification()
+
+    def insert_notification(self):
+        self.service.setAutoRestartService(False)
+        self.service.startForeground(1, self.build_notification("Fit.py", "DeviceManagerService"))
 
     async def start(self):
         if self.android:
@@ -442,6 +481,7 @@ class DeviceManagerService(object):
     def on_event_state_transition(self, dm, oldstate, newstate, reason):
         if self.connectors_format:
             TcpClient.format(dm.get_device(), state=newstate, manager=dm)
+        self.change_service_notification(dm, state=newstate, manager=dm)
         uid = dm.get_uid()
         if uid in self.devicemanagers_active_info:  # assenza significa che stiamo facendo una ricerca
             info = self.devicemanagers_active_info[uid]

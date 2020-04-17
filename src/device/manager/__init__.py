@@ -41,6 +41,14 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             fields=['updates']
         )
     )
+
+    __notification_formatter__ = StateFormatter()
+    __notification_formatter__.change_fields({'post': '',
+                                              'col': 0,
+                                              'colmax': 0,
+                                              'colmin': 0,
+                                              'colerror': 0,
+                                              'timeout': '---'})
     __pre_action__ = None
 
     @staticmethod
@@ -123,6 +131,13 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             form.set_device(self.device)
             out[nm] = form
         return out
+
+    def get_notification_formatter(self):
+        if self.__notification_formatter__:
+            form = self.__notification_formatter__.clone()
+            form.set_device(self.device)
+        else:
+            return None
 
     def set_state(self, st, reason=-1):
         oldstate = self.state
@@ -422,6 +437,9 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     def __eq__(self, other):
         return self.device.__eq__(other.device)
+
+    def get_priority(self):
+        return self.device.orderd
 
     def get_device(self):
         return self.device
