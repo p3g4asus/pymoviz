@@ -789,6 +789,9 @@ class MainApp(MDApp):
         self.views = list(ld)
         self.root.ids.id_tabcont.new_view_list(self.views)
         self.on_osc_init_ok_cmd_next(None)
+        if self.auto_connect_done == -1 and int(self.config.get('preaction', 'autoconnect')):
+            self.auto_connect_done = 0
+            self.connect_active_views()
         _LOGGER.info(f'List of views {self.views}')
 
     def is_pre_init_ok(self):
@@ -839,9 +842,6 @@ class MainApp(MDApp):
         else:
             _LOGGER.info(f'Debug verb = {get_verbosity(self.config)}')
             self.oscer.send(COMMAND_LOGLEVEL, get_verbosity(self.config))
-            if self.auto_connect_done == -1 and int(self.config.get('preaction', 'autoconnect')):
-                self.auto_connect_done = 0
-                self.connect_active_views()
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init_undo.keys():
                     if self.devicemanagers_pre_init_undo[d] is None:
