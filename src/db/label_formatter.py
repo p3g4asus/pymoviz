@@ -203,8 +203,23 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
             rv = []
             _LOGGER.debug(f'flds={fldnamelst} obj={obj}')
             for i in fldnamelst:
+                extract_time = False
+                if i.startswith('%t'):
+                    extract_time = True
+                    i = i[2:]
                 if i in obj:
-                    rv.append(obj[i])
+                    if extract_time:
+                        tm = obj[i]
+                        hrs = tm // 3600
+                        tm -= hrs * 3600
+                        mins = tm // 60
+                        tm -= mins * 60
+                        secs = tm % 60
+                        rv.append(hrs)
+                        rv.append(mins)
+                        rv.append(secs)
+                    else:
+                        rv.append(obj[i])
                 else:
                     return None
             return tuple(rv)
@@ -248,24 +263,13 @@ class SimpleFieldFormatter(SimpleFormatter):
             return super(SimpleFieldFormatter, self).format(*flds, *args, **kwargs)
 
 
-class TimeFieldFormatter(SimpleFormatter):
+class TimeFieldFormatter(SimpleFieldFormatter):
     def __init__(self, fields=['time'], **kwargs):
+        f0 = fields[0]
+        fields[0] = f'%t{f0}'
         super(TimeFieldFormatter, self).__init__(
-            name='Time', example_conf={fields[0]: 3723}, format_str='%d:%02d:%02d',
+            name='Time', example_conf={f0: 3723}, format_str='%d:%02d:%02d',
             timeout='[color=#f44336]-:--:--[/color]', fields=fields, **kwargs)
-
-    def format(self, fitobj, *args, **kwargs):
-        tm = self.get_fields(self.fields, fitobj)
-        if not tm:
-            return self.set_timeout()
-        else:
-            tm = tm[0]
-            hrs = tm // 3600
-            tm -= hrs * 3600
-            mins = tm // 60
-            tm -= mins * 60
-            secs = tm % 60
-            return super(TimeFieldFormatter, self).format(*(hrs, mins, secs), *args, **kwargs)
 
 
 class DoubleFormatter(LabelFormatter):

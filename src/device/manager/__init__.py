@@ -44,6 +44,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     __notification_formatter__ = StateFormatter()
     __notification_formatter__.change_fields({'post': '',
+                                              'pre': '',
                                               'col': 0,
                                               'colmax': 0,
                                               'colmin': 0,

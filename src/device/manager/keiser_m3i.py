@@ -91,6 +91,14 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             pre='$D TM: '),
         **GenericDeviceManager.__formatters__
     )
+
+    __notification_formatter__ = SimpleFieldFormatter(
+        pre='',
+        name='NotificationFormatter',
+        example_conf=dict(time=875, distance=22.2, speed=29.3, rpm=145, watt=189),
+        format_str='%d:%02d:%02d %.1f %.1f %d %d',
+        fields=['%ttime', 'distance', 'speed', 'rpm', 'watt']
+    )
     __pre_action__ = EnableBluetooth
     RESCAN_TIMEOUT = 120
 
