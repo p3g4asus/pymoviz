@@ -114,29 +114,33 @@ def init_formatter_colors():
 
 
 class ViewPlayWidget(BoxLayout, MDTabsBase):
-    view = ObjectProperty()
 
     def __init__(self, *args, **kwargs):
         init_formatter_colors()
+        if 'view' in kwargs:
+            self.view = kwargs['view']
+            del kwargs['view']
+        else:
+            self.view = None
         super(ViewPlayWidget, self).__init__(*args, **kwargs)
         self.set_view(self.view)
 
     def set_view(self, view):
         self.view = view
-        self.text = self.view.name
+        self.text = view.name
         try:
             for i in range(len(self.ids.id_formatters.children) - 1, -1, -1):
                 fi = self.ids.id_formatters.children[i]
                 if isinstance(fi, FormatterItem):
                     _LOGGER.debug(f'Removing formatter {fi.formatter.get_title()}')
                     self.ids.id_formatters.remove_widget(fi)
-            for f in self.view.items:
+            for f in view.items:
                 fi = FormatterItem(formatter=f)
                 _LOGGER.debug(f'Adding formatter {fi.formatter.get_title()}')
                 self.ids.id_formatters.add_widget(fi)
+            _LOGGER.debug(f'-1={self.view} 0={self.view is view} 3={id(self.view)} 4={id(view)}')
         except Exception:
             _LOGGER.error(f'On view error {traceback.format_exc()}')
-            pass
 
     def format(self, devobj, **kwargs):
         for fi in self.ids.id_formatters.children:

@@ -78,7 +78,7 @@ class MyBluetoothDispatcher(BluetoothDispatcher):
             self.on_enable(wasenabled)
 
     def on_bluetooth_disabled(self, wasdisabled):
-        super(MyBluetoothDispatcher, self).on_bluetooth_enabled(wasdisabled)
+        super(MyBluetoothDispatcher, self).on_bluetooth_disabled(wasdisabled)
         if self.on_disable:
             self.on_disable(wasdisabled)
 

@@ -572,6 +572,7 @@ class MainApp(MDApp):
             msg = f"[E {exitv}] {msg}"
         elif args[0] == CONFIRM_OK:
             view = args[1]
+            _LOGGER.info(f'New item is {view}')
             if view in lst:
                 lst[lst.index(view)] = view
             else:
