@@ -96,7 +96,8 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         pre='',
         name='NotificationFormatter',
         example_conf=dict(time=875, distance=22.2, speed=29.3, rpm=145, watt=189),
-        format_str='%d:%02d:%02d %.1f %.1f %d %d',
+        format_str='%d:%02d:%02d %2.1f %2.1f %3d %3d',
+        col='',
         fields=['%ttime', 'distance', 'speed', 'rpm', 'watt']
     )
     __pre_action__ = EnableBluetooth
