@@ -10,44 +10,45 @@ _LOGGER = init_logger(__name__)
 Builder.load_string(
     '''
 #:import MDList kivymd.uix.list.MDList
+#:import Window kivy.core.window.Window
 <TypeWidgetCB>:
     name: 'type_cb'
     GridLayout:
-        spacing: dp(5)
-        height: self.minimum_height
-        rows: 3
         cols: 1
+        id: id_grid
+        size_hint_y: None
+        height: Window.height
+        spacing_y: dp(20)
         MDToolbar:
             pos_hint: {'top': 1}
-            size_hint: (1, 0.2)
             title: root.title
+            id: id_toolbar
             md_bg_color: app.theme_cls.primary_color
             left_action_items: [["arrow-left", lambda x: root.dispatch_on_type(False)]]
             elevation: 10
         ScrollView:
-            size_hint: (1, 0.8)
+            size_hint_y: None
+            height: id_grid.height - (box_buttons.height + id_toolbar.height\
+                 + dp(10))
             MDList:
                 id: id_types
         BoxLayout:
             id: box_buttons
-            AnchorLayout:
-                anchor_x: "right"
-                size_hint_y: None
-                height: dp(30)
-                BoxLayout:
-                    size_hint_x: None
-                    spacing: dp(5)
-                    MDRaisedButton:
-                        id: id_btnok
-                        disabled: True
-                        text: 'OK'
-                        on_release: root.dispatch_on_type(True)
-                    MDFlatButton:
-                        id: id_btnko
-                        text: 'Cancel'
-                        theme_text_color: 'Custom'
-                        text_color: self.theme_cls.primary_color
-                        on_release: root.dispatch_on_type(False)
+            size_hint_y: None
+            height: dp(20)
+            spacing: dp(10)
+            padding: dp(10)
+            MDFlatButton:
+                id: id_btnko
+                text: 'Cancel'
+                theme_text_color: 'Custom'
+                text_color: self.theme_cls.primary_color
+                on_release: root.dispatch_on_type(False)
+            MDRaisedButton:
+                id: id_btnok
+                disabled: True
+                text: 'OK'
+                on_release: root.dispatch_on_type(True)
     '''
 )
 
@@ -76,6 +77,7 @@ class TypeWidgetCB(Screen):
                                on_brand=self.on_brand_selected)
             self.buttons.append(b)
             self.ids.id_types.add_widget(b)
+        _LOGGER.info(f'Sizes {self.ids.id_grid.height} {self.ids.box_buttons.height} {self.ids.id_toolbar.height}')
 
     def on_type(self, lst):
         _LOGGER.info(f"On type called {str(lst)}")

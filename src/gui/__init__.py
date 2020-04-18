@@ -52,7 +52,7 @@ from util.osc_comunication import OSCManager
 from util.timer import Timer
 from util.velocity_tcp import TcpClient
 from util import asyncio_graceful_shutdown, find_devicemanager_classes,\
-    get_verbosity, init_logger
+    get_natural_color, get_verbosity, init_logger
 
 
 _LOGGER = init_logger(__name__, level=logging.DEBUG)
@@ -609,6 +609,12 @@ class MainApp(MDApp):
                 text="Delete...",
                 icon="delete",
                 callback=self.generic_delete
+            ),
+            dict(
+                viewclass="MDMenuItem",
+                text="Exit",
+                icon="exit-to-app",
+                callback=self.on_nav_exit
             )
         ]
         MDDropdownMenu(items=items, width_mult=3).open(
@@ -892,6 +898,7 @@ class MainApp(MDApp):
 
         self.root.ids.content_drawer.image_path = join(
             dirname(__file__), '..', "images", "navdrawer.png")
+        col = get_natural_color(False)
         for items in {
             "home-outline": ("Home", self.on_nav_home),
             "settings-outline": ("Settings", self.on_nav_settings),
@@ -901,6 +908,7 @@ class MainApp(MDApp):
                 NavigationItem(
                     text=items[1][0],
                     icon=items[0],
+                    background_color=col,
                     on_release=items[1][1]
                 )
             )
