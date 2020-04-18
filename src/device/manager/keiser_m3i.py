@@ -97,6 +97,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         name='NotificationFormatter',
         example_conf=dict(time=875, distance=22.2, speed=29.3, rpm=145, watt=189),
         format_str='%d:%02d:%02d %2.1f %2.1f %3d %3d',
+        timeout='-:--:-- --.- --.- --- ---',
         col='',
         fields=['%ttime', 'distance', 'speed', 'rpm', 'watt']
     )
