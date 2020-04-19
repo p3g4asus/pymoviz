@@ -95,11 +95,11 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
     __notification_formatter__ = SimpleFieldFormatter(
         pre='',
         name='NotificationFormatter',
-        example_conf=dict(time=875, distance=22.2, speed=29.3, rpm=145, watt=189),
-        format_str='%d:%02d:%02d %2.1f %2.1f %3d %3d',
-        timeout='-:--:-- --.- --.- --- ---',
+        example_conf=dict(time=875, distance=22.2, speed=29.3, rpm=145, watt=189, calorie=689),
+        format_str='%d:%02d:%02d %2.1f %2.1f %3d %3d %3d',
+        timeout='-:--:-- --.- --.- --- --- ---',
         col='',
-        fields=['%ttime', 'distance', 'speed', 'rpm', 'watt']
+        fields=['%ttime', 'distance', 'speed', 'rpm', 'watt', 'calorie']
     )
     __pre_action__ = EnableBluetooth
     RESCAN_TIMEOUT = 120
