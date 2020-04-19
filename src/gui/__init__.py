@@ -898,10 +898,14 @@ class MainApp(MDApp):
 
     def set_screen_on(self, val):
         if platform == 'android':
-            from jnius import autoclass
-            FLAG_KEEP_SCREEN_ON = 128
-            win = autoclass('org.kivy.android.PythonActivity').mActivity.getWindow()
-            win.setFlags(0 if not val else FLAG_KEEP_SCREEN_ON, FLAG_KEEP_SCREEN_ON)
+            from android.runnable import run_on_ui_thread
+            @run_on_ui_thread
+            def _set_screen_on(val):
+                from jnius import autoclass
+                FLAG_KEEP_SCREEN_ON = 128
+                win = autoclass('org.kivy.android.PythonActivity').mActivity.getWindow()
+                win.setFlags(0 if not val else FLAG_KEEP_SCREEN_ON, FLAG_KEEP_SCREEN_ON)
+            _set_screen_on(val)
 
     def on_start(self):
         init_logger(__name__, get_verbosity(self.config))
