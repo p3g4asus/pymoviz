@@ -885,7 +885,8 @@ class MainApp(MDApp):
 
     def _on_keyboard(self, win, scancode, *largs):
         modifiers = largs[-1]
-        if scancode == 101 and set(modifiers) & {'ctrl'} and not set(
+        _LOGGER.info(f'Keys: {scancode} and {largs}')
+        if scancode == 100 and set(modifiers) & {'ctrl'} and not set(
                 modifiers) & {'shift', 'alt', 'meta'}:
             self.stop_server()
 
@@ -942,6 +943,8 @@ class MainApp(MDApp):
 
     def true_stop(self):
         self.stop_server()
+        if self.oscer:
+            self.oscer.uninit()
         self.stop()
 
     def build_config(self, config):
@@ -1091,7 +1094,6 @@ class MainApp(MDApp):
     def stop_server(self, *args, **kwargs):
         if self.oscer:
             self.oscer.send(COMMAND_STOP)
-            self.oscer.uninit()
 
     async def start_windows_explorer(self):
         await asyncio.create_subprocess_shell(
