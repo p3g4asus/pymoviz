@@ -614,6 +614,12 @@ class MainApp(MDApp):
             ),
             dict(
                 viewclass="MDMenuItem",
+                text="Stop backend",
+                icon="stop",
+                callback=self.stop_server
+            ),
+            dict(
+                viewclass="MDMenuItem",
                 text="Exit",
                 icon="exit-to-app",
                 callback=self.on_nav_exit
@@ -877,6 +883,12 @@ class MainApp(MDApp):
         self.config.write()
         toast('Window position saved')
 
+    def _on_keyboard(self, win, scancode, *largs):
+        modifiers = largs[-1]
+        if scancode == 101 and set(modifiers) & {'ctrl'} and not set(
+                modifiers) & {'shift', 'alt', 'meta'}:
+            self.stop_server()
+
     def on_start(self):
         init_logger(__name__, get_verbosity(self.config))
         if platform != 'android':
@@ -887,6 +899,7 @@ class MainApp(MDApp):
             if width >= -6000:
                 Window.top = int(self.config.get('pos', 'top'))
                 Window.left = width
+            Window.bind(on_keyboard=self._on_keyboard)
         for vt in self.velocity_tabs:
             self.root.ids.id_tabcont.add_widget(vt)
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
@@ -1075,7 +1088,7 @@ class MainApp(MDApp):
             except Exception:
                 _LOGGER.error(traceback.format_exc())
 
-    def stop_server(self):
+    def stop_server(self, *args, **kwargs):
         if self.oscer:
             self.oscer.send(COMMAND_STOP)
             self.oscer.uninit()
