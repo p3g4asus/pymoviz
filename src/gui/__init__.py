@@ -734,6 +734,15 @@ class MainApp(MDApp):
             if self.init_osc_timer:
                 self.init_osc_timer.cancel()
             self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd) if self.init_osc_cmd else None
+            if not nextcmd:
+                if self.auto_connect_done == -1:
+                    if int(self.config.get('preaction', 'autoconnect')):
+                        self.connect_active_views()
+                    if platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
+                        self.stop_me()
+                if self.auto_connect_done < 0:
+                    self.set_screen_on(False)
+                self.auto_connect_done = 0
 
     async def on_osc_init_ok_cmd(self):
         if self.init_osc_cmd == COMMAND_CONNECTORS:
@@ -801,9 +810,6 @@ class MainApp(MDApp):
         self.views = list(ld)
         self.root.ids.id_tabcont.new_view_list(self.views)
         self.on_osc_init_ok_cmd_next(None)
-        if self.auto_connect_done == -1 and int(self.config.get('preaction', 'autoconnect')):
-            self.auto_connect_done = 0
-            self.connect_active_views()
         _LOGGER.info(f'List of views {self.views}')
 
     def is_pre_init_ok(self):
@@ -890,6 +896,13 @@ class MainApp(MDApp):
                 modifiers) & {'shift', 'alt', 'meta'}:
             self.stop_server()
 
+    def set_screen_on(self, val):
+        if platform == 'android':
+            from jnius import autoclass
+            FLAG_KEEP_SCREEN_ON = 128
+            win = autoclass('org.kivy.android.PythonActivity').mActivity.getWindow()
+            win.setFlags(0 if not val else FLAG_KEEP_SCREEN_ON, FLAG_KEEP_SCREEN_ON)
+
     def on_start(self):
         init_logger(__name__, get_verbosity(self.config))
         if platform != 'android':
@@ -904,6 +917,7 @@ class MainApp(MDApp):
             if int(self.config.get('window', 'alwaysontop')):
                 from KivyOnTop import register_topmost
                 register_topmost(Window, self.title)
+        self.set_screen_on(True)
         for vt in self.velocity_tabs:
             self.root.ids.id_tabcont.add_widget(vt)
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
@@ -946,6 +960,9 @@ class MainApp(MDApp):
 
     def true_stop(self):
         self.stop_server()
+        self.stop_me()
+
+    def stop_me(self):
         if self.oscer:
             self.oscer.uninit()
         self.stop()
@@ -969,6 +986,9 @@ class MainApp(MDApp):
                            {'verbosity': 'INFO'})
         config.setdefaults('preaction',
                            {'autoconnect': '0'})
+        if platform == 'android':
+            config.setdefaults('preaction',
+                               {'closefrontend': '0'})
         self.db_path = self.db_dir()
         self.connectors_path = join(self.db_path, 'connectors')
         self.connectors_info = self.find_connectors_info()
@@ -993,7 +1013,7 @@ class MainApp(MDApp):
         self.db_path = ''
         self.last_timeout_time = 0
         self.connectors_path = ''
-        self.auto_connect_done = 0
+        self.auto_connect_done = -2
         self.devicemanagers_pre_init_done = False
         self.devicemanagers_pre_actions = dict()
         for tp, cls in self.devicemanager_class_by_type.items():
@@ -1032,6 +1052,12 @@ class MainApp(MDApp):
                     desc='Auto-Connect active views on start',
                     section='preaction',
                     key='autoconnect')]
+        if platform == 'android':
+            lst.append(dict(type='bool',
+                            title='Auto-Close',
+                            desc='Auto-Close frontend after starting backend',
+                            section='preaction',
+                            key='closefrontend'))
         for _, actdata in self.devicemanagers_pre_actions.items():
             sett = actdata['cls'].build_settings()
             if sett:
