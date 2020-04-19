@@ -20,7 +20,7 @@ class Timer:
                 await asyncio.sleep(self._timeout)
             await self._callback()
             # self._task.set_result(0)
-        except Exception:
+        except (asyncio.CancelledError, Exception):
             # self._task.set_result(ex)
             pass
 
