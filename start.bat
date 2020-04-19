@@ -9,6 +9,8 @@ REM pip3 install kivy.deps.angle
 REM pip3 install pyjnius
 REM pip3 install aiosqlite
 REM pip3 install airspeed
+REM pip3 install pywin32
+REM pip3 install KivyOnTop
 REM set USE_SDL2=1
 REM set USE_GSTREAMER=1
 REM pip3 install git+git://github.com/kivy/kivy.git@cfa6b78f998abd71cda6ab665fd21b18277199b9

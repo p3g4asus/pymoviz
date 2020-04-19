@@ -901,6 +901,9 @@ class MainApp(MDApp):
                 Window.top = int(self.config.get('pos', 'top'))
                 Window.left = width
             Window.bind(on_keyboard=self._on_keyboard)
+            if int(self.config.get('window', 'alwaysontop')):
+                from KivyOnTop import register_topmost
+                register_topmost(Window, self.title)
         for vt in self.velocity_tabs:
             self.root.ids.id_tabcont.add_widget(vt)
         if self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
@@ -955,6 +958,7 @@ class MainApp(MDApp):
         if platform != 'android':
             config.setdefaults('size', {'width': -200, 'height': -200})
             config.setdefaults('pos', {'left': -20000, 'top': -20000})
+            config.setdefaults('window', {'alwaysontop': '0'})
         config.setdefaults('frontend',
                            {'host': '127.0.0.1', 'port': 11002})
         config.setdefaults('backend',
@@ -1036,7 +1040,7 @@ class MainApp(MDApp):
         for ci in self.connectors_info:
             settings.add_json_panel(ci['section'].title(), self.config, data=json.dumps(ci['config']))
         if platform != "android":
-            settings.add_json_panel('PosSize', self.config, join(dn, 'possize.json'))
+            settings.add_json_panel('Window', self.config, join(dn, 'window.json'))
         settings.add_json_panel('Log', self.config, join(dn, 'log.json'))
 
     def check_host_port_config(self, name):
@@ -1117,7 +1121,13 @@ class MainApp(MDApp):
         """
         _LOGGER.info("main.py: App.on_config_change: {0}, {1}, {2}, {3}".format(
             config, section, key, value))
-        if section == 'possize':
+        if section == 'window' and key == 'alwaysontop':
+            from KivyOnTop import register_topmost, unregister_topmost
+            if int(value):
+                register_topmost(Window, self.title)
+            else:
+                unregister_topmost(Window, self.title)
+        elif section == 'possize':
             if key == 'pos':
                 self.save_window_pos()
             elif key == 'size':

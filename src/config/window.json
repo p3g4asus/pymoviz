@@ -1,5 +1,12 @@
 [
   {
+      "type": "bool",
+      "title": "Always On Top",
+      "desc": "Keep Window Always On Top",
+      "section": "window",
+      "key": "alwaysontop"
+  },
+  {
       "type": "buttons",
       "title": "Save Size",
       "desc": "Save Size for restore",
