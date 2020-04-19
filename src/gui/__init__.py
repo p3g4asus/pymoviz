@@ -11,6 +11,7 @@ import asyncio
 import fnmatch
 import json
 import os
+import time
 import traceback
 from functools import partial
 import logging
@@ -744,8 +745,6 @@ class MainApp(MDApp):
         self.oscer.handle(COMMAND_LISTVIEWS_RV, self.on_list_views_rv)
         self.oscer.handle(COMMAND_LISTUSERS_RV, self.on_list_users_rv)
         self.oscer.handle(COMMAND_PRINTMSG, self.on_printmsg)
-        self.init_osc_cmd = COMMAND_CONNECTORS
-        self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
         _LOGGER.info('Osc init ok done')
 
     def on_printmsg(self, msg):
@@ -842,6 +841,7 @@ class MainApp(MDApp):
 
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
+            self.last_timeout_time = time.time()
             _LOGGER.info(f'Timeout comunicating with the service ({hp[0]}:{hp[1]}) id={self.devicemanagers_pre_init_done} plf={platform}')
             self.do_pre()
             if self.notify_timeout and (self.devicemanagers_pre_init_done or platform != 'android'):
@@ -849,6 +849,9 @@ class MainApp(MDApp):
         else:
             _LOGGER.info(f'Debug verb = {get_verbosity(self.config)}')
             self.oscer.send(COMMAND_LOGLEVEL, get_verbosity(self.config))
+            if (time.time() - self.last_timeout_time) > 15 or self.init_osc_cmd is False:
+                self.init_osc_cmd = COMMAND_CONNECTORS
+                self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init_undo.keys():
                     if self.devicemanagers_pre_init_undo[d] is None:
@@ -965,9 +968,10 @@ class MainApp(MDApp):
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
         self.devicemanagers_by_uid = dict()
         self.views = []
-        self.init_osc_cmd = None
+        self.init_osc_cmd = False
         self.init_osc_timer = None
         self.db_path = ''
+        self.last_timeout_time = 0
         self.connectors_path = ''
         self.auto_connect_done = 0
         self.devicemanagers_pre_init_done = False
