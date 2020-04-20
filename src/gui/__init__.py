@@ -740,7 +740,8 @@ class MainApp(MDApp):
                         self.connect_active_views()
                     if platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
                         self.stop_me()
-                if self.auto_connect_done < 0:
+                if self.auto_connect_done < 0 and platform == 'android' and\
+                        not int(self.config.get('misc', 'screenon')):
                     self.set_screen_on(False)
                 self.auto_connect_done = 0
 
@@ -991,6 +992,8 @@ class MainApp(MDApp):
         config.setdefaults('preaction',
                            {'autoconnect': '0'})
         if platform == 'android':
+            config.setdefaults('misc',
+                               {'screenon': '0'})
             config.setdefaults('preaction',
                                {'closefrontend': '0'})
         self.db_path = self.db_dir()
@@ -1045,17 +1048,26 @@ class MainApp(MDApp):
         settings.register_type('buttons', SettingButtons)
         settings.add_json_panel('Backend', self.config, join(dn, 'backend.json'))  # data=json)
         settings.add_json_panel('Frontend', self.config, join(dn, 'frontend.json'))
-        with open(join(dn, 'bluetooth.json')) as json_file:
-            blue = json.load(json_file)
-            blue[2]['desc'] = self.connectors_path
-            settings.add_json_panel('Bluetooth', self.config, data=json.dumps(blue))  # data=json)
-        lst = [dict(type='title',
-                    title='Preliminary actions rules'),
-               dict(type='bool',
-                    title='Auto-Connect',
-                    desc='Auto-Connect active views on start',
-                    section='preaction',
-                    key='autoconnect')]
+        settings.add_json_panel('Bluetooth', self.config, join(dn, 'bluetooth.json'))  # data=json)
+        lst = [dict(type="buttons",
+                    title="Connectors dir",
+                    desc=self.connectors_path,
+                    section="misc",
+                    key="connectors",
+                    buttons=[dict(title="Open", id="btn_open")])]
+        if platform == 'android':
+            lst.append(dict(type='bool',
+                            title='Keep Screen on',
+                            desc='Keep screen awake (battery drain)',
+                            section='misc',
+                            key='screenon'))
+        lst.extend([dict(type='title',
+                         title='Preliminary actions rules'),
+                    dict(type='bool',
+                         title='Auto-Connect',
+                         desc='Auto-Connect active views on start',
+                         section='preaction',
+                         key='autoconnect')])
         if platform == 'android':
             lst.append(dict(type='bool',
                             title='Auto-Close',
@@ -1066,7 +1078,7 @@ class MainApp(MDApp):
             sett = actdata['cls'].build_settings()
             if sett:
                 lst.append(sett)
-        settings.add_json_panel('Pre-Actions', self.config, data=json.dumps(lst))
+        settings.add_json_panel('Misc', self.config, data=json.dumps(lst))
         for ci in self.connectors_info:
             settings.add_json_panel(ci['section'].title(), self.config, data=json.dumps(ci['config']))
         if platform != "android":
@@ -1162,7 +1174,10 @@ class MainApp(MDApp):
                 self.save_window_pos()
             elif key == 'size':
                 self.save_window_size()
-        elif section == 'bluetooth' and key == 'connectors':
+        elif section == 'misc' and key == 'screenon':
+            if self.auto_connect_done >= 0:
+                self.set_screen_on(int(value))
+        elif section == 'misc' and key == 'connectors':
             if platform == 'android':
                 self.start_android_explorer()
             elif platform == 'win':
