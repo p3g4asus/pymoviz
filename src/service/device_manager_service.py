@@ -84,7 +84,7 @@ class DeviceManagerService(object):
 
             Intent = autoclass('android.content.Intent')
             PendingIntent = autoclass('android.app.PendingIntent')
-            NotificationActionBuilder = autoclass('android.app.Notification.Action$Builder')
+            NotificationActionBuilder = autoclass('android.app.Notification$Action$Builder')
             Notification = autoclass('android.app.Notification')
             Color = autoclass("android.graphics.Color")
             NotificationChannel = autoclass('android.app.NotificationChannel')
