@@ -110,7 +110,7 @@ class DeviceManagerService(object):
             notification_image = join(dirname(__file__), '..', 'images', 'lan-connect.png')
             bm = BitmapFactory.decodeFile(notification_image, options)
             connect_icon = Icon.createWithBitmap(bm)
-            broadcastIntent = Intent(self.service)
+            broadcastIntent = Intent()
             actionIntent = PendingIntent.getBroadcast(self.service,
                                                       0,
                                                       broadcastIntent,
