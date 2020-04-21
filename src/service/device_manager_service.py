@@ -66,6 +66,15 @@ class DeviceManagerService(object):
         if self.android:
             from jnius import autoclass
             from android.broadcast import BroadcastReceiver
+            from db.label_formatter import StateFormatter
+            self.notification_state_formatter = StateFormatter(
+                colmin=None,
+                colmax=None,
+                colerror=None,
+                col=None,
+                pre='',
+                post=''
+            )
             self.Context = autoclass('android.content.Context')
             self.AndroidString = autoclass('java.lang.String')
             self.NotificationBuilder = autoclass('android.app.Notification$Builder')
@@ -180,12 +189,13 @@ class DeviceManagerService(object):
             else:
                 m = None
             if newman:
-                self.notification_formatter_info['manager'] = newman
-                self.notification_formatter_info['inst'] = newman.get_notification_formatter()
-            if m:
+                if newman.is_connected_state():
+                    self.notification_formatter_info['manager'] = newman
+                    self.notification_formatter_info['inst'] = newman.get_notification_formatter()
+            if m and m.is_connected_state():
                 if self.notification_formatter_info['timer']:
                     self.notification_formatter_info['timer'].cancel()
-                self.notification_formatter_info['timer'] = Timer(45, self.clear_notification_formatter)
+                self.notification_formatter_info['timer'] = Timer(7, self.clear_notification_formatter)
                 txt = ''
                 f = self.notification_formatter_info['inst']
                 for types, obj in kwargs.items():
@@ -195,6 +205,10 @@ class DeviceManagerService(object):
                     alias = m.get_device().get_alias()
                     _LOGGER.debug(f'Changing notification {alias}-> {txt}')
                     self.set_service_notification(self.build_service_notification(alias, txt))
+            if not self.notification_formatter_info['inst'] and 'state' in kwargs:
+                self.set_service_notification(
+                    self.build_service_notification(dm.get_device().get_alias(),
+                                                    self.notification_state_formatter.format(kwargs['state'])))
 
     async def clear_notification_formatter(self):
         txt = self.notification_formatter_info['inst'].set_timeout()

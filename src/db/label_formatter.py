@@ -182,10 +182,10 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
             return self.format(self.example_conf)
 
     def get_title(self):
-        return self.deviceobj.get_alias() + " " + self.name
+        return (self.deviceobj.get_alias() if self.deviceobj else 'None') + " " + self.name
 
     def get_pre(self):
-        return self.pre.replace('$D', self.deviceobj.get_alias())
+        return self.pre.replace('$D', self.deviceobj.get_alias() if self.deviceobj else 'None')
 
     def set_device(self, deviceobj):
         self.deviceobj = deviceobj
