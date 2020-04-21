@@ -115,11 +115,17 @@ class DeviceManagerService(object):
                                                       0,
                                                       broadcastIntent,
                                                       PendingIntent.FLAG_UPDATE_CURRENT)
-            self.connect_action = NotificationActionBuilder(connect_icon, self.CONNECT_ACTION, actionIntent).build()
+            self.connect_action = NotificationActionBuilder(
+                connect_icon,
+                self.AndroidString(self.CONNECT_ACTION.encode('utf-8')),
+                actionIntent).build()
             notification_image = join(dirname(__file__), '..', 'images', 'lan-disconnect.png')
             bm = BitmapFactory.decodeFile(notification_image, options)
             disconnect_icon = Icon.createWithBitmap(bm)
-            self.disconnect_action = NotificationActionBuilder(disconnect_icon, self.DISCONNECT_ACTION, actionIntent).build()
+            self.disconnect_action = NotificationActionBuilder(
+                disconnect_icon,
+                self.AndroidString(self.DISCONNECT_ACTION.encode('utf-8')),
+                actionIntent).build()
             notification_intent = Intent(self.app_context, self.PythonActivity)
             notification_intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP |
                                          Intent.FLAG_ACTIVITY_SINGLE_TOP |
