@@ -188,10 +188,9 @@ class DeviceManagerService(object):
                 m = newman = dm
             else:
                 m = None
-            if newman:
-                if newman.is_connected_state():
-                    self.notification_formatter_info['manager'] = newman
-                    self.notification_formatter_info['inst'] = newman.get_notification_formatter()
+            if newman and newman.is_connected_state():
+                self.notification_formatter_info['manager'] = newman
+                self.notification_formatter_info['inst'] = newman.get_notification_formatter()
             if m and m.is_connected_state():
                 if self.notification_formatter_info['timer']:
                     self.notification_formatter_info['timer'].cancel()
