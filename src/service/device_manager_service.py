@@ -65,9 +65,8 @@ class DeviceManagerService(object):
         self.stop_event = asyncio.Event()
         if self.android:
             from jnius import autoclass
+            from android.broadcast import BroadcastReceiver
             self.Context = autoclass('android.content.Context')
-            self.Intent = autoclass('android.content.Intent')
-            self.PendingIntent = autoclass('android.app.PendingIntent')
             self.AndroidString = autoclass('java.lang.String')
             self.NotificationBuilder = autoclass('android.app.Notification$Builder')
             self.PythonActivity = autoclass('org.kivy.android.PythonActivity')
@@ -76,7 +75,16 @@ class DeviceManagerService(object):
             self.FOREGROUND_NOTIFICATION_ID = 1462
             self.app_context = self.service.getApplication().getApplicationContext()
             self.notification_service = self.service.getSystemService(self.Context.NOTIFICATION_SERVICE)
+            self.CONNECT_ACTION = 'device_manager_service.view.CONNECT'
+            self.DISCONNECT_ACTION = 'device_manager_service.view.DISCONNECT'
 
+            self.br = BroadcastReceiver(
+                self.on_broadcast, actions=[self.CONNECT_ACTION, self.DISCONNECT_ACTION])
+            self.br.start()
+
+            Intent = autoclass('android.content.Intent')
+            PendingIntent = autoclass('android.app.PendingIntent')
+            NotificationActionBuilder = autoclass('android.app.Notification.Action$Builder')
             Notification = autoclass('android.app.Notification')
             Color = autoclass("android.graphics.Color")
             NotificationChannel = autoclass('android.app.NotificationChannel')
@@ -99,6 +107,30 @@ class DeviceManagerService(object):
             notification_image = join(dirname(__file__), '..', 'images', 'device_manager.png')
             bm = BitmapFactory.decodeFile(notification_image, options)
             self.notification_icon = Icon.createWithBitmap(bm)
+            notification_image = join(dirname(__file__), '..', 'images', 'lan-connect.png')
+            bm = BitmapFactory.decodeFile(notification_image, options)
+            connect_icon = Icon.createWithBitmap(bm)
+            broadcastIntent = Intent(self.service)
+            actionIntent = PendingIntent.getBroadcast(self.service,
+                                                      0,
+                                                      broadcastIntent,
+                                                      PendingIntent.FLAG_UPDATE_CURRENT)
+            self.connect_action = NotificationActionBuilder(connect_icon, self.CONNECT_ACTION, actionIntent).build()
+            notification_image = join(dirname(__file__), '..', 'images', 'lan-disconnect.png')
+            bm = BitmapFactory.decodeFile(notification_image, options)
+            disconnect_icon = Icon.createWithBitmap(bm)
+            self.disconnect_action = NotificationActionBuilder(disconnect_icon, self.DISCONNECT_ACTION, actionIntent).build()
+            notification_intent = Intent(self.app_context, self.PythonActivity)
+            notification_intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                                         Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                                         Intent.FLAG_ACTIVITY_NEW_TASK)
+            notification_intent.setAction(Intent.ACTION_MAIN)
+            notification_intent.addCategory(Intent.CATEGORY_LAUNCHER)
+            self.notification_intent = PendingIntent.getActivity(self.service, 0, notification_intent, 0)
+
+    def on_broadcast(self, context, intent):
+        action = intent.getAction()
+        _LOGGER.info(f'on_broadcast action {action}')
 
     def change_service_notification(self, dm, **kwargs):
         if self.android:
@@ -340,20 +372,16 @@ class DeviceManagerService(object):
     def build_service_notification(self, title, message):
         notification_builder = self.NotificationBuilder(self.app_context, self.NOTIFICATION_CHANNEL_ID)
         # app_class = service.getApplication().getClass()
-        notification_intent = self.Intent(self.app_context, self.PythonActivity)
-        notification_intent.setFlags(self.Intent.FLAG_ACTIVITY_CLEAR_TOP |
-                                     self.Intent.FLAG_ACTIVITY_SINGLE_TOP |
-                                     self.Intent.FLAG_ACTIVITY_NEW_TASK)
-        notification_intent.setAction(self.Intent.ACTION_MAIN)
-        notification_intent.addCategory(self.Intent.CATEGORY_LAUNCHER)
-        intent = self.PendingIntent.getActivity(self.service, 0, notification_intent, 0)
+
         title = self.AndroidString(title.encode('utf-8'))
         message = self.AndroidString(message.encode('utf-8'))
         notification_builder.setContentTitle(title)
         notification_builder.setContentText(message)
-        notification_builder.setContentIntent(intent)
+        notification_builder.setContentIntent(self.notification_intent)
         notification_builder.setSmallIcon(self.notification_icon)
         notification_builder.setAutoCancel(True)
+        notification_builder.addAction(self.connect_action)
+        notification_builder.addAction(self.disconnect_action)
         return notification_builder.getNotification()
 
     def insert_service_notification(self):
@@ -570,6 +598,8 @@ class DeviceManagerService(object):
         await self.stop_event.wait()
         self.oscer.uninit()
         await self.uninit_db()
+        if self.android:
+            self.br.stop()
         self.stop_service()
 
     def stop_service(self):
