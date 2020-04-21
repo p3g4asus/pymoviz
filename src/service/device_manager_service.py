@@ -571,17 +571,13 @@ class DeviceManagerService(object):
             info = self.devicemanagers_active_info[uid]
             from device.manager import GenericDeviceManager
             if GenericDeviceManager.is_connected_state_s(newstate) and oldstate == DEVSTATE_CONNECTING:
-                if dm in self.devicemanagers_active:
-                    self.devicemanagers_active.remove(dm)
-                    self.devicemanagers_active_done.append(dm)
-                self.set_operation_ended(info)
+                if info['operation'] == 'c':
+                    if dm in self.devicemanagers_active:
+                        self.devicemanagers_active.remove(dm)
+                        self.devicemanagers_active_done.append(dm)
+                    self.set_operation_ended(info)
                 Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
             elif oldstate == DEVSTATE_CONNECTING and newstate == DEVSTATE_DISCONNECTED:
-                Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
-            elif (GenericDeviceManager.is_connected_state_s(oldstate) or
-                  (oldstate == DEVSTATE_DISCONNECTING and reason != DEVREASON_REQUESTED)) and\
-                    newstate == DEVSTATE_DISCONNECTED:
-                self.set_operation_ended(info)
                 if reason == DEVREASON_PREPARE_ERROR or reason == DEVREASON_BLE_DISABLED:
                     for dm in self.devicemanagers_active:
                         info = self.devicemanagers_active_info[dm.get_uid()]
@@ -589,7 +585,13 @@ class DeviceManagerService(object):
                         if dm not in self.devicemanagers_active_done:
                             self.devicemanagers_active_done.append(dm)
                     del self.devicemanagers_active[:]
-                elif reason != DEVREASON_REQUESTED:
+                else:
+                    Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
+            elif (GenericDeviceManager.is_connected_state_s(oldstate) or
+                  (oldstate == DEVSTATE_DISCONNECTING and reason != DEVREASON_REQUESTED)) and\
+                    newstate == DEVSTATE_DISCONNECTED:
+                self.set_operation_ended(info)
+                if reason != DEVREASON_REQUESTED:
                     info['operation'] = 'c'
                     if dm in self.devicemanagers_active_done:
                         self.devicemanagers_active_done.remove(dm)
