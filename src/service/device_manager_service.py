@@ -161,6 +161,12 @@ class DeviceManagerService(object):
     def on_broadcast(self, context, intent):
         action = intent.getAction()
         _LOGGER.info(f'on_broadcast action {action}')
+        if action == self.CONNECT_ACTION:
+            self.on_command_condisc('c', self.last_user)
+        elif action == self.DISCONNECT_ACTION:
+            self.on_command_condisc('d')
+        else:
+            self.on_command_stop()
 
     def change_service_notification(self, dm, **kwargs):
         if self.android:
@@ -412,6 +418,7 @@ class DeviceManagerService(object):
         notification_builder.setAutoCancel(True)
         notification_builder.addAction(self.connect_action)
         notification_builder.addAction(self.disconnect_action)
+        notification_builder.addAction(self.stop_action)
         return notification_builder.getNotification()
 
     def insert_service_notification(self):

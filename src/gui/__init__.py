@@ -857,7 +857,7 @@ class MainApp(MDApp):
             self.last_timeout_time = time.time()
             _LOGGER.info(f'Timeout comunicating with the service ({hp[0]}:{hp[1]}) id={self.devicemanagers_pre_init_done} plf={platform}')
             self.do_pre()
-            if self.notify_timeout and (self.devicemanagers_pre_init_done or platform != 'android'):
+            if self.notify_timeout and (self.auto_connect_done != -2 or platform != 'android'):
                 toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
         else:
             _LOGGER.info(f'Debug verb = {get_verbosity(self.config)}')
