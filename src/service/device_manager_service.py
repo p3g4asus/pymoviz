@@ -162,11 +162,11 @@ class DeviceManagerService(object):
         action = intent.getAction()
         _LOGGER.info(f'on_broadcast action {action}')
         if action == self.CONNECT_ACTION:
-            self.on_command_condisc('c', self.last_user)
+            self.loop.call_soon_threadsafe(self.on_command_condisc, 'c', self.last_user)
         elif action == self.DISCONNECT_ACTION:
-            self.on_command_condisc('d')
+            self.loop.call_soon_threadsafe(self.on_command_condisc, 'd')
         else:
-            self.on_command_stop()
+            self.loop.call_soon_threadsafe(self.on_command_stop)
 
     def change_service_notification(self, dm, **kwargs):
         if self.android:
