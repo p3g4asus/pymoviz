@@ -77,6 +77,7 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
                                              timeouttime=timeouttime,
                                              timeout=timeout,
                                              **kwargs)
+        self.deviceobj = self.f('deviceobj')
         if self.classname is None:
             self.classname = self.fullname()
         self.wrappers = []
