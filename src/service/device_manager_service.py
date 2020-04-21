@@ -77,9 +77,12 @@ class DeviceManagerService(object):
             self.notification_service = self.service.getSystemService(self.Context.NOTIFICATION_SERVICE)
             self.CONNECT_ACTION = 'device_manager_service.view.CONNECT'
             self.DISCONNECT_ACTION = 'device_manager_service.view.DISCONNECT'
+            self.STOP_ACTION = 'device_manager_service.STOP'
 
             self.br = BroadcastReceiver(
-                self.on_broadcast, actions=[self.CONNECT_ACTION, self.DISCONNECT_ACTION])
+                self.on_broadcast, actions=[self.CONNECT_ACTION,
+                                            self.DISCONNECT_ACTION,
+                                            self.STOP_ACTION])
             self.br.start()
 
             Intent = autoclass('android.content.Intent')
@@ -107,25 +110,46 @@ class DeviceManagerService(object):
             notification_image = join(dirname(__file__), '..', 'images', 'device_manager.png')
             bm = BitmapFactory.decodeFile(notification_image, options)
             self.notification_icon = Icon.createWithBitmap(bm)
+
             notification_image = join(dirname(__file__), '..', 'images', 'lan-connect.png')
             bm = BitmapFactory.decodeFile(notification_image, options)
-            connect_icon = Icon.createWithBitmap(bm)
-            broadcastIntent = Intent()
+            icon = Icon.createWithBitmap(bm)
+            broadcastIntent = Intent(self.CONNECT_ACTION)
             actionIntent = PendingIntent.getBroadcast(self.service,
                                                       0,
                                                       broadcastIntent,
                                                       PendingIntent.FLAG_UPDATE_CURRENT)
             self.connect_action = NotificationActionBuilder(
-                connect_icon,
-                self.AndroidString(self.CONNECT_ACTION.encode('utf-8')),
+                icon,
+                self.AndroidString('CONNECT'.encode('utf-8')),
                 actionIntent).build()
+
             notification_image = join(dirname(__file__), '..', 'images', 'lan-disconnect.png')
             bm = BitmapFactory.decodeFile(notification_image, options)
-            disconnect_icon = Icon.createWithBitmap(bm)
+            icon = Icon.createWithBitmap(bm)
+            broadcastIntent = Intent(self.DISCONNECT_ACTION)
+            actionIntent = PendingIntent.getBroadcast(self.service,
+                                                      0,
+                                                      broadcastIntent,
+                                                      PendingIntent.FLAG_UPDATE_CURRENT)
             self.disconnect_action = NotificationActionBuilder(
-                disconnect_icon,
-                self.AndroidString(self.DISCONNECT_ACTION.encode('utf-8')),
+                icon,
+                self.AndroidString('DISCONNECT'.encode('utf-8')),
                 actionIntent).build()
+
+            notification_image = join(dirname(__file__), '..', 'images', 'stop.png')
+            bm = BitmapFactory.decodeFile(notification_image, options)
+            icon = Icon.createWithBitmap(bm)
+            broadcastIntent = Intent(self.STOP_ACTION)
+            actionIntent = PendingIntent.getBroadcast(self.service,
+                                                      0,
+                                                      broadcastIntent,
+                                                      PendingIntent.FLAG_UPDATE_CURRENT)
+            self.stop_action = NotificationActionBuilder(
+                icon,
+                self.AndroidString('STOP'.encode('utf-8')),
+                actionIntent).build()
+
             notification_intent = Intent(self.app_context, self.PythonActivity)
             notification_intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP |
                                          Intent.FLAG_ACTIVITY_SINGLE_TOP |
