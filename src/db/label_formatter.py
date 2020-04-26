@@ -52,7 +52,7 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
             example_conf text not null,
             pre text,
             classname text not null,
-            settings text,
+            settings text default '{}',
             timeout text,
             timeouttime integer default 7,
             background text,

@@ -146,8 +146,8 @@ class SerializableDBObj(object):
 
     def _set_single_field(self, key, val):
         fln = self.fld(key)
-        if (fln.find('settings') >= 0 or fln.find('conf') >= 0) and isinstance(val, str):
-            v = json.loads(val) if val else dict()
+        if self.is_json_field(fln) and isinstance(val, str):
+            v = json.loads(val) if val else None
         else:
             v = val
         try:
@@ -257,6 +257,9 @@ class SerializableDBObj(object):
             _LOGGER.error(f'Deserialize error {traceback.format_exc()}')
         return rv
 
+    def is_json_field(sel, fln):
+        return fln.find('settings') >= 0 or fln.find('conf') >= 0
+
     async def delete(self, db, commit=True):
         rv = False
         if self.rowid:
@@ -279,8 +282,9 @@ class SerializableDBObj(object):
         for t in cols:
             v = self.f(t)
             if v is not None:
-                if isinstance(v, dict):
-                    v = json.dumps(v)
+                fln = self.fld(t)
+                if self.is_json_field(fln) and not isinstance(v, str):
+                    v = json.dumps(v) if v else None
                 values.append(v)
                 colnames.append(t)
                 strcol += '?,' if key is None else f'{t}=?,'

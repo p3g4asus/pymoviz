@@ -43,6 +43,6 @@ class HRDeviceOutput(SerializableDBObj):
                 ojoule Integer not null,
                 cbeats Integer not null,
                 session Integer not null,
-                intervals_conf text,
+                intervals_conf text default '[]',
                 FOREIGN KEY(session) REFERENCES session(_id) ON DELETE CASCADE);
         '''

@@ -32,7 +32,7 @@ class Device(SerializableDBObj):
                 name VARCHAR(30),
                 alias VARCHAR(30) not null UNIQUE,
                 type text not null,
-                additionalsettings TEXT DEFAULT '',
+                additionalsettings TEXT DEFAULT '{}',
                 orderd integer not null DEFAULT 50);
         '''
 

@@ -26,7 +26,7 @@ class Session(SerializableDBObj):
             device integer not null,
             datestart Integer not null,
             exported Integer DEFAULT 65535,
-            settings text,
+            settings text default '{}',
             user Integer not null,
             FOREIGN KEY(user) REFERENCES user(_id) ON DELETE CASCADE,
             FOREIGN KEY(device) REFERENCES device(_id) ON DELETE CASCADE);
