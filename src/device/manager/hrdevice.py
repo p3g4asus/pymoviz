@@ -42,8 +42,8 @@ class HRDeviceManager(GattDeviceManager):
             example_conf={DI_BATTERY: 12},
             format_str='%d',
             timeout='[color=#f44336]---[/color]',
-            pre='$D Cal: ',
-            fields=['calorie']),
+            pre='$D Bat: ',
+            fields=[DI_BATTERY]),
         Version=SimpleFieldFormatter(
             name='Version',
             example_conf={
@@ -65,6 +65,7 @@ class HRDeviceManager(GattDeviceManager):
                     DI_SOFTWARE]),
         Time=TimeFieldFormatter(
             fields=['%ttimeR'],
+            example_conf=dict(timeR=432),
             pre='$D TM: '),
         **GattDeviceManager.__formatters__
     )

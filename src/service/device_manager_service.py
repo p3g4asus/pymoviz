@@ -422,7 +422,7 @@ class DeviceManagerService(object):
         notification_builder = self.NotificationBuilder(self.app_context, self.NOTIFICATION_CHANNEL_ID)
         # app_class = service.getApplication().getClass()
 
-        title = self.AndroidString(title.encode('utf-8'))
+        title = self.AndroidString((title if title else 'N/A').encode('utf-8'))
         message = self.AndroidString(message.encode('utf-8'))
         notification_builder.setContentTitle(title)
         notification_builder.setContentText(message)
