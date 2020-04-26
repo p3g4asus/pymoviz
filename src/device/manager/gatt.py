@@ -165,11 +165,15 @@ class GattDeviceManager(GenericDeviceManager):
                 self.set_state(DEVSTATE_DISCONNECTED, DEVREASON_PREPARE_ERROR)
 
     def inner_connect(self):
-        self.operation_timer_init(timeout=30, handler=self.stop_scan)
         if not self.found_device:
+            self.operation_timer_init(timeout=30, handler=self.disconnect_by_timeout)
             self.start_scan(self.get_scan_settings(), self.get_scan_filters())
         else:
             self.connect_gatt(self.found_device)
+
+    def disconnect_by_timeout(self):
+        self.set_state(DEVSTATE_DISCONNECTING, DEVREASON_TIMEOUT)
+        self.inner_disconnect(self, reason=DEVREASON_TIMEOUT)
 
     def inner_disconnect(self, reason=DEVREASON_REQUESTED):
         self.operation_timer_init()
