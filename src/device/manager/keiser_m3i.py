@@ -102,7 +102,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         fields=['%ttime', 'distance', 'speed', 'rpm', 'watt', 'calorie']
     )
     __pre_action__ = EnableBluetooth
-    RESCAN_TIMEOUT = 1800
+    RESCAN_TIMEOUT = 900
 
     @staticmethod
     def get_machine_id(bt):
