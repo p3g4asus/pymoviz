@@ -198,7 +198,9 @@ class MyTabs(MDTabs):
             if isinstance(t, ViewPlayWidget):
                 set_tab = False
                 if t.view not in views:
-                    removel.append(t)
+                    v2 = views.index(t.view)
+                    if not views[v2].active:
+                        removel.append(t)
         for t in removel:
             self.remove_widget(t)
         if self.tab_list or views:
