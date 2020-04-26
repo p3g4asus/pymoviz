@@ -175,9 +175,9 @@ class GattDeviceManager(GenericDeviceManager):
         self.operation_timer_init()
         self.disconnect_reason = reason
         if self.found_device:
-            try:
-                self.close_gatt()
-            except Exception:
-                pass
+            waitdisc = self.is_connected_state()
+            self.close_gatt()
+            if not waitdisc:
+                self.set_state(DEVSTATE_DISCONNECTED, reason)
         else:
             self.stop_scan()
