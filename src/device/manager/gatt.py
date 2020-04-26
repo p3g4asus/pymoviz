@@ -1,4 +1,6 @@
 from functools import partial
+import traceback
+
 from device.manager import GenericDeviceManager
 from device.manager.preaction.enable_bluetooth import EnableBluetooth
 from util.const import (DEVREASON_OPERATION_ERROR, DEVREASON_PREPARE_ERROR,
@@ -61,10 +63,10 @@ class GattDeviceManager(GenericDeviceManager):
         self.operation_timer = None
         self.found_device = None
 
-    def on_services(self, services, status):
-        self.loop.call_soon_threadsafe(self.on_services_loop, services, status)
+    def on_services(self, status, services):
+        self.loop.call_soon_threadsafe(self.on_services_loop, status, services)
 
-    def on_services_loop(self, services, status):
+    def on_services_loop(self, status, services):
         if status == GATT_SUCCESS:
             _LOGGER.info(f'Serv disc dict {services}')
             for _, chinfo in self.read_once_characteristics.items():
@@ -88,7 +90,10 @@ class GattDeviceManager(GenericDeviceManager):
             sk = searchdict[k]
             if sk.handler:
                 _LOGGER.debug('%04d:%04d -> %s' % (sk.service_id, sk.characteristic_id, str(characteristic.getValue())))
-                sk.handler(characteristic, uuid=sk)
+                try:
+                    sk.handler(characteristic, uuid=sk)
+                except Exception:
+                    _LOGGER.error(f'Characteristic {"%04d:%04d" % (sk.service_id, sk.characteristic_id)} handler error {traceback.format_exc()}')
                 return True
         return False
 
