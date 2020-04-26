@@ -259,7 +259,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         else:
             return None
 
-    def process_found_device(self, device):
+    def process_found_device(self, device, connectobj=None):
         super(KeiserM3iDeviceManager, self).process_found_device(device)
         _LOGGER.debug(f'process_found_device: state={self.state} addr_my={self.device.get_address()} addr_oth={device.get_address()}')
         if self.state != DEVSTATE_DISCONNECTING:

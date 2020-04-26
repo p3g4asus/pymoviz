@@ -208,7 +208,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
                 on_search=self.on_search_device)
         return self.widget
 
-    def process_found_device(self, device):
+    def process_found_device(self, device, connectobj=None):
         pass
 
     def on_device(self, device, rssi, advertisement):
@@ -216,6 +216,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     def main_loop_on_device(self, device, rssi, advertisement):
         adv = []
+        connectobj = None
         if advertisement:
             if isinstance(advertisement, str):
                 adv = json.loads(advertisement)
@@ -224,6 +225,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         if isinstance(device, str):
             device = json.loads(device)
         elif not isinstance(device, dict):
+            connectobj = device
             device = dict(
                 address=device.getAddress(),
                 name=device.getName()
@@ -237,7 +239,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         )
         if self.state == DEVSTATE_SEARCHING:
             self.oscer.send_device(COMMAND_DEVICEFOUND, self._uid, d.serialize())
-        self.process_found_device(d)
+        self.process_found_device(d, connectobj=connectobj)
 
     async def on_command_savedevice_async(self, device, *args):
         rv = await device.to_db(self.db)
