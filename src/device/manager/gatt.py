@@ -173,7 +173,7 @@ class GattDeviceManager(GenericDeviceManager):
 
     def disconnect_by_timeout(self):
         self.set_state(DEVSTATE_DISCONNECTING, DEVREASON_TIMEOUT)
-        self.inner_disconnect(self, reason=DEVREASON_TIMEOUT)
+        self.inner_disconnect(reason=DEVREASON_TIMEOUT)
 
     def inner_disconnect(self, reason=DEVREASON_REQUESTED):
         self.operation_timer_init()
