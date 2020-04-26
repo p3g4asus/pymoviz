@@ -147,7 +147,7 @@ class SerializableDBObj(object):
     def _set_single_field(self, key, val):
         fln = self.fld(key)
         if (fln.find('settings') >= 0 or fln.find('conf') >= 0) and isinstance(val, str):
-            v = json.loads(val)
+            v = json.loads(val) if val else dict()
         else:
             v = val
         try:
