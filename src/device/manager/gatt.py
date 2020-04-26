@@ -125,6 +125,7 @@ class GattDeviceManager(GenericDeviceManager):
             if self.state == DEVSTATE_DISCONNECTING:
                 self.set_state(DEVSTATE_DISCONNECTED, self.disconnect_reason)
             elif self.state == DEVSTATE_CONNECTING or self.is_connected_state():
+                self.close_gatt()
                 self.set_state(DEVSTATE_DISCONNECTED, DEVREASON_OPERATION_ERROR)
 
     def operation_timer_init(self, timeout=False, handler=None):

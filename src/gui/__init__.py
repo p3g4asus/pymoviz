@@ -897,9 +897,14 @@ class MainApp(MDApp):
     def _on_keyboard(self, win, scancode, *largs):
         modifiers = largs[-1]
         _LOGGER.info(f'Keys: {scancode} and {largs}')
-        if scancode == 100 and set(modifiers) & {'ctrl'} and not set(
-                modifiers) & {'shift', 'alt', 'meta'}:
+        if platform != 'android' and scancode == 100 and set(modifiers) & {'ctrl'} and\
+                not (set(modifiers) & {'shift', 'alt', 'meta'}):
             self.stop_server()
+        elif scancode == 27:
+            if self.root.ids.nav_drawer.state == 'open':
+                self.root.ids.nav_drawer.animation_close()
+            else:
+                self.stop_me()
 
     def set_screen_on(self, val):
         if platform == 'android':
@@ -922,10 +927,10 @@ class MainApp(MDApp):
             if width >= -6000:
                 Window.top = int(self.config.get('pos', 'top'))
                 Window.left = width
-            Window.bind(on_keyboard=self._on_keyboard)
             if int(self.config.get('window', 'alwaysontop')):
                 from KivyOnTop import register_topmost
                 register_topmost(Window, self.title)
+        Window.bind(on_keyboard=self._on_keyboard)
         self.set_screen_on(True)
         for vt in self.velocity_tabs:
             self.root.ids.id_tabcont.add_widget(vt)
