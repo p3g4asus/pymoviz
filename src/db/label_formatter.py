@@ -265,9 +265,9 @@ class SimpleFieldFormatter(SimpleFormatter):
 
 
 class TimeFieldFormatter(SimpleFieldFormatter):
-    def __init__(self, fields=['%ttime'], **kwargs):
+    def __init__(self, example_conf={'time': 3723}, fields=['%ttime'], **kwargs):
         super(TimeFieldFormatter, self).__init__(
-            name='Time', example_conf={'time': 3723}, format_str='%d:%02d:%02d',
+            name='Time', format_str='%d:%02d:%02d', example_conf=example_conf,
             timeout='[color=#f44336]-:--:--[/color]', fields=fields, **kwargs)
 
 
