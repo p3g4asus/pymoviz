@@ -66,19 +66,16 @@ class GattDeviceManager(GenericDeviceManager):
 
     def on_services_loop(self, services, status):
         if status == GATT_SUCCESS:
+            _LOGGER.info(f'Serv disc dict {services}')
             for _, chinfo in self.read_once_characteristics.items():
-                for i in range(services.size()):
-                    s = services.get(i)
-                    uids = s.getUuid()
-                    if uids == chinfo.service:
-                        ch = s.getCharacteristic(chinfo.characteristic)
+                for suid, sdict in services.items():
+                    if suid == chinfo.service:
+                        ch = sdict[chinfo.characteristic]
                         self.read_characteristic(ch)
             for _, chinfo in self.notify_characteristics.items():
-                for i in range(services.size()):
-                    s = services.get(i)
-                    uids = s.getUuid()
-                    if uids == chinfo.service:
-                        ch = s.getCharacteristic(chinfo.characteristic)
+                for suid, sdict in services.items():
+                    if suid == chinfo.service:
+                        ch = sdict[chinfo.characteristic]
                         self.enable_notifications(ch)
             if self.notify_characteristics:
                 self.operation_timer_init(10)
@@ -87,11 +84,13 @@ class GattDeviceManager(GenericDeviceManager):
     def call_handler_from_characteristic(characteristic, searchdict):
         bundle = UuidBundle(None, characteristic)
         k = bundle.key()
-        if k in searchdict and searchdict[k].handler:
-            searchdict[k].handler(characteristic, uuid=searchdict[k])
-            return True
-        else:
-            return False
+        if k in searchdict:
+            sk = searchdict[k]
+            if sk.handler:
+                _LOGGER.debug('%04d:%04d -> %s' % (sk.service_id, sk.characteristic_id, str(characteristic.getValue())))
+                sk.handler(characteristic, uuid=sk)
+                return True
+        return False
 
     def on_characteristic_read(self, characteristic, status):
         self.loop.call_soon_threadsafe(self.on_characteristic_read_loop, characteristic, status)
