@@ -51,6 +51,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
                                               'colerror': 0,
                                               'timeout': '---'})
     __pre_action__ = None
+    __info_fields__ = ()
 
     @staticmethod
     def is_connected_state_s(st):
@@ -83,12 +84,10 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def get_settings_widget_class(cls):
         return None
 
-    @classmethod
-    def get_scan_filters(cls, scanning_for_new_devices=False):
+    def get_scan_filters(self, scanning_for_new_devices=False):
         return None
 
-    @classmethod
-    def get_scan_settings(cls, scanning_for_new_devices=False):
+    def get_scan_settings(self, scanning_for_new_devices=False):
         return None
 
     @classmethod
@@ -452,6 +451,14 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
     def get_id(self):
         return self.device.get_id()
 
+    @staticmethod
+    def u16_le(arr, idx):
+        return (arr[idx] & 0xFF) | ((arr[idx + 1] & 0xFF) << 8)
+
+    @staticmethod
+    def u8_le(arr, idx):
+        return arr[idx] & 0xFF
+
     def __init__(self, oscer, uid, service=False, device=None, db=None, user=None,
                  params=dict(), loop=None, on_command_handle=None, on_state_transition=None):
         _LOGGER.info(f'Initing DM: {self.__class__.__name__} service={service} par={params}')
@@ -471,6 +478,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         self.loop = loop
         self.simulator_needs_reset = True
         self.simulator = None
+        self.info_fields = dict.fromkeys(self.__info_fields__, 'N/A')
         if service:
             self.oscer.handle_device(COMMAND_SAVEDEVICE, self._uid, self.on_command_savedevice)
             self.oscer.handle_device(COMMAND_DELDEVICE, self._uid, self.on_command_deldevice)

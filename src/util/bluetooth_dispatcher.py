@@ -83,6 +83,9 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
         self._oscer.handle(COMMAND_WBD_STOPSCAN_RV, self.on_scan_completed)
         self._oscer.send(COMMAND_WBD_STOPSCAN)
 
+    def bt_device_from_address(self, address):
+        return None
+
     def connect_gatt(self, device):
         """Connect to GATT Server hosted by device
         """

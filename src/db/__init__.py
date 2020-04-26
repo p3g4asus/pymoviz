@@ -141,7 +141,7 @@ class SerializableDBObj(object):
     def clone(self):
         dct = SerializableDBObj._clone(vars(self))
         cl = self.__class__()
-        cl._process_kwargs(dct)
+        cl.process_kwargs(dct)
         return cl
 
     def _set_single_field(self, key, val):
@@ -157,13 +157,13 @@ class SerializableDBObj(object):
             # _LOGGER.debug(f'SetMethod not found for {fln} ({traceback.format_exc()})')
             setattr(self, fln, v)
 
-    def _process_kwargs(self, dbitem):
+    def process_kwargs(self, dbitem):
         if dbitem:
             for key in dbitem.keys():
                 self._set_single_field(key, dbitem[key])
 
     def __init__(self, dbitem=None, **kwargs):
-        self._process_kwargs(dbitem)
+        self.process_kwargs(dbitem)
         if dbitem:
             ks = dbitem.keys()
         else:
@@ -171,7 +171,7 @@ class SerializableDBObj(object):
         for i in kwargs.copy():
             if i in ks:
                 del kwargs[i]
-        self._process_kwargs(kwargs)
+        self.process_kwargs(kwargs)
         for c in self.__columns__:
             f = self.fld(c)
             try:
@@ -249,7 +249,7 @@ class SerializableDBObj(object):
                             dct[d] = SerializableDBObj.deserialize(k, k)
                     _LOGGER.debug(f'Deserialized {dct}')
                     cl = SerializableDBObj.get_class(rer.group(1))()
-                    cl._process_kwargs(dct)
+                    cl.process_kwargs(dct)
                     return cl
             # else:
             #     _LOGGER.debug(f'Invalid serialized str {jsons}')

@@ -122,8 +122,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         self.found_timer = None
         self.disconnect_reason = DEVREASON_REQUESTED
 
-    @classmethod
-    def get_scan_settings(cls, scanning_for_new_devices=False):
+    def get_scan_settings(self, scanning_for_new_devices=False):
         if not scanning_for_new_devices:
             return dict(
                 scan_mode=2,  # SCAN_MODE_LOW_LATENCY
@@ -135,8 +134,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         else:
             return None
 
-    @classmethod
-    def get_scan_filters(cls, scanning_for_new_devices=False):
+    def get_scan_filters(self, scanning_for_new_devices=False):
         # return None
         return [
             dict(deviceName="M3"),
@@ -208,10 +206,6 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         self.found_timer_init()
         self.start_scan(self.get_scan_settings(), self.get_scan_filters())
 
-    @staticmethod
-    def u16_le(l, h):
-        return (l & 0xFF) | ((h & 0xFF) << 8)
-
     def on_scan_completed(self):
         super(KeiserM3iDeviceManager, self).on_scan_completed()
         if self.state == DEVSTATE_DISCONNECTING:
@@ -228,35 +222,35 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         index = 0
         if arr[index] == 2 and arr[index + 1] == 1:
             index += 2
-        mayor = arr[index] & 0xFF
+        mayor = self.u8_le(arr, index)
         index += 1
-        minor = arr[index] & 0xFF
+        minor = self.u8_le(arr, index)
         index += 1
         if mayor == 0x06 and len(arr) > index + 13:
             k3 = KeiserM3iOutput()
-            dt = arr[index] & 0xFF
+            dt = self.u8_le(arr, index)
             if dt == 0 or dt >= 128 or dt <= 227:
                 k3.s(DI_FIRMWARE, mayor)
                 k3.s(DI_SOFTWARE, minor)
-                k3.s(DI_SYSTEMID, arr[index + 1])
-            k3.s('orpm', KeiserM3iDeviceManager.u16_le(arr[index + 2], arr[index + 3]))  # / 10;
-            k3.s('opul', KeiserM3iDeviceManager.u16_le(arr[index + 4], arr[index + 5]))  # / 10;
+                k3.s(DI_SYSTEMID, self.u8_le(arr, index + 1))
+            k3.s('orpm', self.u16_le(arr, index + 2))  # / 10;
+            k3.s('opul', self.u16_le(arr, index + 4))  # / 10;
             # Power in Watts
-            k3.s('owatt', KeiserM3iDeviceManager.u16_le(arr[index + 6], arr[index + 7]))
+            k3.s('owatt', self.u16_le(arr, index + 6))
             # Energy as KCal ("energy burned")
-            k3.s('ocal', KeiserM3iDeviceManager.u16_le(arr[index + 8], arr[index + 9]))
+            k3.s('ocal', self.u16_le(arr, index + 8))
             # Time in Seconds (broadcast as minutes and seconds)
-            time = (arr[index + 10] & 0xFF) * 60
-            time += arr[index + 11]
+            time = self.u8_le(arr, index + 10) * 60
+            time += self.u8_le(arr, index + 11)
             k3.s('otime', time)
-            dist = KeiserM3iDeviceManager.u16_le(arr[index + 12], arr[index + 13])
+            dist = self.u16_le(arr, index + 12)
             if (dist & 32768):
                 dist = (dist & 0x7FFF) / 10.0
             else:
                 dist = dist / 10.0 * 1.60934
             if minor >= 0x21 and len(arr) > (index + 14):
                 # Raw Gear Value
-                inc = arr[index + 14]
+                inc = self.u8_le(arr, index + 14)
             else:
                 inc = 0
             k3.s('odist', dist)
