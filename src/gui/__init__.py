@@ -265,7 +265,12 @@ class MyTabs(MDTabs):
         oldtab = self.already_present(view)
         if oldtab:
             _LOGGER.info(f'Already present: {oldtab.view} -> {oldtab.view is view}')
-            oldtab.set_view(view)
+            if not view.active:
+                self.remove_widget(oldtab)
+            else:
+                oldtab.set_view(view)
+        elif view and not view.active:
+            return
         else:
             _LOGGER.info(f'TAB not present: {view}')
             super(MyTabs, self).add_widget(tab, *args, **kwargs)
