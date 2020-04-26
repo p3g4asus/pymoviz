@@ -590,15 +590,16 @@ class DeviceManagerService(object):
             elif (GenericDeviceManager.is_connected_state_s(oldstate) or
                   (oldstate == DEVSTATE_DISCONNECTING and reason != DEVREASON_REQUESTED)) and\
                     newstate == DEVSTATE_DISCONNECTED:
-                self.set_operation_ended(info)
+                oper = 'c' if info['operation'] != 'd' else 'd'
                 if reason != DEVREASON_REQUESTED:
-                    info['operation'] = 'c'
+                    info['operation'] = oper
                     if dm in self.devicemanagers_active_done:
                         self.devicemanagers_active_done.remove(dm)
                     if dm not in self.devicemanagers_active:
                         self.devicemanagers_active.append(dm)
                         GenericDeviceManager.sort(self.devicemanagers_active)
                 else:
+                    self.set_operation_ended(info)
                     self.main_session = None
                     if dm in self.devicemanagers_active:
                         self.devicemanagers_active.remove(dm)
