@@ -900,11 +900,14 @@ class MainApp(MDApp):
         if platform != 'android' and scancode == 100 and set(modifiers) & {'ctrl'} and\
                 not (set(modifiers) & {'shift', 'alt', 'meta'}):
             self.stop_server()
+            return True
         elif scancode == 27:
             if self.root.ids.nav_drawer.state == 'open':
                 self.root.ids.nav_drawer.animation_close()
             else:
                 self.stop_me()
+            return True
+        return False
 
     def set_screen_on(self, val):
         if platform == 'android':
