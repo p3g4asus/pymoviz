@@ -144,9 +144,8 @@ class GattDeviceManager(GenericDeviceManager):
             return None
 
     def process_found_device(self, device, connectobj=None):
-        if device:
-            super(GattDeviceManager, self).process_found_device(device, connectobj)
-            _LOGGER.debug(f'process_found_device: state={self.state} addr_my={self.device.get_address()} addr_oth={device.get_address()}')
+        super(GattDeviceManager, self).process_found_device(device, connectobj)
+        _LOGGER.debug(f'process_found_device: state={self.state} addr_my={self.device.get_address()} addr_oth={device.get_address()}')
         if self.state == DEVSTATE_CONNECTING:
             self.operation_timer_init()
             self.found_device = connectobj
@@ -170,7 +169,7 @@ class GattDeviceManager(GenericDeviceManager):
         if not self.found_device:
             self.start_scan(self.get_scan_settings(), self.get_scan_filters())
         else:
-            self.process_found_device(None, self.found_device)
+            self.connect_gatt(self.found_device)
 
     def inner_disconnect(self, reason=DEVREASON_REQUESTED):
         self.operation_timer_init()
