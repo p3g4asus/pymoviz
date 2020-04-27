@@ -45,6 +45,7 @@ class KeiserM3iDeviceSimulator(DeviceSimulator):
         self.lastUpdatePostedTime = 0
         self.equalTime = 0
         self.old_time_orig = -1
+        self.nActiveUpdates = 0
 
     def calcSpeed(self, f, pause):
         realdist = f.distance + self.distance_o
@@ -131,7 +132,7 @@ class KeiserM3iDeviceSimulator(DeviceSimulator):
         if not wasinpause and not self.inPause():
             self.sumTime += (now - self.lastUpdateTime)
             self.fillTimeRFields(f, now)
-            self.nUpdates += 1
+            self.nActiveUpdates += 1
             self.sumSpeed += self.calcSpeed(f, False)
             self.sumRpm += f.rpm
             self.sumWatt += f.watt
@@ -143,10 +144,10 @@ class KeiserM3iDeviceSimulator(DeviceSimulator):
             self.calcSpeed(f, True)
         if self.nPulses > 0:
             f.pulseMn = self.sumPulse / self.nPulses
-        if self.nUpdates > 0:
-            f.rpmMn = self.sumRpm / self.nUpdates
-            f.wattMn = self.sumWatt / self.nUpdates
-            f.speedMn = self.sumSpeed / self.nUpdates
+        if self.nActiveUpdates > 0:
+            f.rpmMn = self.sumRpm / self.nActiveUpdates
+            f.wattMn = self.sumWatt / self.nActiveUpdates
+            f.speedMn = self.sumSpeed / self.nActiveUpdates
             if self.sumTime <= 0:
                 f.distanceR = 0.0
             else:

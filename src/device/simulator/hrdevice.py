@@ -16,6 +16,7 @@ class HRDeviceSimulator(DeviceSimulator):
         self.wasActive = False
         self.lastUpdateTime = -1
         self.last_w = None
+        self.nActiveUpdates = 0
 
     def inner_step(self, w, nowms):
         active = w.pulse > 0 and w.worn != 0
@@ -33,11 +34,12 @@ class HRDeviceSimulator(DeviceSimulator):
                 if self.lastUpdateTime > 0:
                     self.nBeats += w.pulse * ((nowms - self.lastUpdateTime) / 60000.0)
                 w.nBeatsR = int(self.nBeats + 0.5)
+                self.nActiveUpdates += 1
                 self.pulseSum += w.pulse
                 if w.joule >= 0:
                     self.jouleSum += w.joule
-                    w.jouleMn = self.jouleSum / (self.nUpdates + 1)
-                w.pulseMn = self.pulseSum / (self.nUpdates + 1)
+                    w.jouleMn = self.jouleSum / self.nActiveUpdates
+                w.pulseMn = self.pulseSum / self.nActiveUpdates
                 w.timeRms = self.lastTimeTot + self.timeTotms
                 w.timeRAbsms = nowms - self.sessionStart
                 w.timeR = int(w.timeRms / 1000.0 + 0.5)
