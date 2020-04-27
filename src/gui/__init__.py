@@ -1077,16 +1077,16 @@ class MainApp(MDApp):
                     key="connectors",
                     buttons=[dict(title="Open", id="btn_open")])]
         if platform == 'android':
-            lst.append(dict(type='bool',
-                            title='Keep Screen on',
-                            desc='Keep screen awake (battery drain)',
-                            section='misc',
-                            key='screenon'),
-                       dict(type='bool',
-                            title='Notify data',
-                            desc='Notify each new data (battery drain)',
-                            section='misc',
-                            key='notifyon'))
+            lst.extend([dict(type='bool',
+                             title='Keep Screen on',
+                             desc='Keep screen awake (battery drain)',
+                             section='misc',
+                             key='screenon'),
+                        dict(type='bool',
+                             title='Notify data',
+                             desc='Notify each new data (battery drain)',
+                             section='misc',
+                             key='notifyon')])
         lst.extend([dict(type='title',
                          title='Preliminary actions rules'),
                     dict(type='bool',
