@@ -77,12 +77,12 @@ class DeviceManagerService(object):
             )
             self.Context = autoclass('android.content.Context')
             self.AndroidString = autoclass('java.lang.String')
-            self.NotificationBuilder = autoclass('android.app.Notification$Builder')
+            NotificationBuilder = autoclass('android.app.Notification$Builder')
             self.PythonActivity = autoclass('org.kivy.android.PythonActivity')
             self.service = autoclass('org.kivy.android.PythonService').mService
-            self.NOTIFICATION_CHANNEL_ID = self.AndroidString(self.service.getPackageName().encode('utf-8'))
+            NOTIFICATION_CHANNEL_ID = self.AndroidString(self.service.getPackageName().encode('utf-8'))
             self.FOREGROUND_NOTIFICATION_ID = 1462
-            self.app_context = self.service.getApplication().getApplicationContext()
+            app_context = self.service.getApplication().getApplicationContext()
             self.notification_service = self.service.getSystemService(self.Context.NOTIFICATION_SERVICE)
             self.CONNECT_ACTION = 'device_manager_service.view.CONNECT'
             self.DISCONNECT_ACTION = 'device_manager_service.view.DISCONNECT'
@@ -102,7 +102,7 @@ class DeviceManagerService(object):
             NotificationChannel = autoclass('android.app.NotificationChannel')
             NotificationManager = autoclass('android.app.NotificationManager')
             channelName = self.AndroidString('DeviceManagerService'.encode('utf-8'))
-            chan = NotificationChannel(self.NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_DEFAULT)
+            chan = NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_DEFAULT)
             chan.setLightColor(Color.BLUE)
             chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE)
             self.notification_service.createNotificationChannel(chan)
@@ -118,7 +118,7 @@ class DeviceManagerService(object):
             # options.inPreferredConfig = BitmapConfig.ARGB_8888;
             notification_image = join(dirname(__file__), '..', 'images', 'device_manager.png')
             bm = BitmapFactory.decodeFile(notification_image, options)
-            self.notification_icon = Icon.createWithBitmap(bm)
+            notification_icon = Icon.createWithBitmap(bm)
 
             notification_image = join(dirname(__file__), '..', 'images', 'lan-connect.png')
             bm = BitmapFactory.decodeFile(notification_image, options)
@@ -128,7 +128,7 @@ class DeviceManagerService(object):
                                                       0,
                                                       broadcastIntent,
                                                       PendingIntent.FLAG_UPDATE_CURRENT)
-            self.connect_action = NotificationActionBuilder(
+            connect_action = NotificationActionBuilder(
                 icon,
                 self.AndroidString('CONNECT'.encode('utf-8')),
                 actionIntent).build()
@@ -141,7 +141,7 @@ class DeviceManagerService(object):
                                                       0,
                                                       broadcastIntent,
                                                       PendingIntent.FLAG_UPDATE_CURRENT)
-            self.disconnect_action = NotificationActionBuilder(
+            disconnect_action = NotificationActionBuilder(
                 icon,
                 self.AndroidString('DISCONNECT'.encode('utf-8')),
                 actionIntent).build()
@@ -154,18 +154,26 @@ class DeviceManagerService(object):
                                                       0,
                                                       broadcastIntent,
                                                       PendingIntent.FLAG_UPDATE_CURRENT)
-            self.stop_action = NotificationActionBuilder(
+            stop_action = NotificationActionBuilder(
                 icon,
                 self.AndroidString('STOP'.encode('utf-8')),
                 actionIntent).build()
 
-            notification_intent = Intent(self.app_context, self.PythonActivity)
+            notification_intent = Intent(app_context, self.PythonActivity)
             notification_intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP |
                                          Intent.FLAG_ACTIVITY_SINGLE_TOP |
                                          Intent.FLAG_ACTIVITY_NEW_TASK)
             notification_intent.setAction(Intent.ACTION_MAIN)
             notification_intent.addCategory(Intent.CATEGORY_LAUNCHER)
-            self.notification_intent = PendingIntent.getActivity(self.service, 0, notification_intent, 0)
+            notification_intent = PendingIntent.getActivity(self.service, 0, notification_intent, 0)
+            notification_builder = NotificationBuilder(app_context, NOTIFICATION_CHANNEL_ID)
+            notification_builder.setContentIntent(notification_intent)
+            notification_builder.setSmallIcon(notification_icon)
+            notification_builder.setAutoCancel(True)
+            notification_builder.addAction(connect_action)
+            notification_builder.addAction(disconnect_action)
+            notification_builder.addAction(stop_action)
+            self.notification_builder = notification_builder
 
     def on_broadcast(self, context, intent):
         action = intent.getAction()
@@ -409,8 +417,10 @@ class DeviceManagerService(object):
                 on_state_transition=self.on_event_state_transition)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
 
-    def on_command_loglevel(self, level, *args):
+    def on_command_loglevel(self, level, notifyon, *args):
         init_logger(__name__, level)
+        self.verbose = level
+        self.notifyon = notifyon
 
     def on_command_stop(self, *args):
         self.loop.stop()
@@ -419,20 +429,12 @@ class DeviceManagerService(object):
         self.notification_service.notify(self.FOREGROUND_NOTIFICATION_ID, notif)
 
     def build_service_notification(self, title, message):
-        notification_builder = self.NotificationBuilder(self.app_context, self.NOTIFICATION_CHANNEL_ID)
-        # app_class = service.getApplication().getClass()
-
         title = self.AndroidString((title if title else 'N/A').encode('utf-8'))
         message = self.AndroidString(message.encode('utf-8'))
-        notification_builder.setContentTitle(title)
-        notification_builder.setContentText(message)
-        notification_builder.setContentIntent(self.notification_intent)
-        notification_builder.setSmallIcon(self.notification_icon)
-        notification_builder.setAutoCancel(True)
-        notification_builder.addAction(self.connect_action)
-        notification_builder.addAction(self.disconnect_action)
-        notification_builder.addAction(self.stop_action)
-        return notification_builder.getNotification()
+        self.notification_builder.setContentTitle(title)
+        self.notification_builder.setContentText(message)
+        self.notification_builder.setOnlyAlertOnce(not self.notifyon)
+        return self.notification_builder.getNotification()
 
     def insert_service_notification(self):
         self.service.setAutoRestartService(False)
@@ -691,6 +693,7 @@ def main():
         argall = parser.parse_known_args()
         args = dict(vars(argall[0]))
         args['undo_info'] = dict()
+        args['notifyon'] = False
         import sys
         sys.argv[1:] = argall[1]
     args['android'] = len(p4a)

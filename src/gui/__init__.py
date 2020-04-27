@@ -870,7 +870,9 @@ class MainApp(MDApp):
                 toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
         else:
             _LOGGER.info(f'Debug verb = {get_verbosity(self.config)}')
-            self.oscer.send(COMMAND_LOGLEVEL, get_verbosity(self.config))
+            self.oscer.send(COMMAND_LOGLEVEL,
+                            get_verbosity(self.config),
+                            int(self.config.get('misc', 'notifyon')))
             if (time.time() - self.last_timeout_time) > 15 or self.init_osc_cmd is False:
                 self.init_osc_cmd = COMMAND_CONNECTORS
                 self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
@@ -1008,6 +1010,8 @@ class MainApp(MDApp):
                            {'verbosity': 'INFO'})
         config.setdefaults('preaction',
                            {'autoconnect': '0'})
+        config.setdefaults('misc',
+                           {'notifyon': '0'})
         if platform == 'android':
             config.setdefaults('misc',
                                {'screenon': '0'})
@@ -1077,7 +1081,12 @@ class MainApp(MDApp):
                             title='Keep Screen on',
                             desc='Keep screen awake (battery drain)',
                             section='misc',
-                            key='screenon'))
+                            key='screenon'),
+                       dict(type='bool',
+                            title='Notify data',
+                            desc='Notify each new data (battery drain)',
+                            section='misc',
+                            key='notifyon'))
         lst.extend([dict(type='title',
                          title='Preliminary actions rules'),
                     dict(type='bool',
@@ -1147,7 +1156,8 @@ class MainApp(MDApp):
                            connect_secs=int(self.config.getint('bluetooth', 'connect_secs')),
                            connect_retry=int(self.config.getint('bluetooth', 'connect_retry')),
                            undo_info=self.devicemanagers_pre_init_undo,
-                           verbose=get_verbosity(self.config))
+                           verbose=get_verbosity(self.config),
+                           notifyon=int(self.config.get('misc', 'notifyon')))
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))
                 service.start(mActivity, argument)
@@ -1199,11 +1209,13 @@ class MainApp(MDApp):
                 self.start_android_explorer()
             elif platform == 'win':
                 Timer(0, self.start_windows_explorer)
-        elif section == 'log' and key == 'verbosity':
+        elif (section == 'log' and key == 'verbosity') or (section == 'misc' and key == 'notifyon'):
             verb = get_verbosity(self.config)
             init_logger(__name__, verb)
             if self.oscer:
-                self.oscer.send(COMMAND_LOGLEVEL, verb)
+                self.oscer.send(COMMAND_LOGLEVEL,
+                                verb,
+                                int(self.config.get('misc', 'notifyon')))
         elif self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
                 self.check_other_config():
             if self.oscer:
