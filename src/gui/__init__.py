@@ -1011,7 +1011,7 @@ class MainApp(MDApp):
         config.setdefaults('preaction',
                            {'autoconnect': '0'})
         config.setdefaults('misc',
-                           {'notifyon': '0'})
+                           {'notifyon': '0' if platform == 'android' else '-1'})
         if platform == 'android':
             config.setdefaults('misc',
                                {'screenon': '0'})

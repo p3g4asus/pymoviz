@@ -420,7 +420,8 @@ class DeviceManagerService(object):
     def on_command_loglevel(self, level, notifyon, *args):
         init_logger(__name__, level)
         self.verbose = level
-        self.notifyon = notifyon
+        if notifyon >= 0:
+            self.notifyon = notifyon
 
     def on_command_stop(self, *args):
         self.loop.stop()
@@ -433,7 +434,7 @@ class DeviceManagerService(object):
         message = self.AndroidString(message.encode('utf-8'))
         self.notification_builder.setContentTitle(title)
         self.notification_builder.setContentText(message)
-        self.notification_builder.setOnlyAlertOnce(not self.notifyon)
+        self.notification_builder.setOnlyAlertOnce(self.notifyon <= 0)
         return self.notification_builder.getNotification()
 
     def insert_service_notification(self):
@@ -693,7 +694,7 @@ def main():
         argall = parser.parse_known_args()
         args = dict(vars(argall[0]))
         args['undo_info'] = dict()
-        args['notifyon'] = False
+        args['notifyon'] = -1
         import sys
         sys.argv[1:] = argall[1]
     args['android'] = len(p4a)
