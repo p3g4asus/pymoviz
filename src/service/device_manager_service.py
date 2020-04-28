@@ -628,6 +628,7 @@ class DeviceManagerService(object):
                         if query:
                             # _LOGGER.debug(f'Executing query {query}')
                             await self.db.execute(query)
+                            cla[1].set_update_columns()
                     await self.db.execute('PRAGMA foreign_keys = ON')
                 except Exception:
                     _LOGGER.warning(traceback.format_exc())

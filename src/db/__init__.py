@@ -180,10 +180,13 @@ class SerializableDBObj(object):
                 setattr(self, f, None)
                 # _LOGGER.debug(f'Set {self.__class__.__name__}.{f} ({c}) = None')
         setattr(self, 'rowid', getattr(self, self.__id__))
-        self.set_update_columns()
 
     def get_id(self):
         return self.rowid
+
+    def set_id(self, rowid):
+        self.rowid = rowid
+        self.s(self.__id__, rowid)
 
     @classmethod
     def set_update_columns(cls):
@@ -277,7 +280,7 @@ class SerializableDBObj(object):
         values = []
         colnames = []
         strcol = ''
-        key = self.f(self.__id__)
+        key = self.rowid
         cols = self.__columns__ if key is None else self.__update_columns__
         for t in cols:
             v = self.f(t)
@@ -304,8 +307,7 @@ class SerializableDBObj(object):
                 await cursor.execute(query, tuple(values))
                 if cursor.rowcount <= 0:
                     return False
-                self.rowid = cursor.lastrowid
-                self.s(self.__id__, self.rowid)
+                self.set_id(cursor.lastrowid)
         if self.__wherejoin__:
             items = self.f('items')
             if items is None:

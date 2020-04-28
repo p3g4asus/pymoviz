@@ -360,7 +360,7 @@ class SessionFormatter(LabelFormatter):
             else:
                 v1 = v1[0]
         datepubo = datetime.fromtimestamp(v1 / 1000)
-        datepub = datepubo.strftime('%Y-%m-%d %H:%M:%S.%f')
+        datepub = datepubo.strftime('%H:%M:%S %Y-%m-%d')
         return self.wrap(self.get_pre(), 0) +\
             self.wrap(f'[color={self.col}]{datepub}[/color]' if self.col else f'{datepub}', 1)
 

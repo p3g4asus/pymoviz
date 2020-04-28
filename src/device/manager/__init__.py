@@ -29,6 +29,8 @@ _toast = None
 
 class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
+    __simulator_class__ = None
+    __output_class__ = None
     __formatters__ = dict(
         State=StateFormatter(),
         Session=SessionFormatter(),
@@ -481,6 +483,8 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         self.simulator_needs_reset = True
         self.simulator = None
         self.info_fields = dict.fromkeys(self.__info_fields__, 'N/A')
+        self.out_obj = self.__output_class__() if self.__output_class__ else None
+
         if service:
             self.oscer.handle_device(COMMAND_SAVEDEVICE, self._uid, self.on_command_savedevice)
             self.oscer.handle_device(COMMAND_DELDEVICE, self._uid, self.on_command_deldevice)

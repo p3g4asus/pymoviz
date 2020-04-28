@@ -17,6 +17,7 @@ _LOGGER = init_logger(__name__)
 
 class HRDeviceManager(GattDeviceManager):
     __simulator_class__ = HRDeviceSimulator
+    __output_class__ = HRDeviceOutput
     __type__ = 'hrdevice'
     __formatters__ = dict(
         Pulse=DoubleFieldFormatter(
@@ -162,7 +163,8 @@ class HRDeviceManager(GattDeviceManager):
         data = characteristic.getValue()
         flags = self.u8_le(data, i)
         i += 1
-        hro = HRDeviceOutput()
+        hro = self.out_obj
+        hro.set_id(None)
         if isHeartRateInUINT16(flags):
             hrmval = self.u16_le(data, i)
             i += 2
