@@ -872,7 +872,8 @@ class MainApp(MDApp):
             _LOGGER.info(f'Debug verb = {get_verbosity(self.config)}')
             self.oscer.send(COMMAND_LOGLEVEL,
                             get_verbosity(self.config),
-                            int(self.config.get('misc', 'notifyon')))
+                            int(self.config.get('misc', 'notify_screen_on')),
+                            int(self.config.get('misc', 'notify_every_ms')))
             if (time.time() - self.last_timeout_time) > 15 or self.init_osc_cmd is False:
                 self.init_osc_cmd = COMMAND_CONNECTORS
                 self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
@@ -1011,7 +1012,8 @@ class MainApp(MDApp):
         config.setdefaults('preaction',
                            {'autoconnect': '0'})
         config.setdefaults('misc',
-                           {'notifyon': '0' if platform == 'android' else '-1'})
+                           {'notify_screen_on': '0' if platform == 'android' else '-1',
+                            'notify_every_ms': '0' if platform == 'android' else '-1'})
         if platform == 'android':
             config.setdefaults('misc',
                                {'screenon': '0'})
@@ -1083,10 +1085,15 @@ class MainApp(MDApp):
                              section='misc',
                              key='screenon'),
                         dict(type='bool',
-                             title='Notify data',
-                             desc='Notify each new data (battery drain)',
+                             title='Screen awake on notification',
+                             desc='Awake screen on each new data (battery drain)',
                              section='misc',
-                             key='notifyon')])
+                             key='notify_screen_on'),
+                        dict(type='numeric',
+                             title='Limit notifications (ms)',
+                             desc='Do not notify faster than (ms): 0 unlimited',
+                             section='misc',
+                             key='notify_every_ms')])
         lst.extend([dict(type='title',
                          title='Preliminary actions rules'),
                     dict(type='bool',
@@ -1157,7 +1164,8 @@ class MainApp(MDApp):
                            connect_retry=int(self.config.getint('bluetooth', 'connect_retry')),
                            undo_info=self.devicemanagers_pre_init_undo,
                            verbose=get_verbosity(self.config),
-                           notifyon=int(self.config.get('misc', 'notifyon')))
+                           notify_screen_on=int(self.config.get('misc', 'notify_screen_on')),
+                           notify_every_ms=int(self.config.get('misc', 'notify_every_ms')))
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))
                 service.start(mActivity, argument)
@@ -1209,13 +1217,16 @@ class MainApp(MDApp):
                 self.start_android_explorer()
             elif platform == 'win':
                 Timer(0, self.start_windows_explorer)
-        elif (section == 'log' and key == 'verbosity') or (section == 'misc' and key == 'notifyon'):
+        elif (section == 'log' and key == 'verbosity') or\
+                (section == 'misc' and key == 'notify_screen_on') or\
+                (section == 'misc' and key == 'notify_every_ms'):
             verb = get_verbosity(self.config)
             init_logger(__name__, verb)
             if self.oscer:
                 self.oscer.send(COMMAND_LOGLEVEL,
                                 verb,
-                                int(self.config.get('misc', 'notifyon')))
+                                int(self.config.get('misc', 'notify_screen_on')),
+                                int(self.config.get('misc', 'notify_every_ms')))
         elif self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
                 self.check_other_config():
             if self.oscer:

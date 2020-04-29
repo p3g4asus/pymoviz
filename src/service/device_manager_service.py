@@ -6,6 +6,7 @@ import os
 import traceback
 from functools import partial
 from os.path import basename, dirname, exists, isfile, join, splitext
+from time import time
 
 import aiosqlite
 from db.device import Device
@@ -63,6 +64,7 @@ class DeviceManagerService(object):
         self.last_user = None
         self.devicemanagers_active_info = dict()
         self.stop_event = asyncio.Event()
+        self.last_notify_ms = time() * 1000
         if self.android:
             from jnius import autoclass
             from android.broadcast import BroadcastReceiver
@@ -186,7 +188,11 @@ class DeviceManagerService(object):
             self.loop.call_soon_threadsafe(self.on_command_stop)
 
     def change_service_notification(self, dm, **kwargs):
-        if self.android:
+        nowms = time() * 1000
+        if self.android and (
+            self.notify_every_ms == 0 or
+                nowms - self.last_notify_ms >= self.notify_every_ms):
+            self.last_notify_ms = nowms
             m = self.notification_formatter_info['manager']
             newman = None
             if (m and dm is m) or not m:
@@ -417,11 +423,13 @@ class DeviceManagerService(object):
                 on_state_transition=self.on_event_state_transition)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
 
-    def on_command_loglevel(self, level, notifyon, *args):
+    def on_command_loglevel(self, level, notify_screen_on, notify_every_ms, *args):
         init_logger(__name__, level)
         self.verbose = level
-        if notifyon >= 0:
-            self.notifyon = notifyon
+        if notify_screen_on >= 0:
+            self.notify_screen_on = notify_screen_on
+        if notify_every_ms >= 0:
+            self.notify_every_ms = notify_every_ms
 
     def on_command_stop(self, *args):
         self.loop.stop()
@@ -434,7 +442,7 @@ class DeviceManagerService(object):
         message = self.AndroidString(message.encode('utf-8'))
         self.notification_builder.setContentTitle(title)
         self.notification_builder.setContentText(message)
-        self.notification_builder.setOnlyAlertOnce(self.notifyon <= 0)
+        self.notification_builder.setOnlyAlertOnce(self.notify_screen_on <= 0)
         return self.notification_builder.getNotification()
 
     def insert_service_notification(self):
@@ -695,7 +703,8 @@ def main():
         argall = parser.parse_known_args()
         args = dict(vars(argall[0]))
         args['undo_info'] = dict()
-        args['notifyon'] = -1
+        args['notify_screen_on'] = -1
+        args['notify_every_ms'] = -1
         import sys
         sys.argv[1:] = argall[1]
     args['android'] = len(p4a)
