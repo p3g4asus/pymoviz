@@ -62,7 +62,12 @@ class DeviceNotiication(object):
     def format(self, ** kwargs):
         nowms = time() * 1000
         notify_every_ms = self.builder.notify_every_ms
-        f = self.dm_formatter if self.dm.is_connected_state() else self.__state_formatter__
+        if self.dm.is_connected_state():
+            f = self.dm_formatter
+            timeout = 7
+        else:
+            f = self.__state_formatter__
+            timeout = 45
         if notify_every_ms == 0 or\
                 nowms - self.last_notify_ms >= notify_every_ms or\
                 f is not self.current_formatter:
@@ -77,7 +82,7 @@ class DeviceNotiication(object):
             if txt:
                 if self.timer:
                     self.timer.cancel()
-                self.timer = Timer(7, self.clear)
+                self.timer = Timer(timeout, self.clear)
                 self._notify(txt)
 
     def _notify(self, txt):
