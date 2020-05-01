@@ -89,7 +89,7 @@ class DeviceNotiication(object):
         if txt != self.last_txt:
             self.last_txt = txt
             b = self.builder
-            b.set_service_notification(self.idnot, b.build_service_notification(self.title, txt))
+            b.set_service_notification(self.idnot, b.build_service_notification(self.title, txt, idnot=self.idnot))
             b.set_summary_notification()
 
     def clear(self):
@@ -487,14 +487,14 @@ class DeviceManagerService(object):
                     self.FOREGROUND_NOTIFICATION_ID - 1,
                     self.build_service_notification(summary, message, lines))
 
-    def build_service_notification(self, title=None, message=None, lines=None):
+    def build_service_notification(self, title=None, message=None, lines=None, idnot=0):
         group = None
         nb = self.notification_builder
         if not title and not message:
             title = "Fit.py"
             message = "DeviceManagerService"
         elif len(self.notification_formatter_info) > 1:
-            nb = self.notification_builder if lines else self.notification_builder_no_action
+            nb = self.notification_builder if idnot == self.FOREGROUND_NOTIFICATION_ID else self.notification_builder_no_action
             group = self.NOTIFICATION_GROUP
         title = self.AndroidString((title if title else 'N/A').encode('utf-8'))
         message = self.AndroidString(message.encode('utf-8'))
