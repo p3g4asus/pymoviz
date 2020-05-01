@@ -477,7 +477,7 @@ class DeviceManagerService(object):
             lines = []
             message = f'{len(self.notification_formatter_info)} active devices'
             for t, no in self.notification_formatter_info.items():
-                if self.last_txt:
+                if no.last_txt:
                     lines.append(no.last_txt)
                 summary += f' {self.title}'
             if summary and len(lines) > 1:
@@ -737,10 +737,9 @@ class DeviceManagerService(object):
 
     def stop_service(self):
         if self.android:
-            from jnius import autoclass
-            service = autoclass('org.kivy.android.PythonService').mService
-            service.stopForeground(True)
-            service.stopSelf()
+            self.reset_service_notifications()
+            self.service.stopForeground(True)
+            self.service.stopSelf()
 
 
 def main():
