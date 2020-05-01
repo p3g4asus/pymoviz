@@ -10,6 +10,7 @@ from time import time
 
 import aiosqlite
 from db.device import Device
+from db.label_formatter import StateFormatter
 from db.user import User
 from db.view import View
 from util import find_devicemanager_classes, get_verbosity, init_logger
@@ -36,6 +37,61 @@ _LOGGER = None
 __prog__ = "pymoviz-server"
 
 
+class DeviceNotiication(object):
+    __state_formatter__ = StateFormatter(
+        colmin=None,
+        colmax=None,
+        colerror=None,
+        col=None,
+        pre='',
+        post=''
+    )
+
+    def __init__(self, dm, idnot, builder):
+        self.dm = dm
+        self.title = self.dm.get_device().get_alias()
+        self.idnot = idnot
+        self.dm_formatter = dm.get_notification_formatter()
+        self.timer = None
+        self.current_formatter = None
+        self.builder = builder
+        self.last_notify_ms = time() * 1000
+        self.last_txt = ''
+
+    def format(self, ** kwargs):
+        nowms = time() * 1000
+        notify_every_ms = self.builder.notify_every_ms
+        f = self.dm_formatter if self.dm.is_connected_state() else self.__state_formatter__
+        if notify_every_ms == 0 or\
+                nowms - self.last_notify_ms >= notify_every_ms or\
+                f is not self.current_formatter:
+            self.current_formatter = f
+            self.last_notify_ms = nowms
+            txt = ''
+            for types, obj in kwargs.items():
+                if types == f.type:
+                    txt = f.format(obj)
+                    if txt:
+                        break
+            if txt:
+                if self.timer:
+                    self.timer.cancel()
+                self.timer = Timer(7, self.clear)
+                if txt != self.last_txt:
+                    self.last_txt = txt
+                    self.builder.set_service_notification(self.idnot, self.build_service_notification(self.title, txt))
+                    self.set_summary_notification()
+
+    def clear(self):
+        txt = self.current_formatter.set_timeout()
+        if txt != self.last_txt:
+            self.last_txt = txt
+            self.builder.set_service_notification(
+                self.idnot,
+                self.build_service_notification(self.title, txt))
+            self.set_summary_notification()
+
+
 class DeviceManagerService(object):
     def __init__(self, **kwargs):
         self.addit_params = dict()
@@ -47,7 +103,7 @@ class DeviceManagerService(object):
         _LOGGER.debug(f'Addit params for DM {self.addit_params}')
         self.db = None
         self.oscer = None
-        self.notification_formatter_info = dict(inst=None, timer=None, manager=None)
+        self.notification_formatter_info = dict()
         self.connectors_format = False
         self.devicemanager_class_by_type = dict()
         self.devicemanagers_pre_actions = dict()
@@ -68,22 +124,15 @@ class DeviceManagerService(object):
         if self.android:
             from jnius import autoclass
             from android.broadcast import BroadcastReceiver
-            from db.label_formatter import StateFormatter
-            self.notification_state_formatter = StateFormatter(
-                colmin=None,
-                colmax=None,
-                colerror=None,
-                col=None,
-                pre='',
-                post=''
-            )
             self.Context = autoclass('android.content.Context')
             self.AndroidString = autoclass('java.lang.String')
+            self.NotificationCompatInboxStyle = autoclass('android.app.Notification$InboxStyle')
             NotificationBuilder = autoclass('android.app.Notification$Builder')
             self.PythonActivity = autoclass('org.kivy.android.PythonActivity')
             self.service = autoclass('org.kivy.android.PythonService').mService
             NOTIFICATION_CHANNEL_ID = self.AndroidString(self.service.getPackageName().encode('utf-8'))
-            self.FOREGROUND_NOTIFICATION_ID = 1462
+            self.NOTIFICATION_GROUP = 'pyMovizGroup'
+            self.FOREGROUND_NOTIFICATION_ID = 4563
             app_context = self.service.getApplication().getApplicationContext()
             self.notification_service = self.service.getSystemService(self.Context.NOTIFICATION_SERVICE)
             self.CONNECT_ACTION = 'device_manager_service.view.CONNECT'
@@ -188,48 +237,15 @@ class DeviceManagerService(object):
             self.loop.call_soon_threadsafe(self.on_command_stop)
 
     def change_service_notification(self, dm, **kwargs):
-        nowms = time() * 1000
-        if self.android and (
-            self.notify_every_ms == 0 or
-                nowms - self.last_notify_ms >= self.notify_every_ms):
-            self.last_notify_ms = nowms
-            m = self.notification_formatter_info['manager']
-            newman = None
-            if (m and dm is m) or not m:
-                if not m:
-                    m = newman = dm
-            elif m.get_priority() < dm.get_priority():
-                m = newman = dm
-            else:
-                m = None
-            if newman and newman.is_connected_state():
-                self.notification_formatter_info['manager'] = newman
-                self.notification_formatter_info['inst'] = newman.get_notification_formatter()
-            if m and m.is_connected_state():
-                if self.notification_formatter_info['timer']:
-                    self.notification_formatter_info['timer'].cancel()
-                self.notification_formatter_info['timer'] = Timer(7, self.clear_notification_formatter)
-                txt = ''
-                f = self.notification_formatter_info['inst']
-                for types, obj in kwargs.items():
-                    if (m.get_id() == f.device) and types == f.type:
-                        txt = f.format(obj)
-                if txt:
-                    alias = m.get_device().get_alias()
-                    _LOGGER.debug(f'Changing notification {alias}-> {txt}')
-                    self.set_service_notification(self.build_service_notification(alias, txt))
-            if not self.notification_formatter_info['inst'] and 'state' in kwargs:
-                self.set_service_notification(
-                    self.build_service_notification(dm.get_device().get_alias(),
-                                                    self.notification_state_formatter.format(kwargs['state'])))
-
-    async def clear_notification_formatter(self):
-        txt = self.notification_formatter_info['inst'].set_timeout()
-        m = self.notification_formatter_info['manager']
-        self.set_service_notification(self.build_service_notification(m.get_device().get_alias(), txt))
-        self.notification_formatter_info['inst'] = None
-        self.notification_formatter_info['manager'] = None
-        self.notification_formatter_info['timer'] = None
+        if self.android:
+            alias = dm.get_device().get_alias()
+            if alias not in self.notification_formatter_info:
+                idnot = self.FOREGROUND_NOTIFICATION_ID + len(self.notification_formatter_info)
+                self.notification_formatter_info[alias] =\
+                    DeviceNotiication(dm,
+                                      idnot,
+                                      self)
+            self.notification_formatter_info[alias].format(**kwargs)
 
     async def init_osc(self):
         self.oscer = OSCManager(hostlisten=self.hostlisten, portlisten=self.portlisten)
@@ -434,20 +450,66 @@ class DeviceManagerService(object):
     def on_command_stop(self, *args):
         self.loop.stop()
 
-    def set_service_notification(self, notif):
-        self.notification_service.notify(self.FOREGROUND_NOTIFICATION_ID, notif)
+    def reset_service_notifications(self):
+        for _, no in self.notification_formatter_info.items():
+            self.cancel_service_notification(no.idnot)
+        if len(self.notification_formatter_info) > 1:
+            self.cancel_service_notification(self.FOREGROUND_NOTIFICATION_ID - 1)
+        self.notification_formatter_info.clear()
 
-    def build_service_notification(self, title, message):
+    def cancel_service_notification(self, idnot):
+        if idnot == self.FOREGROUND_NOTIFICATION_ID:
+            self.set_service_notification(idnot, self.build_service_notification())
+        else:
+            self.notification_service.cancel(idnot)
+
+    def set_service_notification(self, idnot, notif):
+        self.notification_service.notify(idnot, notif)
+
+    def set_summary_notification(self):
+        if len(self.notification_formatter_info) > 1:
+            summary = ''
+            lines = []
+            message = f'{len(self.notification_formatter_info)} active devices'
+            for t, no in self.notification_formatter_info.items():
+                if self.last_txt:
+                    lines.append(no.last_txt)
+                summary += f' {self.title}'
+            if summary and len(lines) > 1:
+                summary = summary[1:]
+                self.set_service_notification(
+                    self.FOREGROUND_NOTIFICATION_ID - 1,
+                    self.build_service_notification(summary, message, lines))
+
+    def build_service_notification(self, title=None, message=None, lines=None):
+        if not title and not message:
+            title = "Fit.py"
+            message = "DeviceManagerService"
+            group = False
+        else:
+            group = len(self.notification_formatter_info) > 1
         title = self.AndroidString((title if title else 'N/A').encode('utf-8'))
         message = self.AndroidString(message.encode('utf-8'))
         self.notification_builder.setContentTitle(title)
+        self.notification_builder.setGroup(self.NOTIFICATION_GROUP if group else None)
         self.notification_builder.setContentText(message)
         self.notification_builder.setOnlyAlertOnce(self.notify_screen_on <= 0)
+        if lines is not None:
+            self.notification_builder.setGroupSummary(True)
+            style = self.NotificationCompatInboxStyle()\
+                .setSummaryText(title)\
+                .setBigContentTitle(message)
+            for l in lines:
+                style.addLine(self.AndroidString(l.encode('utf-8')))
+            self.notification_builder.setStyle(style)
+        else:
+            self.notification_builder.setStyle(None)
+            self.notification_builder.setGroupSummary(False)
         return self.notification_builder.getNotification()
 
     def insert_service_notification(self):
         self.service.setAutoRestartService(False)
-        self.service.startForeground(self.FOREGROUND_NOTIFICATION_ID, self.build_service_notification("Fit.py", "DeviceManagerService"))
+        self.service.startForeground(self.FOREGROUND_NOTIFICATION_ID, self.build_service_notification())
 
     async def start(self):
         if self.android:
@@ -466,6 +528,7 @@ class DeviceManagerService(object):
         del self.devicemanagers_active_done[:]
         del self.devicemanagers_active[:]
         self.devicemanagers_active_info.clear()
+        self.reset_service_notifications()
         for v in self.views:
             if v.active:
                 for c in v.get_connected_devices():
