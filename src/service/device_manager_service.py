@@ -44,7 +44,8 @@ class DeviceNotiication(object):
         colerror=None,
         col=None,
         pre='',
-        post=''
+        post='',
+        timeout='---'
     )
 
     def __init__(self, dm, idnot, builder):

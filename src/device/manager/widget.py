@@ -67,7 +67,7 @@ Builder.load_string(
                 rows: 1
                 cols: 2
                 size_hint_y: None
-                height: self.minimum_height
+                height: self.minimum_height + dp(5)
                 padding: [dp(30), dp(20)]
                 MDLabel:
                     size_hint_x: 0.4
