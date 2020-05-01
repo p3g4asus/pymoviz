@@ -121,7 +121,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     @staticmethod
     def sort(list_of_dm):
-        list_of_dm.sort(key=lambda x: x.device)
+        list_of_dm.sort(key=lambda x: x.device, reverse=True)
 
     def get_state(self):
         return self.state
