@@ -222,14 +222,15 @@ class DeviceManagerService(object):
             notification_intent.setAction(Intent.ACTION_MAIN)
             notification_intent.addCategory(Intent.CATEGORY_LAUNCHER)
             notification_intent = PendingIntent.getActivity(self.service, 0, notification_intent, 0)
-            notification_builder = NotificationBuilder(app_context, NOTIFICATION_CHANNEL_ID)
-            notification_builder.setContentIntent(notification_intent)
-            notification_builder.setSmallIcon(notification_icon)
-            notification_builder.setAutoCancel(True)
-            notification_builder.addAction(connect_action)
-            notification_builder.addAction(disconnect_action)
-            notification_builder.addAction(stop_action)
-            self.notification_builder = notification_builder
+            self.notification_builder = NotificationBuilder(app_context, NOTIFICATION_CHANNEL_ID)\
+                .setContentIntent(notification_intent)\
+                .setSmallIcon(notification_icon)\
+                .addAction(connect_action)\
+                .addAction(disconnect_action)\
+                .addAction(stop_action)
+            self.notification_builder_no_action = NotificationBuilder(app_context, NOTIFICATION_CHANNEL_ID)\
+                .setContentIntent(notification_intent)\
+                .setSmallIcon(notification_icon)
 
     def on_broadcast(self, context, intent):
         action = intent.getAction()
@@ -487,30 +488,32 @@ class DeviceManagerService(object):
                     self.build_service_notification(summary, message, lines))
 
     def build_service_notification(self, title=None, message=None, lines=None):
+        group = None
+        nb = self.notification_builder
         if not title and not message:
             title = "Fit.py"
             message = "DeviceManagerService"
-            group = False
-        else:
-            group = len(self.notification_formatter_info) > 1
+        elif len(self.notification_formatter_info) > 1:
+            nb = self.notification_builder if lines else self.notification_builder_no_action
+            group = self.NOTIFICATION_GROUP
         title = self.AndroidString((title if title else 'N/A').encode('utf-8'))
         message = self.AndroidString(message.encode('utf-8'))
-        self.notification_builder.setContentTitle(title)
-        self.notification_builder.setGroup(self.NOTIFICATION_GROUP if group else None)
-        self.notification_builder.setContentText(message)
-        self.notification_builder.setOnlyAlertOnce(self.notify_screen_on <= 0)
+        nb.setContentTitle(title)\
+            .setGroup(group)\
+            .setContentText(message)\
+            .setOnlyAlertOnce(self.notify_screen_on <= 0)
         if lines is not None:
-            self.notification_builder.setGroupSummary(True)
             style = self.NotificationCompatInboxStyle()\
                 .setSummaryText(title)\
                 .setBigContentTitle(message)
             for l in lines:
                 style.addLine(self.AndroidString(l.encode('utf-8')))
-            self.notification_builder.setStyle(style)
+            nb.setStyle(style)\
+                .setGroupSummary(True)
         else:
-            self.notification_builder.setStyle(None)
-            self.notification_builder.setGroupSummary(False)
-        return self.notification_builder.getNotification()
+            nb.setStyle(None)\
+                .setGroupSummary(False)
+        return nb.getNotification()
 
     def insert_service_notification(self):
         self.service.setAutoRestartService(False)
