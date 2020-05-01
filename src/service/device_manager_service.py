@@ -479,7 +479,7 @@ class DeviceManagerService(object):
             for t, no in self.notification_formatter_info.items():
                 if no.last_txt:
                     lines.append(no.last_txt)
-                summary += f' {self.title}'
+                summary += f' {no.title}'
             if summary and len(lines) > 1:
                 summary = summary[1:]
                 self.set_service_notification(
