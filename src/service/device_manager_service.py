@@ -77,19 +77,18 @@ class DeviceNotiication(object):
                 if self.timer:
                     self.timer.cancel()
                 self.timer = Timer(7, self.clear)
-                if txt != self.last_txt:
-                    self.last_txt = txt
-                    self.builder.set_service_notification(self.idnot, self.build_service_notification(self.title, txt))
-                    self.set_summary_notification()
+                self._notify(txt)
 
-    def clear(self):
-        txt = self.current_formatter.set_timeout()
+    def _notify(self, txt):
         if txt != self.last_txt:
             self.last_txt = txt
-            self.builder.set_service_notification(
-                self.idnot,
-                self.build_service_notification(self.title, txt))
-            self.set_summary_notification()
+            b = self.builder
+            b.set_service_notification(self.idnot, b.build_service_notification(self.title, txt))
+            b.set_summary_notification()
+
+    def clear(self):
+        self.timer = None
+        self._notify(self.current_formatter.set_timeout())
 
 
 class DeviceManagerService(object):
