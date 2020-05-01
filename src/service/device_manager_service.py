@@ -383,7 +383,7 @@ class DeviceManagerService(object):
                 self.main_session = args[2]
         elif command == COMMAND_DEVICEFIT and exitv == CONFIRM_OK:
             if self.connectors_format:
-                TcpClient.format(args[1], fitobj=args[2], manager=dm)
+                TcpClient.format(args[1], fitobj=args[2], manager=dm, device=args[1])
             self.change_service_notification(dm, fitobj=args[2], manager=dm)
         elif command == COMMAND_DELDEVICE and exitv == CONFIRM_OK:
             ids = f'{dm.get_id()}'
