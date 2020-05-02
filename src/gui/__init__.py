@@ -454,6 +454,7 @@ class MainApp(MDApp):
             elif isinstance(args[1], User):
                 self.users.remove(args[1])
             toast(f'{name} deleted from {args[1].__table__}.')
+            TcpClient.reset_templates()
             return
         else:
             msg = args[1]
@@ -593,6 +594,7 @@ class MainApp(MDApp):
             if on_ok:
                 on_ok(view)
             error = False
+            TcpClient.reset_templates()
         else:
             msg = args[1]
             exitv = args[0]

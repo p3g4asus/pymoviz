@@ -338,6 +338,7 @@ class DeviceManagerService(object):
                 self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem)
                 if on_ok:
                     on_ok(elem)
+                TcpClient.reset_templates()
             else:
                 self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem))
         except Exception:
@@ -355,6 +356,7 @@ class DeviceManagerService(object):
                 self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem)
                 if on_ok:
                     on_ok(elem)
+                TcpClient.reset_templates()
             else:
                 self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem))
         except Exception:
@@ -403,6 +405,7 @@ class DeviceManagerService(object):
             ids = f'{dm.get_id()}'
             if ids not in self.devicemanagers_by_id:
                 self.devicemanagers_by_id[ids] = dm
+            TcpClient.reset_templates()
             self.set_formatters_device()
             self.on_command_listviews()
         elif command == COMMAND_SEARCH and exitv == CONFIRM_OK:
