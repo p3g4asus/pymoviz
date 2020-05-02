@@ -68,9 +68,10 @@ class DeviceNotiication(object):
         else:
             f = self.__state_formatter__
             timeout = 45
-        if notify_every_ms == 0 or\
-                nowms - self.last_notify_ms >= notify_every_ms or\
-                f is not self.current_formatter:
+        if f is not self.current_formatter or\
+                f is self.__state_formatter__ or\
+                notify_every_ms == 0 or\
+                nowms - self.last_notify_ms >= notify_every_ms:
             self.current_formatter = f
             self.last_notify_ms = nowms
             txt = ''
@@ -93,7 +94,9 @@ class DeviceNotiication(object):
             b.set_summary_notification()
 
     def clear(self):
-        self.timer = None
+        if self.timer:
+            self.timer.cancel()
+            self.timer = None
         self._notify(self.current_formatter.set_timeout())
 
 
@@ -461,6 +464,7 @@ class DeviceManagerService(object):
 
     def reset_service_notifications(self):
         for _, no in self.notification_formatter_info.items():
+            no.clear()
             self.cancel_service_notification(no.idnot)
         if len(self.notification_formatter_info) > 1:
             self.cancel_service_notification(self.FOREGROUND_NOTIFICATION_ID - 1)
