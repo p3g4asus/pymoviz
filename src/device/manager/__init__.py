@@ -180,12 +180,13 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         st = None
         try:
             st = await self.simulator.step(obj)
-            self.set_state(st, DEVREASON_SIMULATOR)
-            nm = self.device.get_name()
-            obj.s(DI_BLNAME, nm if nm else 'N/A')
-            if st != DEVSTATE_INVALIDSTEP:
-                self.oscer.send_device(COMMAND_DEVICEFIT, self._uid, self.device, obj, st)
-                self.dispatch('on_command_handle', COMMAND_DEVICEFIT, CONFIRM_OK, self.device, obj, st)
+            if self.is_connected_state():
+                self.set_state(st, DEVREASON_SIMULATOR)
+                nm = self.device.get_name()
+                obj.s(DI_BLNAME, nm if nm else 'N/A')
+                if st != DEVSTATE_INVALIDSTEP:
+                    self.oscer.send_device(COMMAND_DEVICEFIT, self._uid, self.device, obj, st)
+                    self.dispatch('on_command_handle', COMMAND_DEVICEFIT, CONFIRM_OK, self.device, obj, st)
         except Exception:
             _LOGGER.error(f'Step error (state={st}, obj={obj}): {traceback.format_exc()}')
 

@@ -3,7 +3,7 @@ import json
 import re
 import traceback
 
-from util import init_logger, generic_clone
+from util import init_logger, deep_clone
 
 _LOGGER = init_logger(__name__)
 
@@ -118,7 +118,7 @@ class SerializableDBObj(object):
         self.items = items
 
     def clone(self):
-        dct = generic_clone(vars(self))
+        dct = deep_clone(vars(self))
         cl = self.__class__()
         cl.process_kwargs(dct)
         return cl

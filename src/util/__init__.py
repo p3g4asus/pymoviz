@@ -26,28 +26,24 @@ async def asyncio_graceful_shutdown(loop, logger, perform_loop_stop=True):
             loop.stop()
 
 
-def generic_clone(el):
+def deep_clone(el):
     rv = el
     if isinstance(el, dict):
         rv = el.copy()
         for k, v in el.items():
-            rv[k] = generic_clone(v)
+            rv[k] = deep_clone(v)
     elif isinstance(el, list):
         rv = list(el)
         k = 0
         for v in el:
-            rv[k] = generic_clone(v)
+            rv[k] = deep_clone(v)
             k += 1
     elif isinstance(el, tuple):
         rv = tuple()
         for v in el:
-            rv += (generic_clone(v),)
-    else:
-        try:
-            getattr(el, 'clone')
-            rv = el.clone()
-        except AttributeError:
-            pass
+            rv += (deep_clone(v),)
+    elif hasattr(el, 'clone'):
+        rv = el.clone()
     return rv
 
 
