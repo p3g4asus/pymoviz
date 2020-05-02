@@ -68,9 +68,10 @@ class DeviceNotiication(object):
         else:
             f = self.__state_formatter__
             timeout = 45
-        if notify_every_ms == 0 or\
-                nowms - self.last_notify_ms >= notify_every_ms or\
-                f is not self.current_formatter:
+        if f is not self.current_formatter or\
+                f is self.__state_formatter__ or\
+                notify_every_ms == 0 or\
+                nowms - self.last_notify_ms >= notify_every_ms:
             self.current_formatter = f
             self.last_notify_ms = nowms
             txt = ''
