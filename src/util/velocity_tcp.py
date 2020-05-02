@@ -35,14 +35,23 @@ class TcpClient(asyncio.Protocol):
     _LOCK = asyncio.Lock()
     _LOADER = None
     _TIMEOUTS = dict()
-    _VARS = dict(const=util.const,
-                 devs=dict(),
-                 util=VelocityUtils,
-                 stastr=_STASTR,
-                 stostr=_STOSTR,
-                 macros=dict(),
-                 logger=_LOGGER,
-                 aliases=[])
+    _DEFAULT_VARS = dict(const=util.const,
+                         devs=dict(),
+                         util=VelocityUtils,
+                         stastr=_STASTR,
+                         stostr=_STOSTR,
+                         macros=dict(),
+                         logger=_LOGGER,
+                         aliases=[])
+    _VARS = _DEFAULT_VARS.copy()
+
+    @staticmethod
+    def reset_templates():
+        dest = TcpClient._DEFAULT_VARS.copy()
+        for _, tcp in TcpClient._OPEN_CLIENTS.copy().items():
+            if tcp['obj']:
+                dest[tcp['obj'].vm_var] = dict(macro=0)
+        TcpClient._VARS = dest
 
     @staticmethod
     async def set_open_clients(hp, dct, action=None):

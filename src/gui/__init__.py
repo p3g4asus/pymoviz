@@ -875,6 +875,7 @@ class MainApp(MDApp):
                             int(self.config.get('misc', 'notify_screen_on')),
                             int(self.config.get('misc', 'notify_every_ms')))
             if (time.time() - self.last_timeout_time) > 15 or self.init_osc_cmd is False:
+                TcpClient.reset_templates()
                 self.init_osc_cmd = COMMAND_CONNECTORS
                 self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
             if not self.devicemanagers_pre_init_done:
