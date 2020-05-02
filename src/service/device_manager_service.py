@@ -93,7 +93,9 @@ class DeviceNotiication(object):
             b.set_summary_notification()
 
     def clear(self):
-        self.timer = None
+        if self.timer:
+            self.timer.cancel()
+            self.timer = None
         self._notify(self.current_formatter.set_timeout())
 
 
@@ -461,6 +463,7 @@ class DeviceManagerService(object):
 
     def reset_service_notifications(self):
         for _, no in self.notification_formatter_info.items():
+            no.clear()
             self.cancel_service_notification(no.idnot)
         if len(self.notification_formatter_info) > 1:
             self.cancel_service_notification(self.FOREGROUND_NOTIFICATION_ID - 1)
