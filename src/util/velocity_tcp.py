@@ -5,7 +5,7 @@ from functools import partial
 from os.path import basename, dirname
 
 from airspeed import CachingFileLoader
-from util import init_logger
+from util import init_logger, generic_clone
 import util.const
 from util.timer import Timer
 
@@ -43,15 +43,16 @@ class TcpClient(asyncio.Protocol):
                          macros=dict(),
                          logger=_LOGGER,
                          aliases=[])
-    _VARS = _DEFAULT_VARS.copy()
+    _VARS = generic_clone(_DEFAULT_VARS)
 
     @staticmethod
     def reset_templates():
-        dest = TcpClient._DEFAULT_VARS.copy()
+        dest = generic_clone(TcpClient._DEFAULT_VARS)
         for _, tcp in TcpClient._OPEN_CLIENTS.copy().items():
             if tcp['obj']:
                 dest[tcp['obj'].vm_var] = dict(macro=0)
         TcpClient._VARS = dest
+        _LOGGER.info(f'New dict is {TcpClient._VARS}')
 
     @staticmethod
     async def set_open_clients(hp, dct, action=None):
