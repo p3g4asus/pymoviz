@@ -71,12 +71,12 @@ class GattDeviceManager(GenericDeviceManager):
             _LOGGER.info(f'Serv disc dict {services}')
             for _, chinfo in self.read_once_characteristics.items():
                 for suid, sdict in services.items():
-                    if suid == chinfo.service:
+                    if suid == chinfo.service and chinfo.characteristic in sdict:
                         ch = sdict[chinfo.characteristic]
                         self.read_characteristic(ch)
             for _, chinfo in self.notify_characteristics.items():
                 for suid, sdict in services.items():
-                    if suid == chinfo.service:
+                    if suid == chinfo.service and chinfo.characteristic in sdict:
                         ch = sdict[chinfo.characteristic]
                         self.enable_notifications(ch)
             if self.notify_characteristics:

@@ -87,7 +87,8 @@ class HRDeviceManager(GattDeviceManager):
                        DI_SERIAL_NUMBER,
                        DI_HARDWARE,
                        DI_FIRMWARE,
-                       DI_SOFTWARE)
+                       DI_SOFTWARE,
+                       '_new_')
 
     def set_info_field_c(self, characteristic, uuid=None, field=DI_MODEL):
         data = characteristic.getValue()
@@ -96,11 +97,13 @@ class HRDeviceManager(GattDeviceManager):
             for c in data:
                 if c:
                     conv += chr(c)
-                else:
+                elif conv:
                     self.info_fields[field] = conv
+                    self.info_fields['_new_'] = True
                     return conv
         else:
             self.info_fields[field] = data[0]
+            self.info_fields['_new_'] = True
             return data[0]
 
     def get_read_once_characteristics(self):
@@ -190,6 +193,8 @@ class HRDeviceManager(GattDeviceManager):
                 rrIntervals.append(self.u16_le(data, i))
                 i += 2
         hro.intervals_conf = rrIntervals
-        hro.process_kwargs(self.info_fields)
+        if self.info_fields['_new_']:
+            self.info_fields['_new_'] = False
+            hro.process_kwargs(self.info_fields)
         _LOGGER.debug(f'hro Parse result {hro}')
         Timer(0, partial(self.step, hro))
