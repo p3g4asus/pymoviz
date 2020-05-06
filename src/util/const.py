@@ -43,6 +43,9 @@ DI_MANUFACTURER = 'info_manufacturer'
 DI_HARDWARE = 'info_hardware'
 DI_SERIAL_NUMBER = 'info_serial'
 
+PRESENCE_REQUEST_ACTION = 'device_manager_service.view.PRESENCE_REQUEST'
+PRESENCE_RESPONSE_ACTION = 'device_manager_service.view.PRESENCE_RESPONSE'
+
 COMMAND_SEARCH = '/device_search'
 COMMAND_DEVICEFOUND = '/device_found'
 COMMAND_CONNECT = '/view_connect'

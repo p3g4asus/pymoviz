@@ -41,6 +41,7 @@ from kivymd.uix.list import OneLineAvatarListItem
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.snackbar import Snackbar
 from kivymd.uix.tab import MDTabs
+from util.android_alive_checker import AndroidAliveChecker
 from util.const import (COMMAND_CONNECT, COMMAND_CONNECTORS, COMMAND_DELUSER,
                         COMMAND_DELVIEW, COMMAND_DEVICEFIT, COMMAND_DISCONNECT,
                         COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV, COMMAND_LISTUSERS,
@@ -837,6 +838,7 @@ class MainApp(MDApp):
         return True
 
     def on_pause(self):
+        self.alive_checker.on_pause()
         self.notify_timeout = False
         return True
 
@@ -866,12 +868,13 @@ class MainApp(MDApp):
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
             self.last_timeout_time = time.time()
-            _LOGGER.info(f'Timeout comunicating with the service ({hp[0]}:{hp[1]}) id={self.devicemanagers_pre_init_done} plf={platform}')
-            self.do_pre()
+            _LOGGER.info(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
+            self.alive_checker.start()
             if self.notify_timeout and (self.auto_connect_done != -2 or platform != 'android'):
                 toast(f'Timeout comunicating with the service ({hp[0]}:{hp[1]})')
         else:
             _LOGGER.info(f'Debug verb = {get_verbosity(self.config)}')
+            self.alive_checker.stop()
             self.oscer.send(COMMAND_LOGLEVEL,
                             get_verbosity(self.config),
                             int(self.config.get('misc', 'notify_screen_on')),
@@ -880,12 +883,6 @@ class MainApp(MDApp):
                 TcpClient.reset_templates()
                 self.init_osc_cmd = COMMAND_CONNECTORS
                 self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
-            if not self.devicemanagers_pre_init_done:
-                for d in self.devicemanagers_pre_init_undo.keys():
-                    if self.devicemanagers_pre_init_undo[d] is None:
-                        self.devicemanagers_pre_init_undo[d] = False
-                        self.devicemanagers_pre_init_ok[d] = True
-                self.devicemanagers_pre_init_done = True
             if self.notify_timeout:
                 toast(f'Serivice connection OK ({hp[0]}:{hp[1]})')
             else:
@@ -931,6 +928,20 @@ class MainApp(MDApp):
                 win.setFlags(0 if not val else FLAG_KEEP_SCREEN_ON, FLAG_KEEP_SCREEN_ON)
             _set_screen_on(val)
 
+    def on_alive_checker_response(self, alive):
+        if not alive:
+            self.init_pre_fields()
+            self.do_pre()
+        else:
+            if not self.devicemanagers_pre_init_done:
+                for d in self.devicemanagers_pre_init_undo.keys():
+                    if self.devicemanagers_pre_init_undo[d] is None:
+                        self.devicemanagers_pre_init_undo[d] = False
+                        self.devicemanagers_pre_init_ok[d] = True
+                self.devicemanagers_pre_init_done = True
+        if not self.oscer:
+            Timer(0, self.init_osc)
+
     def on_start(self):
         init_logger(__name__, get_verbosity(self.config))
         if platform != 'android':
@@ -957,7 +968,7 @@ class MainApp(MDApp):
                 else:
                     ci['hp'] = (self.config.get(section, 'host'),
                                 int(self.config.get(section, 'port')))
-            Timer(0, self.init_osc)
+            self.alive_checker.start()
 
         self.root.ids.content_drawer.image_path = join(
             dirname(__file__), '..', "images", "navdrawer.png")
@@ -993,7 +1004,12 @@ class MainApp(MDApp):
     def stop_me(self):
         if self.oscer:
             self.oscer.uninit()
+        if self.alive_checker:
+            self.alive_checker.stop()
         self.stop()
+
+    def on_resume(self):
+        self.alive_checker.on_resume()
 
     def build_config(self, config):
         """
@@ -1037,6 +1053,7 @@ class MainApp(MDApp):
         self.velocity_tabs = []
         self.notify_timeout = True
         self.users = []
+        self.alive_checker = AndroidAliveChecker(self.loop, self.on_alive_checker_response)
         self.current_widget = None
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
         self.devicemanagers_by_uid = dict()
@@ -1047,6 +1064,9 @@ class MainApp(MDApp):
         self.last_timeout_time = 0
         self.connectors_path = ''
         self.auto_connect_done = -2
+        self.init_pre_fields()
+
+    def init_pre_fields(self):
         self.devicemanagers_pre_init_done = False
         self.devicemanagers_pre_actions = dict()
         for tp, cls in self.devicemanager_class_by_type.items():

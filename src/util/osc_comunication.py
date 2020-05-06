@@ -128,7 +128,7 @@ class OSCManager(object):
             # _LOGGER.debug(f'Sending connect command as {"client" if self.hostconnect else "server"} to {hp[0]}:{hp[1]} (port={self.portlisten})')
             self.connected_hosts[hpstr]['client'].send_message(COMMAND_CONNECTION, (self.portlisten,))
         if rearm_timer:
-            self.connection_handler_timer_init(hp=hp, intv=2 if timeout else 6)
+            self.connection_handler_timer_init(hp=hp)
 
     async def set_connection_timeout(self, hp=None):
         hpstr = f'{hp[0]}:{hp[1]}'

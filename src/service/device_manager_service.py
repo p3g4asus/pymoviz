@@ -28,7 +28,8 @@ from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_CONNECTORS,
                         DEVSTATE_CONNECTING, DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_SEARCHING, MSG_CONNECTION_STATE_INVALID,
                         MSG_DB_SAVE_ERROR, MSG_DEVICE_NOT_STOPPED, MSG_INVALID_ITEM,
-                        MSG_TYPE_DEVICE_UNKNOWN)
+                        MSG_TYPE_DEVICE_UNKNOWN,
+                        PRESENCE_REQUEST_ACTION, PRESENCE_RESPONSE_ACTION)
 from util.osc_comunication import OSCManager
 from util.velocity_tcp import TcpClient
 from util.timer import Timer
@@ -149,11 +150,13 @@ class DeviceManagerService(object):
 
             self.br = BroadcastReceiver(
                 self.on_broadcast, actions=[self.CONNECT_ACTION,
+                                            PRESENCE_REQUEST_ACTION,
                                             self.DISCONNECT_ACTION,
                                             self.STOP_ACTION])
             self.br.start()
 
             Intent = autoclass('android.content.Intent')
+            self.Intent = Intent
             PendingIntent = autoclass('android.app.PendingIntent')
             NotificationActionBuilder = autoclass('android.app.Notification$Action$Builder')
             Notification = autoclass('android.app.Notification')
@@ -242,6 +245,8 @@ class DeviceManagerService(object):
             self.loop.call_soon_threadsafe(self.on_command_condisc, 'c', self.last_user)
         elif action == self.DISCONNECT_ACTION:
             self.loop.call_soon_threadsafe(self.on_command_condisc, 'd')
+        elif action == PRESENCE_REQUEST_ACTION:
+            self.app_context.sendBroadcast(self.Intent(PRESENCE_RESPONSE_ACTION))
         else:
             self.loop.call_soon_threadsafe(self.on_command_stop)
 
