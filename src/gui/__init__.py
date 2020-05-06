@@ -864,6 +864,8 @@ class MainApp(MDApp):
             self.devicemanagers_pre_init_done = True
             self.start_server()
             self.auto_connect_done = -1
+            if not self.oscer:
+                Timer(0, self.init_osc)
 
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
@@ -939,8 +941,8 @@ class MainApp(MDApp):
                         self.devicemanagers_pre_init_undo[d] = False
                         self.devicemanagers_pre_init_ok[d] = True
                 self.devicemanagers_pre_init_done = True
-        if not self.oscer:
-            Timer(0, self.init_osc)
+            if not self.oscer:
+                Timer(0, self.init_osc)
 
     def on_start(self):
         init_logger(__name__, get_verbosity(self.config))
