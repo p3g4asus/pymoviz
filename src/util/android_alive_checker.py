@@ -25,7 +25,7 @@ class AndroidAliveChecker(object):
             self.br = None
 
     def on_broadcast(self, context, intent):
-        _LOGGER.info(f'Broadcast received')
+        _LOGGER.info('Broadcast received')
         self.loop.call_soon_threadsafe(self.on_timeout, False)
 
     def on_pause(self):
@@ -38,7 +38,7 @@ class AndroidAliveChecker(object):
             self.start()
 
     def on_timeout(self, timeout_detected=True):
-        _LOGGER.info(f'Presence received = {timeout_detected}')
+        _LOGGER.info(f'Presence received = timeout={timeout_detected}')
         self.stop()
         self.on_result(not timeout_detected)
 

@@ -143,6 +143,7 @@ class DeviceManagerService(object):
             self.NOTIFICATION_GROUP = 'pyMovizGroup'
             self.FOREGROUND_NOTIFICATION_ID = 4563
             app_context = self.service.getApplication().getApplicationContext()
+            self.app_context = app_context
             self.notification_service = self.service.getSystemService(self.Context.NOTIFICATION_SERVICE)
             self.CONNECT_ACTION = 'device_manager_service.view.CONNECT'
             self.DISCONNECT_ACTION = 'device_manager_service.view.DISCONNECT'
