@@ -854,7 +854,7 @@ class MainApp(MDApp):
             if self.devicemanagers_pre_init_undo[nmact] is None:
                 try:
                     _LOGGER.info(f"Pre operations {nmact}...")
-                    preact = actdata['cls']()
+                    preact = actdata['cls'](self.loop)
                     preact.execute(self.config, actdata['types'], self.do_pre_finish)
                     return
                 except Exception:

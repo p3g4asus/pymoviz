@@ -67,25 +67,28 @@ _GUI = '''
 
 
 class MyBluetoothDispatcher(BluetoothDispatcher):
-    def __init__(self, on_enable=None, on_disable=None):
+    def __init__(self, loop, on_enable=None, on_disable=None):
         self.on_enable = on_enable
         self.on_disable = on_disable
+        self.loop = loop
         super(MyBluetoothDispatcher, self).__init__()
 
     def on_bluetooth_enabled(self, wasenabled):
         super(MyBluetoothDispatcher, self).on_bluetooth_enabled(wasenabled)
         if self.on_enable:
-            self.on_enable(wasenabled)
+            self.loop.call_soon_threadsafe(self.on_enable, wasenabled)
 
     def on_bluetooth_disabled(self, wasdisabled):
         super(MyBluetoothDispatcher, self).on_bluetooth_disabled(wasdisabled)
         if self.on_disable:
-            self.on_disable(wasdisabled)
+            self.loop.call_soon_threadsafe(self.on_disable, wasdisabled)
 
 
 class EnableBluetooth(Action):
-    def __init__(self):
-        self.dispatcher = MyBluetoothDispatcher(on_enable=self.on_bluetooth_enabled,
+    def __init__(self, loop):
+        super(EnableBluetooth).__init__(loop)
+        self.dispatcher = MyBluetoothDispatcher(loop,
+                                                on_enable=self.on_bluetooth_enabled,
                                                 on_disable=self.on_bluetooth_disabled)
         self.ask_for_enable = True
         self.dialog = None
