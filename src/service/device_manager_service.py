@@ -733,7 +733,7 @@ class DeviceManagerService(object):
         for nm, act in self.devicemanagers_pre_actions.items():
             if nm in self.undo_info and self.undo_info[nm]:
                 del self.undo_info[nm]
-                preact = act()
+                preact = act(self.loop)
                 preact.undo(self.on_bluetooth_disabled)
                 break
         self.stop_event.set()
