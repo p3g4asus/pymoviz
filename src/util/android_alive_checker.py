@@ -1,3 +1,5 @@
+import traceback
+
 from kivy.utils import platform
 from util.const import PRESENCE_REQUEST_ACTION, PRESENCE_RESPONSE_ACTION
 from util.timer import Timer
@@ -44,18 +46,21 @@ class AndroidAliveChecker(object):
 
     def start(self, bytimer=False):
         _LOGGER.info(f'Starting {bytimer} timerNone={self.timer is None} started={self.started} brNone={self.br is None}')
-        if not self.timer:
-            if bytimer:
-                self.timer = Timer(bytimer, self.start)
-            elif not self.started:
-                if self.br:
-                    self.br.start()
-                    _LOGGER.info(f'Sending intent {PRESENCE_REQUEST_ACTION}')
-                    self.context.sendBroadcast(self.Intent(PRESENCE_REQUEST_ACTION))
-                    self.started = True
-                    self.timer = Timer(self.timeout, self.on_timeout)
-                else:
-                    self.on_result(False)
+        try:
+            if not self.timer:
+                if bytimer:
+                    self.timer = Timer(bytimer, self.start)
+                elif not self.started:
+                    if self.br:
+                        self.br.start()
+                        _LOGGER.info(f'Sending intent {PRESENCE_REQUEST_ACTION}')
+                        self.context.sendBroadcast(self.Intent(PRESENCE_REQUEST_ACTION))
+                        self.started = True
+                        self.timer = Timer(self.timeout, self.on_timeout)
+                    else:
+                        self.on_result(False)
+        except Exception:
+            _LOGGER.error(f'Start error {traceback.format_exc()}')
 
     def stop(self):
         if self.timer:
