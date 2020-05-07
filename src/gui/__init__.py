@@ -865,7 +865,7 @@ class MainApp(MDApp):
             self.start_server()
             self.auto_connect_done = -1
             if not self.oscer:
-                Timer(0, self.init_osc)
+                Timer(5, self.init_osc)
 
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
@@ -881,7 +881,7 @@ class MainApp(MDApp):
                             get_verbosity(self.config),
                             int(self.config.get('misc', 'notify_screen_on')),
                             int(self.config.get('misc', 'notify_every_ms')))
-            if (time.time() - self.last_timeout_time) > 15 or self.init_osc_cmd is False:
+            if (time.time() - self.last_timeout_time) > 10 or self.init_osc_cmd is False:
                 TcpClient.reset_templates()
                 self.init_osc_cmd = COMMAND_CONNECTORS
                 self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd)
