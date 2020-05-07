@@ -43,12 +43,14 @@ class AndroidAliveChecker(object):
         self.on_result(not timeout_detected)
 
     def start(self, bytimer=False):
+        _LOGGER.info(f'Starting {bytimer} timerNone={self.timer is None} started={self.started} brNone={self.br is None}')
         if not self.timer:
             if bytimer:
                 self.timer = Timer(bytimer, self.start)
             elif not self.started:
                 if self.br:
                     self.br.start()
+                    _LOGGER.info(f'Sending intent {PRESENCE_REQUEST_ACTION}')
                     self.context.sendBroadcast(self.Intent(PRESENCE_REQUEST_ACTION))
                     self.started = True
                     self.timer = Timer(self.timeout, self.on_timeout)
