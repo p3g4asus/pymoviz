@@ -750,7 +750,7 @@ class MainApp(MDApp):
                 if self.auto_connect_done == -1:
                     if int(self.config.get('preaction', 'autoconnect')):
                         self.connect_active_views()
-                    if platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
+                    if self.should_close and platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
                         self.stop_me()
                 if self.auto_connect_done < 0 and platform == 'android' and\
                         not int(self.config.get('misc', 'screenon')):
@@ -941,6 +941,8 @@ class MainApp(MDApp):
                         self.devicemanagers_pre_init_undo[d] = False
                         self.devicemanagers_pre_init_ok[d] = True
                 self.devicemanagers_pre_init_done = True
+            # se trovo il server giá attivo non devo mai chiudere l'interfaccia
+            self.should_close = False
             if not self.oscer:
                 Timer(0, self.init_osc)
 
@@ -1055,6 +1057,7 @@ class MainApp(MDApp):
         self.velocity_tabs = []
         self.notify_timeout = True
         self.users = []
+        self.should_close = True
         self.alive_checker = AndroidAliveChecker(self.loop, self.on_alive_checker_response)
         self.current_widget = None
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
