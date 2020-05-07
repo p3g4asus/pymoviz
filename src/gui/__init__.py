@@ -769,7 +769,8 @@ class MainApp(MDApp):
 
     def on_osc_init_ok(self, exception=None):
         if exception:
-            snack_open('OSC bind error: {0}.'.format(exception) + '\nWrong IP/Port?', "Settings", self.on_nav_settings)
+            toast('OSC bind error: {0}.'.format(exception))
+            snack_open('Wrong IP/Port?', "Settings", self.on_nav_settings)
         else:
             _LOGGER.info('Osc init ok')
             self.oscer.handle(COMMAND_LISTDEVICES_RV, self.on_list_devices_rv)

@@ -42,7 +42,8 @@ class OSCManager(object):
     async def init(self,
                    loop=asyncio.get_event_loop(),
                    on_connection_timeout=None,
-                   on_init_ok=None):
+                   on_init_ok=None,
+                   _error_notify=True):
         if not self.transport:
             try:
                 _LOGGER.info(f"OSC trying to init conpars={self.hostlisten}:{self.portlisten} -> {self.hostconnect}:{self.portconnect}")
@@ -56,13 +57,14 @@ class OSCManager(object):
                 self.transport, self.protocol = await self.server.create_serve_endpoint()
             except (Exception, OSError) as exception:
                 _LOGGER.error(f"OSC init exception {traceback.format_exc()}")
-                if on_init_ok:
+                if on_init_ok and _error_notify:
                     on_init_ok(exception)
                 self.client_connection_sender_timer = Timer(1, partial(
                     self.init,
                     loop=loop,
                     on_connection_timeout=on_connection_timeout,
-                    on_init_ok=on_init_ok))
+                    on_init_ok=on_init_ok,
+                    _error_notify=False))
                 return
             try:
                 if on_init_ok:
