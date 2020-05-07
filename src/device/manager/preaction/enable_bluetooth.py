@@ -86,7 +86,7 @@ class MyBluetoothDispatcher(BluetoothDispatcher):
 
 class EnableBluetooth(Action):
     def __init__(self, loop):
-        super(EnableBluetooth).__init__(loop)
+        super(EnableBluetooth, self).__init__(loop)
         self.dispatcher = MyBluetoothDispatcher(loop,
                                                 on_enable=self.on_bluetooth_enabled,
                                                 on_disable=self.on_bluetooth_disabled)
