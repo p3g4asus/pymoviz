@@ -17,6 +17,8 @@ class AndroidAliveChecker(object):
         self.was_started = False
         if platform == 'android':
             from jnius import autoclass
+            from android.broadcast import BroadcastReceiver
+            self.BroadcastReceiver = BroadcastReceiver
             self.context = autoclass('org.kivy.android.PythonActivity').mActivity
             self.Intent = autoclass('android.content.Intent')
         self.br = None
@@ -50,8 +52,7 @@ class AndroidAliveChecker(object):
                     self.timer = Timer(bytimer, self.start)
                 elif not self.br:
                     if platform == 'android':
-                        from android.broadcast import BroadcastReceiver
-                        self.br = BroadcastReceiver(
+                        self.br = self.BroadcastReceiver(
                             self.on_broadcast, actions=[PRESENCE_RESPONSE_ACTION])
                         self.br.start()
                         _LOGGER.info(f'Sending intent {PRESENCE_REQUEST_ACTION}')
