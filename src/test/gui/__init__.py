@@ -128,9 +128,12 @@ class MainApp(MDApp):
             portconnect=int(self.config.get('local', 'backendport')))
         await self.oscer.init(on_init_ok=self.on_osc_init_ok, on_connection_timeout=self.on_connection_timeout)
 
-    def on_osc_init_ok(self):
-        toast('OSC Init OK')
-        _LOGGER.debug("GUI1: OSC init ok")
+    def on_osc_init_ok(self, exception=None):
+        if exception:
+            toast('OSC bind error: {0}.'.format(exception) + '\nWrong IP/Port?')
+        else:
+            toast('OSC Init OK')
+            _LOGGER.debug("GUI1: OSC init ok")
 
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:

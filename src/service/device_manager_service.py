@@ -28,7 +28,7 @@ from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_CONNECTORS,
                         DEVSTATE_CONNECTING, DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_SEARCHING, MSG_CONNECTION_STATE_INVALID,
                         MSG_DB_SAVE_ERROR, MSG_DEVICE_NOT_STOPPED, MSG_INVALID_ITEM,
-                        MSG_TYPE_DEVICE_UNKNOWN,
+                        MSG_TYPE_DEVICE_UNKNOWN, MSG_WAITING_FOR_CONNECTING,
                         PRESENCE_REQUEST_ACTION, PRESENCE_RESPONSE_ACTION)
 from util.osc_comunication import OSCManager
 from util.velocity_tcp import TcpClient
@@ -266,35 +266,36 @@ class DeviceManagerService(object):
         self.oscer = OSCManager(hostlisten=self.hostlisten, portlisten=self.portlisten)
         await self.oscer.init(on_init_ok=self.on_osc_init_ok)
 
-    def on_osc_init_ok(self):
-        self.oscer.handle(COMMAND_STOP, self.on_command_stop)
-        self.oscer.handle(COMMAND_LOGLEVEL, self.on_command_loglevel)
-        self.oscer.handle(COMMAND_NEWDEVICE, self.on_command_newdevice)
-        self.oscer.handle(COMMAND_CONNECT, self.on_command_condisc, 'c')
-        self.oscer.handle(COMMAND_DISCONNECT, self.on_command_condisc, 'd')
-        self.oscer.handle(COMMAND_CONNECTORS, self.on_command_connectors)
-        self.oscer.handle(COMMAND_LISTDEVICES, self.on_command_listdevices)
-        self.oscer.handle(COMMAND_LISTUSERS, self.on_command_listusers)
-        self.oscer.handle(COMMAND_LISTVIEWS, self.on_command_listviews)
-        self.oscer.handle(COMMAND_SAVEVIEW, partial(self.on_command_dbelem,
-                                                    asyncmethod=self.on_command_saveelem_async,
-                                                    lst=self.views,
-                                                    cls=View,
-                                                    on_ok=self.set_devicemanagers_active))
-        self.oscer.handle(COMMAND_DELVIEW, partial(self.on_command_dbelem,
-                                                   asyncmethod=self.on_command_delelem_async,
-                                                   lst=self.views,
-                                                   cls=View,
-                                                   on_ok=self.set_devicemanagers_active))
-        self.oscer.handle(COMMAND_SAVEUSER, partial(self.on_command_dbelem,
-                                                    asyncmethod=self.on_command_saveelem_async,
-                                                    lst=self.users,
-                                                    cls=User))
-        self.oscer.handle(COMMAND_DELUSER, partial(self.on_command_dbelem,
-                                                   asyncmethod=self.on_command_delelem_async,
-                                                   lst=self.users,
-                                                   cls=User))
-        self.create_device_managers()
+    def on_osc_init_ok(self, exception=None):
+        if not exception:
+            self.oscer.handle(COMMAND_STOP, self.on_command_stop)
+            self.oscer.handle(COMMAND_LOGLEVEL, self.on_command_loglevel)
+            self.oscer.handle(COMMAND_NEWDEVICE, self.on_command_newdevice)
+            self.oscer.handle(COMMAND_CONNECT, self.on_command_condisc, 'c')
+            self.oscer.handle(COMMAND_DISCONNECT, self.on_command_condisc, 'd')
+            self.oscer.handle(COMMAND_CONNECTORS, self.on_command_connectors)
+            self.oscer.handle(COMMAND_LISTDEVICES, self.on_command_listdevices)
+            self.oscer.handle(COMMAND_LISTUSERS, self.on_command_listusers)
+            self.oscer.handle(COMMAND_LISTVIEWS, self.on_command_listviews)
+            self.oscer.handle(COMMAND_SAVEVIEW, partial(self.on_command_dbelem,
+                                                        asyncmethod=self.on_command_saveelem_async,
+                                                        lst=self.views,
+                                                        cls=View,
+                                                        on_ok=self.set_devicemanagers_active))
+            self.oscer.handle(COMMAND_DELVIEW, partial(self.on_command_dbelem,
+                                                       asyncmethod=self.on_command_delelem_async,
+                                                       lst=self.views,
+                                                       cls=View,
+                                                       on_ok=self.set_devicemanagers_active))
+            self.oscer.handle(COMMAND_SAVEUSER, partial(self.on_command_dbelem,
+                                                        asyncmethod=self.on_command_saveelem_async,
+                                                        lst=self.users,
+                                                        cls=User))
+            self.oscer.handle(COMMAND_DELUSER, partial(self.on_command_dbelem,
+                                                       asyncmethod=self.on_command_delelem_async,
+                                                       lst=self.users,
+                                                       cls=User))
+            self.create_device_managers()
 
     def on_command_condisc(self, cmd, *args):
         _LOGGER.info(f'On Command condisc: {cmd}')
@@ -624,6 +625,7 @@ class DeviceManagerService(object):
                 _LOGGER.info(f'Processing[{dm.get_uid()}] {dm.get_device()} -> {info["operation"]}')
                 if info['operation'] == 'd':
                     if dm.get_state() == DEVSTATE_CONNECTING:
+                        self.oscer.send(COMMAND_PRINTMSG, MSG_WAITING_FOR_CONNECTING.format(dm.get_device().get_alias()))
                         break
                     elif not dm.is_connected_state():
                         self.devicemanagers_active.remove(dm)

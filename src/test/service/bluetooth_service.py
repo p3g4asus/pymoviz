@@ -24,18 +24,19 @@ class BluetoothService(object):
         self.oscer = OSCManager('127.0.0.1', self.portlistenlocal)
         await self.oscer.init(on_init_ok=self.on_osc_init_ok)
 
-    def on_osc_init_ok(self):
-        _LOGGER.debug("OSC init ok")
-        try:
-            self.oscer.handle(COMMAND_STOP, self.on_command_stop)
-            _LOGGER.debug(f"Trying to construct BluetoothDispatcherWC: L({self.hostlisten}:{self.portlisten})")
-            self.bluetooth = BluetoothDispatcherWC(
-                portlisten=self.portlisten,
-                hostlisten=self.hostlisten
-            )
-            _LOGGER.debug('Constructed BluetoothDispatcherWC')
-        except Exception:
-            _LOGGER.error(f"BluetoothDispatcher construct error {traceback.format_exc()}")
+    def on_osc_init_ok(self, exception=None):
+        if not exception:
+            _LOGGER.debug("OSC init ok")
+            try:
+                self.oscer.handle(COMMAND_STOP, self.on_command_stop)
+                _LOGGER.debug(f"Trying to construct BluetoothDispatcherWC: L({self.hostlisten}:{self.portlisten})")
+                self.bluetooth = BluetoothDispatcherWC(
+                    portlisten=self.portlisten,
+                    hostlisten=self.hostlisten
+                )
+                _LOGGER.debug('Constructed BluetoothDispatcherWC')
+            except Exception:
+                _LOGGER.error(f"BluetoothDispatcher construct error {traceback.format_exc()}")
 
     def on_command_stop(self, *args):
         self.loop.stop()

@@ -25,7 +25,6 @@ class OSCManager(object):
         self.portlisten = portlisten
         self.hostconnect = hostconnect
         self.portconnect = portconnect
-        self.on_init_ok = None
         self.server = None
         self.transport = None
         self.protocol = None
@@ -55,8 +54,10 @@ class OSCManager(object):
                     self.client_connection_sender_timer = None
                 self.dispatcher.map('/*', self.device_callback, needs_reply_address=True)
                 self.transport, self.protocol = await self.server.create_serve_endpoint()
-            except (Exception, OSError):
+            except (Exception, OSError) as exception:
                 _LOGGER.error(f"OSC init exception {traceback.format_exc()}")
+                if on_init_ok:
+                    on_init_ok(exception)
                 self.client_connection_sender_timer = Timer(1, partial(
                     self.init,
                     loop=loop,
@@ -65,7 +66,7 @@ class OSCManager(object):
                 return
             try:
                 if on_init_ok:
-                    on_init_ok()
+                    on_init_ok(None)
                 if self.hostconnect:
                     self.connection_sender_timer_init(0)
                 self.handle(COMMAND_CONNECTION, self.on_command_connection)

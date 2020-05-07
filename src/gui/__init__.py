@@ -767,13 +767,16 @@ class MainApp(MDApp):
             self.init_osc_timer = Timer(5, self.on_osc_init_ok_cmd)
             self.oscer.send(self.init_osc_cmd)
 
-    def on_osc_init_ok(self):
-        _LOGGER.info('Osc init ok')
-        self.oscer.handle(COMMAND_LISTDEVICES_RV, self.on_list_devices_rv)
-        self.oscer.handle(COMMAND_LISTVIEWS_RV, self.on_list_views_rv)
-        self.oscer.handle(COMMAND_LISTUSERS_RV, self.on_list_users_rv)
-        self.oscer.handle(COMMAND_PRINTMSG, self.on_printmsg)
-        _LOGGER.info('Osc init ok done')
+    def on_osc_init_ok(self, exception=None):
+        if exception:
+            snack_open('OSC bind error: {0}.'.format(exception) + '\nWrong IP/Port?', "Settings", self.on_nav_settings)
+        else:
+            _LOGGER.info('Osc init ok')
+            self.oscer.handle(COMMAND_LISTDEVICES_RV, self.on_list_devices_rv)
+            self.oscer.handle(COMMAND_LISTVIEWS_RV, self.on_list_views_rv)
+            self.oscer.handle(COMMAND_LISTUSERS_RV, self.on_list_users_rv)
+            self.oscer.handle(COMMAND_PRINTMSG, self.on_printmsg)
+            _LOGGER.info('Osc init ok done')
 
     def on_printmsg(self, msg):
         toast(msg)

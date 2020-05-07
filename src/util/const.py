@@ -20,6 +20,7 @@ DEVREASON_BLE_DISABLED = 26
 
 MSG_CONNECTION_STATE_INVALID = 'Please disconnect all devices before'
 MSG_DEVICE_NOT_STOPPED = 'Device {} state not stopped'
+MSG_WAITING_FOR_CONNECTING = 'Device {} will be disconnected at the end of "connecting"'
 MSG_TYPE_DEVICE_UNKNOWN = 'Unknown device type'
 MSG_INVALID_VIEW = 'Invalid view'
 MSG_INVALID_USER = 'Invalid user'
