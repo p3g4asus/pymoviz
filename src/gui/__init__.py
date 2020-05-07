@@ -869,7 +869,7 @@ class MainApp(MDApp):
             self.start_server()
             self.auto_connect_done = -1
             if not self.oscer:
-                Timer(5, self.init_osc)
+                Timer(8, self.init_osc)
 
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
