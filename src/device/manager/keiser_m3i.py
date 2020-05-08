@@ -119,7 +119,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
 
     def __init__(self, *args, **kwargs):
         super(KeiserM3iDeviceManager, self).__init__(*args, **kwargs)
-        self.rescan_timeout = self.debug_params.get('rescan_timeout', self.RESCAN_TIMEOUT)
+        self.rescan_timeout = int(self.debug_params.get('rescan_timeout', self.RESCAN_TIMEOUT))
         _LOGGER.info(f'Rescan timeout = {self.rescan_timeout}')
         self.force_rescan_timer = None
         self.found_timer = None

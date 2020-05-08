@@ -109,7 +109,10 @@ class DeviceManagerService(object):
         for key, val in kwargs.items():
             mo = re.search('^debug_([^_]+)_(.+)', key)
             if mo:
-                self.debug_params.get(mo.group(1), dict())[mo.group(2)] = val
+                kk = mo.group(1)
+                ll = self.debug_params.get(kk, dict())
+                ll[mo.group(2)] = val
+                self.debug_params[kk] = ll
             elif key.startswith('ab_'):
                 self.addit_params[key[3:]] = val
             else:
