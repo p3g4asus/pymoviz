@@ -114,7 +114,7 @@ class DeviceManagerService(object):
                 self.addit_params[key[3:]] = val
             else:
                 setattr(self, key, val)
-        _LOGGER.debug(f'Addit params for DM {self.addit_params}')
+        _LOGGER.debug(f'Addit params for DM {self.addit_params} AND {self.debug_params}')
         self.db = None
         self.oscer = None
         self.notification_formatter_info = dict()
