@@ -1202,7 +1202,7 @@ class MainApp(MDApp):
                            verbose=get_verbosity(self.config),
                            notify_screen_on=int(self.config.get('misc', 'notify_screen_on')),
                            notify_every_ms=int(self.config.get('misc', 'notify_every_ms')),
-                           **self.config.items('debug'))
+                           **dict(self.config.items('debug')))
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))
                 service.start(mActivity, argument)
