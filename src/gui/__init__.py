@@ -1036,6 +1036,8 @@ class MainApp(MDApp):
                            {'connect_secs': 5, 'connect_retry': 10})
         config.setdefaults('log',
                            {'verbosity': 'INFO'})
+        config.setdefaults('debug',
+                           {'debug_keiserm3i_rescan_timeout': 900})
         config.setdefaults('preaction',
                            {'autoconnect': '0'})
         config.setdefaults('misc',
@@ -1149,6 +1151,8 @@ class MainApp(MDApp):
         if platform != "android":
             settings.add_json_panel('Window', self.config, join(dn, 'window.json'))
         settings.add_json_panel('Log', self.config, join(dn, 'log.json'))
+        if self.config.get('log', 'verbosity') == 'DEBUG':
+            settings.add_json_panel('Debug', self.config, join(dn, 'debug.json'))
 
     def check_host_port_config(self, name):
         host = self.config.get(name, "host")
@@ -1197,7 +1201,8 @@ class MainApp(MDApp):
                            undo_info=self.devicemanagers_pre_init_undo,
                            verbose=get_verbosity(self.config),
                            notify_screen_on=int(self.config.get('misc', 'notify_screen_on')),
-                           notify_every_ms=int(self.config.get('misc', 'notify_every_ms')))
+                           notify_every_ms=int(self.config.get('misc', 'notify_every_ms')),
+                           **self.config.items('debug'))
                 argument = json.dumps(arg)
                 _LOGGER.info("Starting %s [%s]" % (service_class, argument))
                 service.start(mActivity, argument)

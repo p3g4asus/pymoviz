@@ -465,7 +465,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         return arr[idx] & 0xFF
 
     def __init__(self, oscer, uid, service=False, device=None, db=None, user=None,
-                 params=dict(), loop=None, on_command_handle=None, on_state_transition=None):
+                 params=dict(), debug_params=dict(), loop=None, on_command_handle=None, on_state_transition=None):
         _LOGGER.info(f'Initing DM: {self.__class__.__name__} service={service} par={params}')
         super(GenericDeviceManager, self).__init__(**params)
         if on_command_handle:
@@ -475,7 +475,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         self._uid = uid
         self.device = device or Device(type=self.__type__)
         self.db = db
-        self.params = params
+        self.debug_params = debug_params
         self.oscer = oscer
         self.user = user
         self.state = DEVSTATE_UNINIT

@@ -1,5 +1,6 @@
-from time import time
+import logging
 import traceback
+from time import time
 
 from device.simulator import DeviceSimulator
 from util.const import DEVSTATE_DPAUSE, DEVSTATE_INVALIDSTEP, DEVSTATE_ONLINE
@@ -109,6 +110,7 @@ class KeiserM3iDeviceSimulator(DeviceSimulator):
     def inner_step(self, f, nowms):
         try:
             if self.old_time_orig > f.time:
+                self.log(f'Setting offsets Km3i because {self.old_time_orig} > {f.time}', level=logging.INFO)
                 self._set_offsets()
             f.s('pulseMn', 0.0)
             f.s('rpmMn', 0.0)

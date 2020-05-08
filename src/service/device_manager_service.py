@@ -3,6 +3,7 @@ import asyncio
 import glob
 import json
 import os
+import re
 import traceback
 from functools import partial
 from os.path import basename, dirname, exists, isfile, join, splitext
@@ -103,12 +104,16 @@ class DeviceNotiication(object):
 
 class DeviceManagerService(object):
     def __init__(self, **kwargs):
+        self.debug_params = dict()
         self.addit_params = dict()
         for key, val in kwargs.items():
-            if not key.startswith('ab_'):
-                setattr(self, key, val)
-            else:
+            mo = re.search('^debug_([^_]+)_(.+)', key)
+            if mo:
+                self.debug_params.get(mo.group(1), dict())[mo.group(2)] = val
+            elif key.startswith('ab_'):
                 self.addit_params[key[3:]] = val
+            else:
+                setattr(self, key, val)
         _LOGGER.debug(f'Addit params for DM {self.addit_params}')
         self.db = None
         self.oscer = None
@@ -454,6 +459,7 @@ class DeviceManagerService(object):
                 db=self.db,
                 loop=self.loop,
                 params=self.addit_params,
+                debug_params=self.debug_params.get(typev, dict()),
                 on_command_handle=self.on_event_command_handle,
                 on_state_transition=self.on_event_state_transition)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
@@ -596,6 +602,7 @@ class DeviceManagerService(object):
                     db=self.db,
                     device=d,
                     params=self.addit_params,
+                    debug_params=self.debug_params.get(typev, dict()),
                     on_command_handle=self.on_event_command_handle,
                     on_state_transition=self.on_event_state_transition)
                 self.devicemanagers_by_id[f'{d.get_id()}'] = dm

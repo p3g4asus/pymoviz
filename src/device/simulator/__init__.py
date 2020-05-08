@@ -1,4 +1,5 @@
 import abc
+import logging
 from time import time
 import traceback
 
@@ -62,11 +63,11 @@ class DeviceSimulator(abc.ABC, EventDispatcher):
             self.error(f'Step error: {traceback.format_exc()}')
             return DEVSTATE_INVALIDSTEP
 
-    def log(self, s):
-        _LOGGER.debug("%s: %s" % (self.__class__.__name__, s))
+    def log(self, s, level=logging.DEBUG):
+        _LOGGER.log(level, "%s: %s" % (self.__class__.__name__, s))
 
     def error(self, s):
-        _LOGGER.error("%s: %s" % (self.__class__.__name__, s))
+        self.log("%s: %s" % (self.__class__.__name__, s), level=logging.ERROR)
 
     def on_session(self, session):
         self.log("New session s=%s" % session)
