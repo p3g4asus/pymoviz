@@ -953,6 +953,8 @@ class MainApp(MDApp):
                 self.devicemanagers_pre_init_done = True
             # se trovo il server giá attivo non devo mai chiudere l'interfaccia
             if not self.oscer:
+                if self.auto_connect_done != -1:
+                    self.should_close = False
                 Timer(0, self.init_osc)
             else:
                 self.should_close = False
