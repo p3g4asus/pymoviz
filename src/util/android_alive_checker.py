@@ -59,7 +59,7 @@ class AndroidAliveChecker(object):
                         self.context.sendBroadcast(self.Intent(PRESENCE_REQUEST_ACTION))
                         self.timer = Timer(self.timeout, self.on_timeout)
                     else:
-                        self.on_result(False)
+                        self.on_result(True)
         except Exception:
             _LOGGER.error(f'Start error {traceback.format_exc()}')
 

@@ -751,7 +751,7 @@ class MainApp(MDApp):
                     if int(self.config.get('preaction', 'autoconnect')):
                         self.connect_active_views()
                     if self.should_close and platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
-                        self.stop_me()
+                        Timer(5, self.stop_frontend_on_start)
                 if self.auto_connect_done < 0 and platform == 'android' and\
                         not int(self.config.get('misc', 'screenon')):
                     self.set_screen_on(False)
@@ -869,7 +869,11 @@ class MainApp(MDApp):
             self.start_server()
             self.auto_connect_done = -1
             if not self.oscer:
-                Timer(8, self.init_osc)
+                self.just_started = True
+                Timer(2, self.check_alive_after_start)
+
+    async def check_alive_after_start(self):
+        self.alive_checker.start()
 
     def on_connection_timeout(self, hp, is_timeout):
         if is_timeout:
@@ -936,9 +940,13 @@ class MainApp(MDApp):
 
     def on_alive_checker_response(self, alive):
         if not alive:
-            self.init_pre_fields()
-            self.do_pre()
+            if not self.just_started:
+                self.init_pre_fields()
+                self.do_pre()
+            else:
+                Timer(2, self.check_alive_after_start)
         else:
+            self.just_started = False
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init_undo.keys():
                     if self.devicemanagers_pre_init_undo[d] is None:
@@ -1005,6 +1013,9 @@ class MainApp(MDApp):
     def on_nav_settings(self, *args, **kwargs):
         self.open_settings()
 
+    async def stop_frontend_on_start(self):
+        self.stop_me()
+
     def true_stop(self):
         self.stop_server()
         self.stop_me()
@@ -1064,6 +1075,7 @@ class MainApp(MDApp):
         self.notify_timeout = True
         self.users = []
         self.should_close = True
+        self.just_started = False
         self.alive_checker = AndroidAliveChecker(self.loop, self.on_alive_checker_response)
         self.current_widget = None
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
