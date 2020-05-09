@@ -10,6 +10,7 @@ from util import init_logger
 from util.bluetooth_dispatcher import BluetoothDispatcher
 from util.const import (COMMAND_CONFIRM, COMMAND_DELDEVICE, COMMAND_DEVICEFIT,
                         COMMAND_DEVICEFOUND, COMMAND_DEVICESTATE, COMMAND_NEWSESSION,
+                        COMMAND_REQUESTSESSION,
                         COMMAND_SAVEDEVICE, COMMAND_SEARCH, CONFIRM_FAILED_1,
                         CONFIRM_FAILED_2, CONFIRM_FAILED_3, CONFIRM_OK,
                         DEVREASON_BLE_DISABLED, DEVREASON_OPERATION_ERROR,
@@ -175,6 +176,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             self.set_state(DEVSTATE_DISCONNECTING, DEVREASON_REQUESTED)
             self.inner_disconnect()
             self.simulator_needs_reset = True
+            self.last_session = None
 
     async def step(self, obj):
         st = None
@@ -374,6 +376,12 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         elif not val and self.state == DEVSTATE_SEARCHING:
             self.stop_scan()
 
+    def on_command_request_session(self):
+        if self.last_session:
+            self.oscer.send_device(COMMAND_CONFIRM, self._uid, CONFIRM_OK, self.last_session)
+        else:
+            self.oscer.send_device(COMMAND_CONFIRM, self._uid, CONFIRM_FAILED_1)
+
     def on_command_search_device(self, startcommand):
         rv = CONFIRM_OK
         if startcommand:
@@ -433,12 +441,23 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
 
     def on_command_newsession(self, session, *args):
         self.dispatch('on_command_handle', COMMAND_NEWSESSION, CONFIRM_OK, session)
+        self.last_session = session
+
+    def on_confirm_request_session(self, *args, timeout=False):
+        if not timeout and args[0] == CONFIRM_OK:
+            self.on_command_newsession(args[1])
 
     def on_command_devicefit(self, device, fitobj, st):
+        if not self.last_session:
+            self.oscer.send_device(COMMAND_REQUESTSESSION,
+                                   self._uid,
+                                   confirm_callback=self.on_confirm_request_session,
+                                   timeout=5)
         self.dispatch('on_command_handle', COMMAND_DEVICEFIT, CONFIRM_OK, device, fitobj, st)
 
     def on_simulator_session(self, inst, session):
         self.oscer.send_device(COMMAND_NEWSESSION, self._uid, session)
+        self.last_session = session
         self.dispatch('on_command_handle', COMMAND_NEWSESSION, CONFIRM_OK, inst, session)
 
     def __eq__(self, other):
@@ -483,6 +502,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         self.loop = loop
         self.simulator_needs_reset = True
         self.simulator = None
+        self.last_session = None
         self.info_fields = dict.fromkeys(self.__info_fields__, 'N/A')
         self.out_obj = self.__output_class__() if self.__output_class__ else None
 
@@ -490,6 +510,7 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
             self.oscer.handle_device(COMMAND_SAVEDEVICE, self._uid, self.on_command_savedevice)
             self.oscer.handle_device(COMMAND_DELDEVICE, self._uid, self.on_command_deldevice)
             self.oscer.handle_device(COMMAND_SEARCH, self._uid, self.on_command_search_device)
+            self.oscer.handle_device(COMMAND_REQUESTSESSION, self._uid, self.on_command_request_session)
         else:
             global _toast
             from kivymd.toast.kivytoast.kivytoast import toast
