@@ -869,7 +869,6 @@ class MainApp(MDApp):
             self.start_server()
             self.auto_connect_done = -1
             if not self.oscer:
-                self.just_started = True
                 Timer(2, self.check_alive_after_start)
 
     async def check_alive_after_start(self):
@@ -940,13 +939,12 @@ class MainApp(MDApp):
 
     def on_alive_checker_response(self, alive):
         if not alive:
-            if not self.just_started:
+            if self.auto_connect_done != -1:
                 self.init_pre_fields()
                 self.do_pre()
             else:
                 Timer(2, self.check_alive_after_start)
         else:
-            self.just_started = False
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init_undo.keys():
                     if self.devicemanagers_pre_init_undo[d] is None:
@@ -1076,7 +1074,6 @@ class MainApp(MDApp):
         self.notify_timeout = True
         self.users = []
         self.should_close = True
-        self.just_started = False
         self.alive_checker = AndroidAliveChecker(self.loop, self.on_alive_checker_response)
         self.current_widget = None
         self.devicemanager_class_by_type = find_devicemanager_classes(_LOGGER)
