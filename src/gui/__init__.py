@@ -954,9 +954,10 @@ class MainApp(MDApp):
                         self.devicemanagers_pre_init_ok[d] = True
                 self.devicemanagers_pre_init_done = True
             # se trovo il server giá attivo non devo mai chiudere l'interfaccia
-            self.should_close = False
             if not self.oscer:
                 Timer(0, self.init_osc)
+            else:
+                self.should_close = False
 
     def on_start(self):
         init_logger(__name__, get_verbosity(self.config))
