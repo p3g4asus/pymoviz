@@ -174,6 +174,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
             self.found_timer = Timer(timeout, self.set_disconnected)
 
     async def set_disconnected(self):
+        _LOGGER.info(f'Set disconnected due to found_timer in state {self.state}')
         if self.state != DEVSTATE_SEARCHING and self.state != DEVSTATE_DISCONNECTING and\
                 self.state != DEVSTATE_DISCONNECTED:
             self.rescan_timer_init()

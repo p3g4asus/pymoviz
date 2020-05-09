@@ -1,7 +1,11 @@
 [
     {
+        "type": "title",
+        "title": "Keiser M3i"
+    },
+    {
         "type": "string",
-        "title": "Keiser M3i Rescan Timeout",
+        "title": "Rescan Timeout",
         "desc": "Force rescan after (s)",
         "section": "debug",
         "key": "debug_keiserm3i_rescan_timeout"
