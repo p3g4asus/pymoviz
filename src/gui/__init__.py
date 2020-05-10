@@ -736,7 +736,7 @@ class MainApp(MDApp):
                 if not self.velocity_tabs else\
                 [self.root.ids.id_tabcont.format, TcpClient.format]
         self.on_osc_init_ok_cmd_next(
-            COMMAND_LISTDEVICES
+            COMMAND_LISTVIEWS
             if not timeout else
             COMMAND_CONNECTORS)
 
@@ -750,8 +750,8 @@ class MainApp(MDApp):
                 if self.auto_connect_done == -1:
                     if int(self.config.get('preaction', 'autoconnect')):
                         self.connect_active_views()
-                    if self.should_close and platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
-                        Timer(5, self.stop_frontend_on_start)
+                    if self.should_close is True and platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
+                        self.should_close = 1
                 if self.auto_connect_done < 0 and platform == 'android' and\
                         not int(self.config.get('misc', 'screenon')):
                     self.set_screen_on(False)
@@ -796,7 +796,7 @@ class MainApp(MDApp):
                     on_state_transition=self.on_state_transition,
                     on_command_handle=self.on_command_handle,
                     loop=self.loop)
-        self.on_osc_init_ok_cmd_next(COMMAND_LISTUSERS)
+        self.on_osc_init_ok_cmd_next(None)
 
     def on_state_transition(self, inst, oldstate, newstate, reason):
         dev = inst.get_device()
@@ -821,12 +821,12 @@ class MainApp(MDApp):
             if useri < 0 or useri == u.rowid:
                 self.current_user = u
                 break
-        self.on_osc_init_ok_cmd_next(COMMAND_LISTVIEWS)
+        self.on_osc_init_ok_cmd_next(COMMAND_LISTDEVICES)
 
     def on_list_views_rv(self, *ld):
         self.views = list(ld)
         self.root.ids.id_tabcont.new_view_list(self.views)
-        self.on_osc_init_ok_cmd_next(None)
+        self.on_osc_init_ok_cmd_next(COMMAND_LISTUSERS)
         _LOGGER.info(f'List of views {self.views}')
 
     def is_pre_init_ok(self):
@@ -844,6 +844,8 @@ class MainApp(MDApp):
     def on_pause(self):
         self.alive_checker.on_pause()
         self.notify_timeout = False
+        if not isinstance(self.should_close, bool):
+            self.stop_me()
         return True
 
     def do_pre_finish(self, cls, undo, ok):
@@ -953,10 +955,10 @@ class MainApp(MDApp):
                 self.devicemanagers_pre_init_done = True
             # se trovo il server giá attivo non devo mai chiudere l'interfaccia
             if not self.oscer:
-                if self.auto_connect_done != -1:
+                if self.auto_connect_done != -1 and self.should_close is True:
                     self.should_close = False
                 Timer(0, self.init_osc)
-            else:
+            elif self.should_close is True:
                 self.should_close = False
 
     def on_start(self):
@@ -1013,9 +1015,6 @@ class MainApp(MDApp):
 
     def on_nav_settings(self, *args, **kwargs):
         self.open_settings()
-
-    async def stop_frontend_on_start(self):
-        self.stop_me()
 
     def true_stop(self):
         self.stop_server()
