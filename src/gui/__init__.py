@@ -845,7 +845,7 @@ class MainApp(MDApp):
         self.alive_checker.on_pause()
         self.notify_timeout = False
         if not isinstance(self.should_close, bool):
-            self.stop_me()
+            self.loop.call_soon_threadsafe(self.stop_me)
         return True
 
     def do_pre_finish(self, cls, undo, ok):
