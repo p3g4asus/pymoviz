@@ -751,8 +751,8 @@ class MainApp(MDApp):
                     if int(self.config.get('preaction', 'autoconnect')):
                         self.connect_active_views()
                     if self.should_close is True and platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
-                        self.should_close = 1
-                if self.auto_connect_done < 0 and platform == 'android' and\
+                        self.should_close = Timer(5, self.stop_me_async)
+                if isinstance(self.should_close, bool) and self.auto_connect_done < 0 and platform == 'android' and\
                         not int(self.config.get('misc', 'screenon')):
                     self.set_screen_on(False)
                 self.auto_connect_done = 0
@@ -844,7 +844,9 @@ class MainApp(MDApp):
     def on_pause(self):
         self.alive_checker.on_pause()
         self.notify_timeout = False
-        return isinstance(self.should_close, bool)
+        if not isinstance(self.should_close, bool):
+            self.should_close.cancel()
+        return True
 
     def do_pre_finish(self, cls, undo, ok):
         # toast(f'Pre operations for devices of type {cls.__type__}...{"OK" if ok else "FAIL"}')
@@ -1018,6 +1020,9 @@ class MainApp(MDApp):
         self.stop_server()
         self.stop_me()
 
+    async def stop_me_async(self):
+        self.stop_me()
+
     def stop_me(self):
         if self.oscer:
             self.oscer.uninit()
@@ -1027,6 +1032,8 @@ class MainApp(MDApp):
 
     def on_resume(self):
         self.alive_checker.on_resume()
+        if not isinstance(self.should_close, bool):
+            self.should_close = Timer(5, self.stop_me_async)
 
     def build_config(self, config):
         """
