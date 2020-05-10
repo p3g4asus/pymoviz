@@ -751,7 +751,7 @@ class MainApp(MDApp):
                     if int(self.config.get('preaction', 'autoconnect')):
                         self.connect_active_views()
                     if self.should_close is True and platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
-                        self.should_close = Timer(5, self.stop_me_async)
+                        self.init_close_timer()
                 if isinstance(self.should_close, bool) and self.auto_connect_done < 0 and platform == 'android' and\
                         not int(self.config.get('misc', 'screenon')):
                     self.set_screen_on(False)
@@ -845,7 +845,7 @@ class MainApp(MDApp):
         self.alive_checker.on_pause()
         self.notify_timeout = False
         if not isinstance(self.should_close, bool):
-            self.should_close.cancel()
+            self.loop.call_soon_threadsafe(self.should_close.cancel)
         return True
 
     def do_pre_finish(self, cls, undo, ok):
@@ -1030,10 +1030,13 @@ class MainApp(MDApp):
             self.alive_checker.stop()
         self.stop()
 
+    def init_close_timer(self):
+        self.should_close = Timer(5, self.stop_me_async)
+
     def on_resume(self):
         self.alive_checker.on_resume()
         if not isinstance(self.should_close, bool):
-            self.should_close = Timer(5, self.stop_me_async)
+            self.call_soon_threadsafe(self.init_close_timer)
 
     def build_config(self, config):
         """
