@@ -695,8 +695,7 @@ class DeviceManagerService(object):
                 else:
                     Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
             elif (GenericDeviceManager.is_connected_state_s(oldstate) or
-                  (oldstate == DEVSTATE_DISCONNECTING and reason != DEVREASON_REQUESTED)) and\
-                    newstate == DEVSTATE_DISCONNECTED:
+                  oldstate == DEVSTATE_DISCONNECTING) and newstate == DEVSTATE_DISCONNECTED:
                 oper = 'c' if info['operation'] != 'd' else 'd'
                 if reason != DEVREASON_REQUESTED:
                     info['operation'] = oper
