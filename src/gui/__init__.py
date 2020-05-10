@@ -1036,7 +1036,7 @@ class MainApp(MDApp):
     def on_resume(self):
         self.alive_checker.on_resume()
         if not isinstance(self.should_close, bool):
-            self.call_soon_threadsafe(self.init_close_timer)
+            self.loop.call_soon_threadsafe(self.init_close_timer)
 
     def build_config(self, config):
         """
