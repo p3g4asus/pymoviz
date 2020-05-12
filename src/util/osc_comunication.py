@@ -1,5 +1,7 @@
 import asyncio
+import json
 import random
+import re
 import string
 from functools import partial
 import traceback
@@ -16,6 +18,8 @@ _LOGGER = init_logger(__name__)
 
 
 class OSCManager(object):
+    PKT_SPLIT = 65000
+
     def __init__(self,
                  hostlisten='127.0.0.1',
                  portlisten=33217,
@@ -174,6 +178,28 @@ class OSCManager(object):
                 pars = oscs
                 warn = False
             if item:
+                if not isinstance(item['split'], bool):
+                    mo = re.search(r'^#([0-9]+)/([0-9]+)#(.*)', pars[0])
+                    if mo:
+                        n1 = int(mo.group(1))
+                        n2 = int(mo.group(2))
+                        if n1 == item['split'] + 1 or n1 == 1:
+                            item['split'] = n1
+                            if n1 == 1:
+                                item['strsplit'] = mo.group(3)
+                            else:
+                                item['strsplit'] += mo.group(3)
+                        else:
+                            item['split'] = 0
+                            return
+                        if n1 != n2:
+                            return
+                        else:
+                            item['split'] = 0
+                            pars = tuple(json.loads(item['strsplit']))
+                    else:
+                        _LOGGER.warning('String is not splitted when split expected')
+                        return
                 if item['t']:
                     _LOGGER.debug(f'Cancelling unhandle timer add={address} uid={uid}')
                     item['t'].cancel()
@@ -191,19 +217,15 @@ class OSCManager(object):
         self.unhandle_device(COMMAND_CONFIRM, uid)
         confirm_callback(*confirm_params, *args, timeout=timeout)
 
-    def send_device(self, address, uid, *args, confirm_callback=None, confirm_params=(), timeout=-1):
-        if confirm_callback:
-            _LOGGER.debug(f'Adding handle for COMMAND_CONFIRM uid={uid} tim={timeout}')
-            self.handle_device(
-                COMMAND_CONFIRM,
-                uid,
-                partial(self.call_confirm_callback,
-                        uid=uid,
-                        confirm_params=confirm_params,
-                        confirm_callback=confirm_callback),
-                timeout=timeout)
+    def send_device(self, address, uid, *args, do_split=False, confirm_callback=None, confirm_params=(), timeout=-1):
         args = (uid,) + args
-        self.send(address, *args)
+        self.send(address,
+                  *args,
+                  uid=uid,
+                  do_split=do_split,
+                  confirm_callback=confirm_callback,
+                  confirm_params=confirm_params,
+                  timeout=timeout)
 
     def uninit(self):
         if self.transport:
@@ -233,25 +255,47 @@ class OSCManager(object):
                     d['client'].send_message(el['address'], args)
                 self.process_cmd_queue()
 
-    def send(self, address, *args, confirm_callback=None, confirm_params=(), timeout=-1):
-        if confirm_callback:
-            _LOGGER.debug(f'Adding handle for COMMAND_CONFIRM tim={timeout}')
-            self.handle(
-                COMMAND_CONFIRM,
-                partial(self.call_confirm_callback,
-                        uid='',
-                        confirm_params=confirm_params,
-                        confirm_callback=confirm_callback),
-                timeout=timeout)
-        args = list(args)
-        for i, s in enumerate(args):
-            if isinstance(s, SerializableDBObj):
-                args[i] = s.serialize()
+    def append_split(self, n1, n2, ststr, uid, address):
+        s = f'#{n1}/{n2}#{ststr[0:OSCManager.PKT_SPLIT]}'
+        args = [uid, s] if uid else [s]
+        _LOGGER.debug(f'Queuing split #{n1}/{n2}')
         self.cmd_queue.append(dict(
             address=address,
             args=tuple(args)
         ))
         self.process_cmd_queue()
+        if n1 < n2:
+            ststr = ststr[OSCManager.PKT_SPLIT:]
+            n1 += 1
+            Timer(0.1, partial(self.append_split, n1, n2, ststr, uid, address))
+
+    def send(self, address, *args, confirm_callback=None, confirm_params=(), do_split=False, timeout=-1, uid=''):
+        if confirm_callback:
+            _LOGGER.debug(f'Adding handle for COMMAND_CONFIRM tim={timeout}')
+            self.handle(
+                COMMAND_CONFIRM,
+                partial(self.call_confirm_callback,
+                        uid=uid,
+                        confirm_params=confirm_params,
+                        confirm_callback=confirm_callback),
+                timeout=timeout,
+                do_split=do_split)
+        args = list(args)
+        for i, s in enumerate(args):
+            if isinstance(s, SerializableDBObj):
+                args[i] = s.serialize()
+        if do_split:
+            ststr = json.dumps(args[(1 if uid else 0):])
+            n1 = len(ststr)
+            n2 = n1 // OSCManager.PKT_SPLIT + (1 if n1 % OSCManager.PKT_SPLIT else 0)
+            n1 = 1
+            Timer(0, partial(self.append_split, n1, n2, ststr, uid, address))
+        else:
+            self.cmd_queue.append(dict(
+                address=address,
+                args=tuple(args)
+            ))
+            self.process_cmd_queue()
 
     async def unhandle_by_timer(self, address, uid):
         if address in self.callbacks and uid in self.callbacks[address]:
@@ -266,14 +310,14 @@ class OSCManager(object):
 
     # def some_callback(address: str, *osc_arguments: List[Any]) -> None:
     # def some_callback(address: str, fixed_argument: List[Any], *osc_arguments: List[Any]) -> None:
-    def handle_device(self, address, uid, callback, *args, timeout=-1):
+    def handle_device(self, address, uid, callback, *args, timeout=-1, do_split=False):
         self.unhandle_device(address, uid)
         d = self.callbacks[address] if address in self.callbacks else dict()
         if timeout > 0:
             t = Timer(timeout, partial(self.unhandle_by_timer, address, uid))
         else:
             t = None
-        d[uid] = dict(f=callback, a=args, t=t)
+        d[uid] = dict(f=callback, a=args, t=t, split=False if not do_split else 0, strsplit='')
         self.callbacks[address] = d
         _LOGGER.debug(f'Handle Added add={address}, uid={uid} timeout={timeout} result={self.callbacks}')
 
@@ -284,8 +328,8 @@ class OSCManager(object):
             del self.callbacks[address][uid]
             _LOGGER.debug(f'Handle removed add={address}, uid={uid} result={self.callbacks}')
 
-    def handle(self, address, callback, *args, timeout=-1):
-        self.handle_device(address, '', callback, *args, timeout=timeout)
+    def handle(self, address, callback, *args, timeout=-1, do_split=False):
+        self.handle_device(address, '', callback, *args, timeout=timeout, do_split=do_split)
 
     def unhandle(self, address):
         self.unhandle_device(address, '')

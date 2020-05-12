@@ -21,7 +21,7 @@ from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_CONNECTORS,
                         COMMAND_LISTUSERS, COMMAND_LISTUSERS_RV,
                         COMMAND_LISTVIEWS, COMMAND_LISTVIEWS_RV, COMMAND_LOGLEVEL,
                         COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
-                        COMMAND_PRINTMSG, COMMAND_SAVEDEVICE,
+                        COMMAND_PRINTMSG, COMMAND_QUERY, COMMAND_SAVEDEVICE,
                         COMMAND_SAVEUSER, COMMAND_SAVEVIEW, COMMAND_SEARCH,
                         COMMAND_STOP, CONFIRM_FAILED_1, CONFIRM_FAILED_2,
                         CONFIRM_OK, DEVREASON_BLE_DISABLED,
@@ -279,6 +279,7 @@ class DeviceManagerService(object):
             self.oscer.handle(COMMAND_STOP, self.on_command_stop)
             self.oscer.handle(COMMAND_LOGLEVEL, self.on_command_loglevel)
             self.oscer.handle(COMMAND_NEWDEVICE, self.on_command_newdevice)
+            self.oscer.handle(COMMAND_QUERY, self.on_command_query, do_split=True)
             self.oscer.handle(COMMAND_CONNECT, self.on_command_condisc, 'c')
             self.oscer.handle(COMMAND_DISCONNECT, self.on_command_condisc, 'd')
             self.oscer.handle(COMMAND_CONNECTORS, self.on_command_connectors)
@@ -466,6 +467,39 @@ class DeviceManagerService(object):
                 on_command_handle=self.on_event_command_handle,
                 on_state_transition=self.on_event_state_transition)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
+
+    async def db_query(self, txt):
+        result = dict(error='', rows=[], cols=[], rowcount=0, changes=0, lastrowid=-1)
+        try:
+            async with self.db.cursor() as cursor:
+                result['changes_before'] = self.db.total_changes
+                await cursor.execute(txt)
+                lst = result['rows']
+                result['rowcount'] = cursor.rowcount
+                result['lastrowid'] = cursor.lastrowid
+                result['changes_after'] = self.db.total_changes
+                async for row in cursor:
+                    if not result['cols']:
+                        result['cols'] = list(row.keys())
+                    item = ''
+                    for r in result['cols']:
+                        item += f'\t{row[r]}'
+                    lst.append(item.strip())
+            await self.db.commit()
+        except Exception as ex:
+            result['error'] = str(ex)
+            _LOGGER.error(f'Query Error {traceback.format_exc()}')
+        _LOGGER.info(f'Query result {result}')
+        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, result, do_split=True)
+
+    def on_command_query(self, txt, *args):
+        _LOGGER.debug(f'on_command_query {txt}')
+        if not self.db:
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % self.db_fname)
+        elif self.devicemanagers_all_stopped():
+            Timer(0, partial(self.db_query, txt))
+        else:
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID)
 
     def on_command_loglevel(self, level, notify_screen_on, notify_every_ms, *args):
         init_logger(__name__, level)
@@ -751,6 +785,7 @@ class DeviceManagerService(object):
 
     async def uninit_db(self):
         if self.db:
+            await self.db.commit()
             await self.db.close()
 
     async def stop(self):

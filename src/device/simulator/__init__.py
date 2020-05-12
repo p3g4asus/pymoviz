@@ -50,7 +50,7 @@ class DeviceSimulator(abc.ABC, EventDispatcher):
                     await self.session.to_db(self.db, True)
                 self.nUpdates = self.nUpdates + 1
                 try:
-                    commit = nowms - self.last_commit > 10000
+                    commit = nowms - self.last_commit > 30000
                     obj.session = self.session.rowid
                     await obj.to_db(self.db, commit)
                     if commit:

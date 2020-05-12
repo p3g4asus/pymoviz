@@ -23,6 +23,7 @@ from device.manager import GenericDeviceManager
 from gui.settingbuttons import SettingButtons
 from gui.typewidget import TypeWidget
 from gui.typewidget_cb import TypeWidgetCB
+from gui.querywidget import QueryWidget
 from gui.useredit import UserWidget
 from gui.velocity_tab import VelocityTab
 from gui.viewedit import ViewPlayWidget, ViewWidget
@@ -47,7 +48,7 @@ from util.const import (COMMAND_CONNECT, COMMAND_CONNECTORS, COMMAND_DELUSER,
                         COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV, COMMAND_LISTUSERS,
                         COMMAND_LISTUSERS_RV, COMMAND_LISTVIEWS, COMMAND_LISTVIEWS_RV,
                         COMMAND_LOGLEVEL, COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
-                        COMMAND_PRINTMSG,
+                        COMMAND_PRINTMSG, COMMAND_QUERY,
                         COMMAND_SAVEUSER, COMMAND_SAVEVIEW, COMMAND_STOP,
                         CONFIRM_FAILED_3, CONFIRM_OK, MSG_COMMAND_TIMEOUT)
 from util.osc_comunication import OSCManager
@@ -404,6 +405,33 @@ class MainApp(MDApp):
     def on_view_removed(self, view):
         self.root.ids.id_tabcont.remove_widget(view)
 
+    def on_confirm_query(self, *args, widget=None, timeout=False):
+        result = dict()
+        if timeout:
+            result['error'] = 'Timeout detected'
+        elif args[0] != CONFIRM_OK:
+            result['error'] = args[1]
+        else:
+            result = args[1]
+        widget.set_result(result)
+
+    def send_query(self, inst, txt):
+        if txt:
+            self.oscer.send(COMMAND_QUERY,
+                            txt,
+                            confirm_callback=partial(
+                                self.on_confirm_query,
+                                widget=inst),
+                            do_split=True,
+                            timeout=int(self.config.get('debug', 'query_timeout')))
+
+    def open_query(self, *args, **kwargs):
+        self.current_widget = QueryWidget(
+            on_query=self.send_query
+        )
+        self.root.ids.id_screen_manager.add_widget(self.current_widget)
+        self.root.ids.id_screen_manager.current = self.current_widget.name
+
     def generic_delete(self, *args, **kwargs):
         self.current_widget = TypeWidget(
             types=dict(
@@ -623,6 +651,12 @@ class MainApp(MDApp):
                 text="Delete...",
                 icon="delete",
                 callback=self.generic_delete
+            ),
+            dict(
+                viewclass="MDMenuItem",
+                text="Query...",
+                icon="database-search",
+                callback=self.open_query
             ),
             dict(
                 viewclass="MDMenuItem",
@@ -1056,7 +1090,8 @@ class MainApp(MDApp):
         config.setdefaults('log',
                            {'verbosity': 'INFO'})
         config.setdefaults('debug',
-                           {'debug_keiserm3i_rescan_timeout': 900})
+                           {'debug_keiserm3i_rescan_timeout': 900,
+                            'query_timeout': 30})
         config.setdefaults('preaction',
                            {'autoconnect': '0'})
         config.setdefaults('misc',
@@ -1283,6 +1318,8 @@ class MainApp(MDApp):
                                 verb,
                                 int(self.config.get('misc', 'notify_screen_on')),
                                 int(self.config.get('misc', 'notify_every_ms')))
+        elif section == 'debug' and key == 'query_timeout':
+            return
         elif self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
                 self.check_other_config():
             if self.oscer:

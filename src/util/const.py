@@ -75,6 +75,7 @@ COMMAND_SAVEUSER = '/saveuser'
 COMMAND_DELUSER = '/deluser'
 COMMAND_PRINTMSG = '/printmsg'
 COMMAND_LOGLEVEL = '/loglevel'
+COMMAND_QUERY = '/query'
 
 COMMAND_WBD_CHARACTERISTICCHANGED = '/wbd_characteristic_changed'
 COMMAND_WBD_CHARACTERISTICREAD = '/wbd_characteristic_read'

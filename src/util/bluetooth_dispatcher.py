@@ -52,7 +52,7 @@ class BluetoothDispatcherW(BluetoothDispatcherBase):
                 on_init_ok=self.on_osc_init_ok,
                 on_connection_timeout=self.on_connection_timeout))
 
-    def on_osc_init_ok(self):
+    def on_osc_init_ok(self, exception=None):
         pass
 
     def on_connection_timeout(self, hp, is_timeout):
