@@ -89,7 +89,7 @@ class QueryWidget(Screen):
                 txt += f'cols: %s\n' % ("\t".join(result["cols"]))
             txt2 = '\n'.join(result['rows'])
             if len(result['rows']) > 100:
-                txt += ('\n'.join(result['rows'][0:100])) + '...\n'
+                txt += ('\n'.join(result['rows'][0:100])) + '\n...\n'
             else:
                 txt += txt2
             if txt2:
