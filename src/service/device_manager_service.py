@@ -495,11 +495,11 @@ class DeviceManagerService(object):
     def on_command_query(self, txt, *args):
         _LOGGER.debug(f'on_command_query {txt}')
         if not self.db:
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % self.db_fname)
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % self.db_fname, do_split=True)
         elif self.devicemanagers_all_stopped():
             Timer(0, partial(self.db_query, txt))
         else:
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID)
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID, do_split=True)
 
     def on_command_loglevel(self, level, notify_screen_on, notify_every_ms, *args):
         init_logger(__name__, level)
