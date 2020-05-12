@@ -4,6 +4,8 @@ from kivy.uix.screenmanager import Screen
 from kivymd.toast.kivytoast.kivytoast import toast
 from util import init_logger
 
+import traceback
+
 
 _LOGGER = init_logger(__name__)
 
@@ -91,8 +93,11 @@ class QueryWidget(Screen):
             else:
                 txt += txt2
             if txt2:
-                Clipboard.copy(txt2)
-                toast('Query result rows have been copied to clipboard')
+                try:
+                    Clipboard.copy(txt2)
+                    toast('Query result rows have been copied to clipboard')
+                except Exception:
+                    _LOGGER.error(f'Copy Exception {traceback.format_exc()}')
         self.ids.id_result.text = txt
 
     def on_result(self, ti, txt, *args):
