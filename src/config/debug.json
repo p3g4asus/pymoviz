@@ -1,12 +1,5 @@
 [
     {
-        "type": "numeric",
-        "title": "Query Timeout",
-        "desc": "Stop waiting query results after (s)",
-        "section": "debug",
-        "key": "query_timeout"
-    },
-    {
         "type": "title",
         "title": "Keiser M3i"
     },

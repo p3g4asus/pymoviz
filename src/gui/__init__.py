@@ -423,7 +423,7 @@ class MainApp(MDApp):
                                 self.on_confirm_query,
                                 widget=inst),
                             do_split=True,
-                            timeout=int(self.config.get('debug', 'query_timeout')))
+                            timeout=int(self.config.get('misc', 'query_timeout')))
 
     def open_query(self, *args, **kwargs):
         self.current_widget = QueryWidget(
@@ -1090,13 +1090,13 @@ class MainApp(MDApp):
         config.setdefaults('log',
                            {'verbosity': 'INFO'})
         config.setdefaults('debug',
-                           {'debug_keiserm3i_rescan_timeout': 900,
-                            'query_timeout': 30})
+                           {'debug_keiserm3i_rescan_timeout': 900})
         config.setdefaults('preaction',
                            {'autoconnect': '0'})
         config.setdefaults('misc',
                            {'notify_screen_on': '0' if platform == 'android' else '-1',
-                            'notify_every_ms': '0' if platform == 'android' else '-1'})
+                            'notify_every_ms': '0' if platform == 'android' else '-1',
+                            'query_timeout': 100})
         if platform == 'android':
             config.setdefaults('misc',
                                {'screenon': '0'})
@@ -1165,7 +1165,12 @@ class MainApp(MDApp):
                     desc=self.connectors_path,
                     section="misc",
                     key="connectors",
-                    buttons=[dict(title="Open", id="btn_open")])]
+                    buttons=[dict(title="Open", id="btn_open")]),
+               dict(type="numeric",
+                    title="Query Timeout",
+                    desc="Stop waiting query results after (s)",
+                    section="misc",
+                    key="query_timeout")]
         if platform == 'android':
             lst.extend([dict(type='bool',
                              title='Keep Screen on',
@@ -1318,7 +1323,7 @@ class MainApp(MDApp):
                                 verb,
                                 int(self.config.get('misc', 'notify_screen_on')),
                                 int(self.config.get('misc', 'notify_every_ms')))
-        elif section == 'debug' and key == 'query_timeout':
+        elif section == 'misc' and key == 'query_timeout':
             return
         elif self.check_host_port_config('frontend') and self.check_host_port_config('backend') and\
                 self.check_other_config():
