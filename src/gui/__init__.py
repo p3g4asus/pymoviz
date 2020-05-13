@@ -414,9 +414,11 @@ class MainApp(MDApp):
         else:
             result = args[1]
         widget.set_result(result)
+        self.set_screen_on(int(self.config.get('misc', 'screenon')))
 
     def send_query(self, inst, txt):
         if txt:
+            self.set_screen_on(True)
             self.oscer.send(COMMAND_QUERY,
                             txt,
                             confirm_callback=partial(
