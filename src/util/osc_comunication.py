@@ -272,8 +272,9 @@ class OSCManager(object):
     def send(self, address, *args, confirm_callback=None, confirm_params=(), do_split=False, timeout=-1, uid=''):
         if confirm_callback:
             _LOGGER.debug(f'Adding handle for COMMAND_CONFIRM tim={timeout}')
-            self.handle(
+            self.handle_device(
                 COMMAND_CONFIRM,
+                uid,
                 partial(self.call_confirm_callback,
                         uid=uid,
                         confirm_params=confirm_params,
