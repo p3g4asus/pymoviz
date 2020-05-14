@@ -983,6 +983,8 @@ class MainApp(MDApp):
             else:
                 Timer(2, self.check_alive_after_start)
         else:
+            if platform != 'android' and self.auto_connect_done == -2:
+                self.auto_connect_done = -1
             if not self.devicemanagers_pre_init_done:
                 for d in self.devicemanagers_pre_init_undo.keys():
                     if self.devicemanagers_pre_init_undo[d] is None:
