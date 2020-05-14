@@ -1096,16 +1096,13 @@ class MainApp(MDApp):
         config.setdefaults('debug',
                            {'debug_keiserm3i_rescan_timeout': 900})
         config.setdefaults('preaction',
-                           {'autoconnect': '0'})
+                           {'autoconnect': '0',
+                            'closefrontend': '0'})
         config.setdefaults('misc',
                            {'notify_screen_on': '0' if platform == 'android' else '-1',
                             'notify_every_ms': '0' if platform == 'android' else '-1',
-                            'query_timeout': 100})
-        if platform == 'android':
-            config.setdefaults('misc',
-                               {'screenon': '0'})
-            config.setdefaults('preaction',
-                               {'closefrontend': '0'})
+                            'query_timeout': 100,
+                            'screenon': '0'})
         self.db_path = self.db_dir()
         self.connectors_path = join(self.db_path, 'connectors')
         self.connectors_info = self.find_connectors_info()
