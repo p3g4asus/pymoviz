@@ -118,7 +118,7 @@ class QueryWidget(Screen):
         next_query = False
         _LOGGER.info(f'Query results {results}')
         for i, result in enumerate(results):
-            if self.query_state >= 0 and not result['rows']:
+            if self.query_state >= 0 and 'rows' in result and not result['rows']:
                 break
             elif 'cols' in result and ['__file__'] == result['cols'] and len(results) > i + 1:
                 if result['rows']:
