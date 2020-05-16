@@ -179,6 +179,7 @@ class OSCManager(object):
                 warn = False
             if item:
                 if not isinstance(item['split'], bool):
+                    error = False
                     mo = re.search(r'^#([0-9]+)/([0-9]+)#(.*)', pars[0])
                     if mo:
                         n1 = int(mo.group(1))
@@ -191,7 +192,7 @@ class OSCManager(object):
                                 item['strsplit'] += mo.group(3)
                         else:
                             item['split'] = 0
-                            return
+                            error = True
                         if n1 != n2:
                             return
                         else:
@@ -199,6 +200,11 @@ class OSCManager(object):
                             pars = tuple(json.loads(item['strsplit']))
                     else:
                         _LOGGER.warning('String is not splitted when split expected')
+                        error = True
+                    if error:
+                        if item['t']:
+                            item['t'].cancel()
+                            item['t'] = Timer(0, partial(self.unhandle_by_timer, address, uid))
                         return
                 if item['t']:
                     _LOGGER.debug(f'Cancelling unhandle timer add={address} uid={uid}')
