@@ -1,3 +1,4 @@
+import traceback
 from os.path import join
 
 from kivy.core.clipboard import Clipboard
@@ -5,9 +6,6 @@ from kivy.lang import Builder
 from kivy.uix.screenmanager import Screen
 from kivymd.toast.kivytoast.kivytoast import toast
 from util import db_dir, init_logger
-
-import traceback
-
 
 _LOGGER = init_logger(__name__)
 
@@ -120,7 +118,9 @@ class QueryWidget(Screen):
         next_query = False
         _LOGGER.info(f'Query results {results}')
         for i, result in enumerate(results):
-            if 'cols' in result and ['__file__'] == result['cols'] and len(results) > i + 1:
+            if self.query_state >= 0 and not result['rows']:
+                break
+            elif 'cols' in result and ['__file__'] == result['cols'] and len(results) > i + 1:
                 if result['rows']:
                     next_query = self.query_state >= 0
                     fname = join(db_dir('sessions'), result['rows'][0])
