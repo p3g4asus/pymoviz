@@ -29,6 +29,7 @@ from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_CONNECTORS,
                         DEVSTATE_CONNECTING, DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_SEARCHING, MSG_CONNECTION_STATE_INVALID,
                         MSG_DB_SAVE_ERROR, MSG_DEVICE_NOT_STOPPED, MSG_INVALID_ITEM,
+                        MSG_INVALID_PARAM,
                         MSG_TYPE_DEVICE_UNKNOWN, MSG_WAITING_FOR_CONNECTING,
                         PRESENCE_REQUEST_ACTION, PRESENCE_RESPONSE_ACTION)
 from util.osc_comunication import OSCManager
@@ -468,7 +469,7 @@ class DeviceManagerService(object):
                 on_state_transition=self.on_event_state_transition)
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
 
-    async def db_query(self, txt):
+    async def db_query_single(self, txt):
         result = dict(error='', rows=[], cols=[], rowcount=0, changes=0, lastrowid=-1)
         try:
             async with self.db.cursor() as cursor:
@@ -490,12 +491,24 @@ class DeviceManagerService(object):
             result['error'] = str(ex)
             _LOGGER.error(f'Query Error {traceback.format_exc()}')
         _LOGGER.info(f'Query result {result}')
-        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, result, do_split=True)
+        return result
+
+    async def db_query(self, txt):
+        queries = re.split(r';[\r\n]*', txt)
+        results = []
+        for q in queries:
+            q = q.strip()
+            if q:
+                r = await self.db_query_single(q)
+                results.append(r)
+        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, results, do_split=True)
 
     def on_command_query(self, txt, *args):
         _LOGGER.debug(f'on_command_query {txt}')
         if not self.db:
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % self.db_fname, do_split=True)
+        elif not txt:
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_INVALID_PARAM, do_split=True)
         elif self.devicemanagers_all_stopped():
             Timer(0, partial(self.db_query, txt))
         else:

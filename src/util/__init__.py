@@ -1,10 +1,12 @@
 import asyncio
 import glob
 import logging
-from logging.handlers import SocketHandler
-from os.path import basename, dirname, isfile, join, splitext
+import os
 import sys
 import traceback
+
+from logging.handlers import SocketHandler
+from os.path import basename, dirname, exists, expanduser, isfile, join, splitext
 
 
 async def asyncio_graceful_shutdown(loop, logger, perform_loop_stop=True):
@@ -24,6 +26,30 @@ async def asyncio_graceful_shutdown(loop, logger, perform_loop_stop=True):
         if perform_loop_stop:
             logger.info("Shutdown: Flushing metrics")
             loop.stop()
+
+
+def db_dir(*args):
+    from kivy.utils import platform
+    if platform == "android":
+        from jnius import autoclass
+        Environment = autoclass('android.os.Environment')
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        ctx = PythonActivity.mActivity
+        strg = ctx.getExternalFilesDirs(None)
+        dest = strg[0]
+        for f in strg:
+            if Environment.isExternalStorageRemovable(f):
+                dest = f
+                break
+        pth = dest.getAbsolutePath()
+    else:
+        home = expanduser("~")
+        pth = join(home, '.kivymoviz')
+    if args:
+        pth = join(pth, *args)
+    if not exists(pth):
+        os.mkdir(pth)
+    return pth
 
 
 def deep_clone(el):

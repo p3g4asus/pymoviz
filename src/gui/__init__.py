@@ -15,7 +15,7 @@ import time
 import traceback
 from functools import partial
 import logging
-from os.path import basename, dirname, exists, expanduser, isfile, join
+from os.path import basename, dirname, exists, isfile, join
 
 from db.user import User
 from db.view import View
@@ -54,7 +54,7 @@ from util.const import (COMMAND_CONNECT, COMMAND_CONNECTORS, COMMAND_DELUSER,
 from util.osc_comunication import OSCManager
 from util.timer import Timer
 from util.velocity_tcp import TcpClient
-from util import asyncio_graceful_shutdown, find_devicemanager_classes,\
+from util import asyncio_graceful_shutdown, db_dir, find_devicemanager_classes,\
     get_natural_color, get_verbosity, init_logger
 
 
@@ -291,27 +291,6 @@ class MyTabs(MDTabs):
 
 class MainApp(MDApp):
 
-    @staticmethod
-    def db_dir():
-        if platform == "android":
-            from jnius import autoclass
-            Environment = autoclass('android.os.Environment')
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            ctx = PythonActivity.mActivity
-            strg = ctx.getExternalFilesDirs(None)
-            dest = strg[0]
-            for f in strg:
-                if Environment.isExternalStorageRemovable(f):
-                    dest = f
-                    break
-            pth = dest.getAbsolutePath()
-        else:
-            home = expanduser("~")
-            pth = join(home, '.kivymoviz')
-        if not exists(pth):
-            os.mkdir(pth)
-        return pth
-
     def format_version(self):
         return "%d.%d.%d" % __version__
 
@@ -406,11 +385,11 @@ class MainApp(MDApp):
         self.root.ids.id_tabcont.remove_widget(view)
 
     def on_confirm_query(self, *args, widget=None, timeout=False):
-        result = dict()
+        result = []
         if timeout:
-            result['error'] = 'Timeout detected'
+            result.append(dict(error='Timeout detected'))
         elif args[0] != CONFIRM_OK:
-            result['error'] = args[1]
+            result.append(dict(error=args[1]))
         else:
             result = args[1]
         widget.set_result(result)
@@ -1103,7 +1082,7 @@ class MainApp(MDApp):
                             'notify_every_ms': '0' if platform == 'android' else '-1',
                             'query_timeout': 100,
                             'screenon': '0'})
-        self.db_path = self.db_dir()
+        self.db_path = db_dir()
         self.connectors_path = join(self.db_path, 'connectors')
         self.connectors_info = self.find_connectors_info()
         for _, actdata in self.devicemanagers_pre_actions.items():
