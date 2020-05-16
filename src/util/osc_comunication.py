@@ -195,7 +195,7 @@ class OSCManager(object):
                             error = True
                         if n1 != n2:
                             return
-                        else:
+                        elif not error:
                             item['split'] = 0
                             pars = tuple(json.loads(item['strsplit']))
                     else:
