@@ -10,7 +10,7 @@ from db import SerializableDBObj
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import AsyncIOOSCUDPServer
 from pythonosc.udp_client import SimpleUDPClient
-from util.const import COMMAND_CONFIRM, COMMAND_CONNECTION
+from util.const import COMMAND_CONFIRM, COMMAND_CONNECTION, COMMAND_SPLIT
 from util.timer import Timer
 from util import init_logger
 
@@ -178,8 +178,7 @@ class OSCManager(object):
                 pars = oscs
                 warn = False
             if item:
-                if not isinstance(item['split'], bool):
-                    error = False
+                if not isinstance(item['split'], bool) and address != COMMAND_SPLIT:
                     mo = re.search(r'^#([0-9]+)/([0-9]+)#(.*)', pars[0])
                     if mo:
                         n1 = int(mo.group(1))
@@ -190,22 +189,14 @@ class OSCManager(object):
                                 item['strsplit'] = mo.group(3)
                             else:
                                 item['strsplit'] += mo.group(3)
-                        else:
-                            item['split'] = 0
-                            error = True
+                            self.send_device(COMMAND_SPLIT, uid)
                         if n1 != n2:
                             return
-                        elif not error:
+                        else:
                             item['split'] = 0
                             pars = tuple(json.loads(item['strsplit']))
                     else:
                         _LOGGER.warning('String is not splitted when split expected')
-                        error = True
-                    if error:
-                        if item['t']:
-                            item['t'].cancel()
-                            item['t'] = Timer(0, partial(self.unhandle_by_timer, address, uid))
-                        return
                 if item['t']:
                     _LOGGER.debug(f'Cancelling unhandle timer add={address} uid={uid}')
                     item['t'].cancel()
@@ -255,52 +246,109 @@ class OSCManager(object):
             if not self.hostconnect or (hpstr in self.connected_hosts and not self.connected_hosts[hpstr]['timeout']):
                 el = self.cmd_queue.pop(0)
                 args = ('()',) if not el['args'] else el['args']
+                if 'handles' in el:
+                    for p in el['handles']:
+                        self.handle_device(p['address'],
+                                           p['uid'],
+                                           p['callback'],
+                                           *p['args'],
+                                           **p['kwargs'])
                 for _, d in self.connected_hosts.items():
                     if el['address'] != COMMAND_CONNECTION:
                         _LOGGER.debug(f'Sending[{d["hp"][0]}:{d["hp"][1]}] {el["address"]} -> {args}')
                     d['client'].send_message(el['address'], args)
                 self.process_cmd_queue()
 
-    def append_split(self, n1, n2, ststr, uid, address):
-        s = f'#{n1}/{n2}#{ststr[0:OSCManager.PKT_SPLIT]}'
-        args = [uid, s] if uid else [s]
-        _LOGGER.debug(f'Queuing split #{n1}/{n2}')
+    def call_split_callback(self, *args, timeout=False, uid='', item=None):
+        return self.send_split(
+                       retry=item['retry'],
+                       uid=uid,
+                       strsplit=item['strsplit'],
+                       split=item['split'],
+                       splits=item['splits'],
+                       currentsplit='' if not timeout else item['currentsplit'],
+                       sendto=item['sendto'])
+
+    def send_split(self,
+                   retry=-1,
+                   uid='',
+                   strsplit='',
+                   split=0,
+                   splits=0,
+                   currentsplit='',
+                   sendto=COMMAND_CONFIRM,
+                   handles=[]):
+        if not currentsplit:
+            split = split + 1
+            if split > splits:
+                return False
+            retry = 0
+            currentsplit = f'#{split}/{splits}#{strsplit[0:OSCManager.PKT_SPLIT]}'
+            strsplit = strsplit[OSCManager.PKT_SPLIT:]
+        else:
+            retry = retry + 1
+            if retry >= 5:
+                return False
+        args = [uid, currentsplit] if uid else [currentsplit]
+        _LOGGER.debug(f'Queuing split #{split}/{splits}')
+        item = dict(timeout=0.1 * (retry + 1),
+                    retry=retry,
+                    do_split=True,
+                    split=split,
+                    strsplit=strsplit,
+                    currentsplit=currentsplit,
+                    splits=splits,
+                    sendto=sendto)
+        handles.append(dict(
+                    address=COMMAND_SPLIT,
+                    uid=uid,
+                    args=(),
+                    callback=partial(self.call_split_callback,
+                                     uid=uid,
+                                     item=item),
+                    kwargs=item))
         self.cmd_queue.append(dict(
-            address=address,
-            args=tuple(args)
+            address=sendto,
+            args=tuple(args),
+            handles=handles
         ))
         self.process_cmd_queue()
-        if n1 < n2:
-            ststr = ststr[OSCManager.PKT_SPLIT:]
-            n1 += 1
-            Timer(0.1, partial(self.append_split, n1, n2, ststr, uid, address))
+        return True
 
     def send(self, address, *args, confirm_callback=None, confirm_params=(), do_split=False, timeout=-1, uid=''):
         if confirm_callback:
             _LOGGER.debug(f'Adding handle for COMMAND_CONFIRM tim={timeout}')
-            self.handle_device(
-                COMMAND_CONFIRM,
-                uid,
-                partial(self.call_confirm_callback,
+            handles = [dict(
+                address=COMMAND_CONFIRM,
+                uid=uid,
+                callback=partial(
+                        self.call_confirm_callback,
                         uid=uid,
                         confirm_params=confirm_params,
                         confirm_callback=confirm_callback),
-                timeout=timeout,
-                do_split=do_split)
+                kwargs=dict(timeout=timeout, do_split=do_split),
+                args=())]
+        else:
+            handles = []
         args = list(args)
         for i, s in enumerate(args):
             if isinstance(s, SerializableDBObj):
                 args[i] = s.serialize()
         if do_split:
-            ststr = json.dumps(args[(1 if uid else 0):])
-            n1 = len(ststr)
+            strsplit = json.dumps(args[(1 if uid else 0):])
+            n1 = len(strsplit)
             n2 = n1 // OSCManager.PKT_SPLIT + (1 if n1 % OSCManager.PKT_SPLIT else 0)
-            n1 = 1
-            Timer(0, partial(self.append_split, n1, n2, ststr, uid, address))
+            self.send_split(
+                uid=uid,
+                strsplit=strsplit,
+                splits=n2,
+                sendto=address,
+                handles=handles)
         else:
             self.cmd_queue.append(dict(
                 address=address,
-                args=tuple(args)
+                args=tuple(args),
+                handles=handles
             ))
             self.process_cmd_queue()
 
@@ -308,6 +356,7 @@ class OSCManager(object):
         if address in self.callbacks and uid in self.callbacks[address]:
             _LOGGER.debug(f'unhandling by timeout add={address}, uid={uid}')
             item = self.callbacks[address][uid]
+
             try:
                 item['f'](*item['a'], timeout=True)
             except Exception:
@@ -317,14 +366,21 @@ class OSCManager(object):
 
     # def some_callback(address: str, *osc_arguments: List[Any]) -> None:
     # def some_callback(address: str, fixed_argument: List[Any], *osc_arguments: List[Any]) -> None:
-    def handle_device(self, address, uid, callback, *args, timeout=-1, do_split=False):
+    def handle_device(self, address, uid, callback, *args, timeout=-1, do_split=False, **kwargs):
         self.unhandle_device(address, uid)
         d = self.callbacks[address] if address in self.callbacks else dict()
         if timeout > 0:
             t = Timer(timeout, partial(self.unhandle_by_timer, address, uid))
         else:
             t = None
-        d[uid] = dict(f=callback, a=args, t=t, split=False if not do_split else 0, strsplit='')
+        if do_split:
+            if address == COMMAND_SPLIT:
+                kwargs = dict(**kwargs)
+            else:
+                kwargs = dict(split=0, strsplit='')
+        else:
+            kwargs = dict(split=False)
+        d[uid] = dict(f=callback, a=args, t=t, **kwargs)
         self.callbacks[address] = d
         _LOGGER.debug(f'Handle Added add={address}, uid={uid} timeout={timeout} result={self.callbacks}')
 
