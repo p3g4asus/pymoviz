@@ -180,7 +180,9 @@ class OSCManager(object):
                 pars = oscs
                 warn = False
             if item:
-                if not isinstance(item['split'], bool) and address != COMMAND_SPLIT and pars and isinstance(pars[0], str):
+                if not isinstance(item['split'], bool) and address != COMMAND_SPLIT:
+                    if not pars or not isinstance(pars[0], str):
+                        return
                     mo = re.search(r'^#([0-9]+)/([0-9]+)#(.*)', pars[0])
                     if mo:
                         n1 = int(mo.group(1))
