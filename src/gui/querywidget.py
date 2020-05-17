@@ -24,7 +24,7 @@ Builder.load_string(
             size_hint: (1, 0.1)
             title: 'Execute Query'
             md_bg_color: app.theme_cls.primary_color
-            left_action_items: [["arrow-left", lambda x: root.dispatch_on_query(None)]]
+            left_action_items: [["arrow-left", lambda x: root.stop_querying(back=True)]]
             elevation: 10
         MDTextField:
             id: id_query
@@ -62,6 +62,8 @@ class QueryWidget(Screen):
         if txt.find('$limit') != -1:
             self.query_state = self.query_state + 1
             txt = txt.replace('$limit', f'1 offset {self.query_state}')
+        else:
+            self.query_state = -2
         return txt
 
     def start_querying(self):
@@ -69,6 +71,21 @@ class QueryWidget(Screen):
         self.result_text = ''
         self.query_text = self.ids.id_query.text
         self.dispatch_on_query(self.get_query(self.query_text))
+
+    def stop_querying(self, back=False):
+        is_querying = self.query_state != -1
+        self.ids.id_result.text = self.result_text
+        self.query_state = -1
+        self.result_text = ''
+        self.query_text = ''
+        self.ids.id_query.readonly = False
+        if self.ids.id_query.error:
+            self.ids.id_toolbar.right_action_items = []
+        else:
+            self.ids.id_toolbar.right_action_items = [
+                ["floppy", lambda x: self.start_querying()],
+            ]
+        self.dispatch_on_query(None if back else '', is_querying)
 
     def enable_buttons(self, inst, text, *args, **kwargs):
         dis = not text
@@ -153,6 +170,11 @@ class QueryWidget(Screen):
         self.ids.id_result.text = self.result_text = txt
         if next_query:
             self.dispatch_on_query(self.get_query(self.query_text))
+        else:
+            self.ids.id_query.readonly = False
+            self.ids.id_toolbar.right_action_items = [
+                ["floppy", lambda x: self.start_querying()],
+            ]
 
     def on_result(self, ti, txt, *args):
         width_calc = self.ids.scrlv.width
@@ -161,8 +183,15 @@ class QueryWidget(Screen):
                                                         ti._label_cached) + 20)
         ti.width = width_calc
 
-    def dispatch_on_query(self, query):
+    def dispatch_on_query(self, query, is_querying=False):
         if not query:
-            self.manager.remove_widget(self)
-        self.ids.id_result.text = 'Querying...'
+            if query is None:
+                self.manager.remove_widget(self)
+            query = '' if is_querying else None
+        elif query:
+            self.ids.id_result.text = 'Querying...\n' + self.result_text
+            self.ids.id_query.readonly = True
+            self.ids.id_toolbar.right_action_items = [
+                ["stop", lambda x: self.stop_querying()],
+            ]
         self.dispatch("on_query", query)

@@ -48,7 +48,7 @@ from util.const import (COMMAND_CONNECT, COMMAND_CONNECTORS, COMMAND_DELUSER,
                         COMMAND_LISTDEVICES, COMMAND_LISTDEVICES_RV, COMMAND_LISTUSERS,
                         COMMAND_LISTUSERS_RV, COMMAND_LISTVIEWS, COMMAND_LISTVIEWS_RV,
                         COMMAND_LOGLEVEL, COMMAND_NEWDEVICE, COMMAND_NEWSESSION,
-                        COMMAND_PRINTMSG, COMMAND_QUERY,
+                        COMMAND_PRINTMSG, COMMAND_CONFIRM, COMMAND_QUERY,
                         COMMAND_SAVEUSER, COMMAND_SAVEVIEW, COMMAND_STOP,
                         CONFIRM_FAILED_3, CONFIRM_OK, MSG_COMMAND_TIMEOUT)
 from util.osc_comunication import OSCManager
@@ -405,6 +405,8 @@ class MainApp(MDApp):
                                 widget=inst),
                             do_split=True,
                             timeout=int(self.config.get('misc', 'query_timeout')))
+        elif txt is not None:
+            self.oscer.unhandle(COMMAND_CONFIRM)
 
     def open_query(self, *args, **kwargs):
         self.current_widget = QueryWidget(

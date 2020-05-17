@@ -194,6 +194,10 @@ class OSCManager(object):
                             else:
                                 item['strsplit'] += mo.group(3)
                             self.send(COMMAND_SPLIT, n1, n2, uid=uid)
+                            if n1 != n2 and item['t']:
+                                item['t'].cancel()
+                                item['t'] = Timer(7,
+                                                  partial(self.unhandle_by_timer, address, uid))
                         else:
                             return
                         if n1 != n2:
