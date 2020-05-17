@@ -301,7 +301,7 @@ class OSCManager(object):
             if retry >= 10:
                 return False
         args = [uid, currentsplit] if uid else [currentsplit]
-        item = dict(timeout=0.1 * (retry + 1),
+        item = dict(timeout=0.5 * (retry + 1),
                     retry=retry,
                     do_split=True,
                     split=split,
