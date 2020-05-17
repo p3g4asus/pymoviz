@@ -4,6 +4,7 @@ import random
 import re
 import string
 from functools import partial
+from time import time
 import traceback
 
 from db import SerializableDBObj
@@ -164,6 +165,7 @@ class OSCManager(object):
         if address != COMMAND_CONNECTION:
             _LOGGER.debug(f'Received cmd={address} par={str(oscs)}')
         warn = True
+        uid = ''
         if address in self.callbacks:
             item = None
             if len(oscs) > 0 and isinstance(oscs[0], str) and oscs[0] in self.callbacks[address]:
@@ -189,7 +191,9 @@ class OSCManager(object):
                                 item['strsplit'] = mo.group(3)
                             else:
                                 item['strsplit'] += mo.group(3)
-                            self.send_device(COMMAND_SPLIT, uid)
+                            self.send(COMMAND_SPLIT, n1, n2, uid=uid)
+                        else:
+                            return
                         if n1 != n2:
                             return
                         else:
@@ -197,6 +201,7 @@ class OSCManager(object):
                             pars = tuple(json.loads(item['strsplit']))
                     else:
                         _LOGGER.warning('String is not splitted when split expected')
+                        return
                 if item['t']:
                     _LOGGER.debug(f'Cancelling unhandle timer add={address} uid={uid}')
                     item['t'].cancel()
@@ -207,7 +212,7 @@ class OSCManager(object):
                 except Exception:
                     _LOGGER.error(f'Handler({fixedpars}, {pars} [{self.deserialize(pars)}]) error {traceback.format_exc()}')
         if warn:
-            _LOGGER.warning(f'Handler not found ({self.callbacks})')
+            _LOGGER.warning(f'Handler not found for {address} (uid={uid}) ({self.callbacks})')
 
     def call_confirm_callback(self, *args, confirm_callback=None, confirm_params=(), timeout=False, uid=''):
         _LOGGER.debug(f'Calling confirm_callback with cp={confirm_params} args={args}')
@@ -252,17 +257,21 @@ class OSCManager(object):
                                            p['uid'],
                                            p['callback'],
                                            *p['args'],
-                                           **p['kwargs'])
+                                           **p['kwargs'],
+                                           last_sent=time())
                 for _, d in self.connected_hosts.items():
                     if el['address'] != COMMAND_CONNECTION:
                         _LOGGER.debug(f'Sending[{d["hp"][0]}:{d["hp"][1]}] {el["address"]} -> {args}')
                     d['client'].send_message(el['address'], args)
                 self.process_cmd_queue()
 
-    def call_split_callback(self, *args, timeout=False, uid='', item=None):
+    def call_split_callback(self, *args, timeout=False, uid='', item=None, last_sent=0):
+        idx = 0 if not uid else 1
+        timeout = timeout or item['splits'] != args[idx + 1] or item['split'] != args[idx + 0]
         return self.send_split(
                        retry=item['retry'],
                        uid=uid,
+                       last_sent=last_sent,
                        strsplit=item['strsplit'],
                        split=item['split'],
                        splits=item['splits'],
@@ -275,9 +284,10 @@ class OSCManager(object):
                    strsplit='',
                    split=0,
                    splits=0,
+                   last_sent=0,
                    currentsplit='',
                    sendto=COMMAND_CONFIRM,
-                   handles=[]):
+                   handles=None):
         if not currentsplit:
             split = split + 1
             if split > splits:
@@ -287,10 +297,10 @@ class OSCManager(object):
             strsplit = strsplit[OSCManager.PKT_SPLIT:]
         else:
             retry = retry + 1
-            if retry >= 5:
+            _LOGGER.info(f'Timeout detected passed = {time()-last_sent} Split {split} / {splits} Retry {retry}')
+            if retry >= 10:
                 return False
         args = [uid, currentsplit] if uid else [currentsplit]
-        _LOGGER.debug(f'Queuing split #{split}/{splits}')
         item = dict(timeout=0.1 * (retry + 1),
                     retry=retry,
                     do_split=True,
@@ -299,6 +309,8 @@ class OSCManager(object):
                     currentsplit=currentsplit,
                     splits=splits,
                     sendto=sendto)
+        if handles is None:
+            handles = []
         handles.append(dict(
                     address=COMMAND_SPLIT,
                     uid=uid,
@@ -356,13 +368,16 @@ class OSCManager(object):
         if address in self.callbacks and uid in self.callbacks[address]:
             _LOGGER.debug(f'unhandling by timeout add={address}, uid={uid}')
             item = self.callbacks[address][uid]
-
+            del self.callbacks[address][uid]
             try:
-                item['f'](*item['a'], timeout=True)
+                if 'last_sent' in item:
+                    kwargs = dict(last_sent=item['last_sent'])
+                else:
+                    kwargs = dict()
+                item['f'](*item['a'], timeout=True, **kwargs)
             except Exception:
                 _LOGGER.error(f'Handler error {traceback.format_exc()}')
             _LOGGER.debug(f'Handler exited add={address}, uid={uid}')
-            del self.callbacks[address][uid]
 
     # def some_callback(address: str, *osc_arguments: List[Any]) -> None:
     # def some_callback(address: str, fixed_argument: List[Any], *osc_arguments: List[Any]) -> None:

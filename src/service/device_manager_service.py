@@ -490,7 +490,8 @@ class DeviceManagerService(object):
         except Exception as ex:
             result['error'] = str(ex)
             _LOGGER.error(f'Query Error {traceback.format_exc()}')
-        _LOGGER.info(f'Query result {result}')
+        _LOGGER.info(f'Query {txt} result obtained')
+        _LOGGER.debug(f'Query result {result}')
         return result
 
     async def db_query(self, txt):

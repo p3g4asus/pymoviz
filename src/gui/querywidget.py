@@ -116,7 +116,8 @@ class QueryWidget(Screen):
         txt = self.result_text
         complete_all = ''
         next_query = False
-        _LOGGER.info(f'Query results {results}')
+        _LOGGER.info(f'Query results arrived')
+        _LOGGER.debug(f'Query results {results}')
         for i, result in enumerate(results):
             if self.query_state >= 0 and 'rows' in result and not result['rows']:
                 break
