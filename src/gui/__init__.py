@@ -295,15 +295,38 @@ class MainApp(MDApp):
         return "%d.%d.%d" % __version__
 
     def disconnect_active_views(self, *args, **kwargs):
-        self.oscer.send(COMMAND_DISCONNECT)
+        self.oscer.send(COMMAND_DISCONNECT,
+                        confirm_callback=partial(
+                            self.on_confirm_condisc_active_views,
+                            cmd='d'),
+                        timeout=5)
 
-    def connect_active_views(self, *args, **kwargs):
+    def on_confirm_condisc_active_views(self, *args, timeout=False, cmd='c', close=False, screenoff=False):
+        if timeout:
+            if cmd == 'c':
+                self.connect_active_views(close=close, screenoff=screenoff)
+            else:
+                self.disconnect_active_views()
+            toast('Timeout waiting for command confirm')
+        elif close:
+            self.init_close_timer()
+        elif screenoff:
+            self.set_screen_on(False)
+
+    def connect_active_views(self, *args, close=False, screenoff=False, **kwargs):
         if not self.is_pre_init_ok():
             toast('Cannot perform connection: pre init failed')
         elif not self.current_user:
             snack_open('Please select a user first', 'Select', self.generic_edit_user)
         else:
-            self.oscer.send(COMMAND_CONNECT, self.current_user)
+            self.oscer.send(COMMAND_CONNECT,
+                            self.current_user,
+                            confirm_callback=partial(
+                                self.on_confirm_condisc_active_views,
+                                cmd='c',
+                                screenoff=screenoff,
+                                close=close),
+                            timeout=5)
 
     def generic_edit(self, *args, **kwargs):
         self.current_widget = TypeWidget(
@@ -764,12 +787,15 @@ class MainApp(MDApp):
                 self.init_osc_timer.cancel()
             self.init_osc_timer = Timer(0, self.on_osc_init_ok_cmd) if self.init_osc_cmd else None
             if not nextcmd:
+                autoconnect = False
+                autoclose = False
                 if self.auto_connect_done == -1:
                     if int(self.config.get('preaction', 'autoconnect')):
-                        self.connect_active_views()
-                    if self.should_close is True and platform == 'android' and int(self.config.get('preaction', 'closefrontend')):
-                        self.init_close_timer()
-                if isinstance(self.should_close, bool) and self.auto_connect_done < 0 and platform == 'android' and\
+                        autoclose = self.should_close is True and platform == 'android' and int(self.config.get('preaction', 'closefrontend'))
+                        autoconnect = True
+                        self.connect_active_views(close=autoclose,
+                                                  screenoff=not autoclose and not int(self.config.get('misc', 'screenon')))
+                if not autoconnect and self.auto_connect_done < 0 and platform == 'android' and\
                         not int(self.config.get('misc', 'screenon')):
                     self.set_screen_on(False)
                 self.auto_connect_done = 0

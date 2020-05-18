@@ -309,6 +309,7 @@ class DeviceManagerService(object):
 
     def on_command_condisc(self, cmd, *args):
         _LOGGER.info(f'On Command condisc: {cmd}')
+        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, cmd)
         if cmd == 'c':
             self.last_user = args[0]
         for dm in self.devicemanagers_active_done.copy():
