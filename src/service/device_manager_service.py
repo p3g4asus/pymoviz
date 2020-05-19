@@ -29,7 +29,7 @@ from util.const import (COMMAND_CONFIRM, COMMAND_CONNECT, COMMAND_CONNECTORS,
                         DEVSTATE_CONNECTING, DEVSTATE_DISCONNECTED, DEVSTATE_DISCONNECTING,
                         DEVSTATE_SEARCHING, MSG_CONNECTION_STATE_INVALID,
                         MSG_DB_SAVE_ERROR, MSG_DEVICE_NOT_STOPPED, MSG_INVALID_ITEM,
-                        MSG_INVALID_PARAM,
+                        MSG_INVALID_PARAM, MSG_INVALID_USER,
                         MSG_TYPE_DEVICE_UNKNOWN, MSG_WAITING_FOR_CONNECTING,
                         PRESENCE_REQUEST_ACTION, PRESENCE_RESPONSE_ACTION)
 from util.osc_comunication import OSCManager
@@ -309,9 +309,13 @@ class DeviceManagerService(object):
 
     def on_command_condisc(self, cmd, *args):
         _LOGGER.info(f'On Command condisc: {cmd}')
-        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, cmd)
         if cmd == 'c':
-            self.last_user = args[0]
+            if args and isinstance(args[0], User) and args[0] in self.users:
+                self.last_user = args[0]
+            else:
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_INVALID_USER)
+                return
+        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, cmd)
         for dm in self.devicemanagers_active_done.copy():
             self.devicemanagers_active.append(dm)
             self.devicemanagers_active_done.remove(dm)

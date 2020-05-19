@@ -302,7 +302,7 @@ class MainApp(MDApp):
                         timeout=5)
 
     def on_confirm_condisc_active_views(self, *args, timeout=False, cmd='c', close=False, screenoff=False):
-        if timeout:
+        if timeout or args[0] != CONFIRM_OK:
             if cmd == 'c':
                 self.connect_active_views(close=close, screenoff=screenoff)
             else:
