@@ -187,11 +187,12 @@ class OSCManager(object):
                     if mo:
                         n1 = int(mo.group(1))
                         n2 = int(mo.group(2))
-                        if n1 == item['split'] + 1 or n1 == 1:
+                        n3 = item['split']
+                        if n1 == n3 + 1 or n1 == n3 or n1 == 1:
                             item['split'] = n1
                             if n1 == 1:
                                 item['strsplit'] = mo.group(3)
-                            else:
+                            elif n1 == n3 + 1:
                                 item['strsplit'] += mo.group(3)
                             self.send(COMMAND_SPLIT, n1, n2, uid=uid)
                             if n1 != n2 and item['t']:
