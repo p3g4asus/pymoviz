@@ -295,11 +295,12 @@ class MainApp(MDApp):
         return "%d.%d.%d" % __version__
 
     def disconnect_active_views(self, *args, **kwargs):
-        self.oscer.send(COMMAND_DISCONNECT,
-                        confirm_callback=partial(
-                            self.on_confirm_condisc_active_views,
-                            cmd='d'),
-                        timeout=5)
+        if self.oscer:
+            self.oscer.send(COMMAND_DISCONNECT,
+                            confirm_callback=partial(
+                                self.on_confirm_condisc_active_views,
+                                cmd='d'),
+                            timeout=5)
 
     def on_confirm_condisc_active_views(self, *args, timeout=False, cmd='c', close=False, screenoff=False):
         if timeout or args[0] != CONFIRM_OK:
@@ -318,7 +319,7 @@ class MainApp(MDApp):
             toast('Cannot perform connection: pre init failed')
         elif not self.current_user:
             snack_open('Please select a user first', 'Select', self.generic_edit_user)
-        else:
+        elif self.oscer:
             self.oscer.send(COMMAND_CONNECT,
                             self.current_user,
                             confirm_callback=partial(
@@ -419,17 +420,18 @@ class MainApp(MDApp):
         self.set_screen_on(int(self.config.get('misc', 'screenon')))
 
     def send_query(self, inst, txt):
-        if txt:
-            self.set_screen_on(True)
-            self.oscer.send(COMMAND_QUERY,
-                            txt,
-                            confirm_callback=partial(
-                                self.on_confirm_query,
-                                widget=inst),
-                            do_split=True,
-                            timeout=int(self.config.get('misc', 'query_timeout')))
-        elif txt is not None:
-            self.oscer.unhandle(COMMAND_CONFIRM)
+        if self.oscer:
+            if txt:
+                self.set_screen_on(True)
+                self.oscer.send(COMMAND_QUERY,
+                                txt,
+                                confirm_callback=partial(
+                                    self.on_confirm_query,
+                                    widget=inst),
+                                do_split=True,
+                                timeout=int(self.config.get('misc', 'query_timeout')))
+            elif txt is not None:
+                self.oscer.unhandle(COMMAND_CONFIRM)
 
     def open_query(self, *args, **kwargs):
         self.current_widget = QueryWidget(
