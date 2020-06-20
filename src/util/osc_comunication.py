@@ -109,7 +109,7 @@ class OSCManager(object):
         if self.user_on_connection_timeout:
             self.user_on_connection_timeout(hp, timeout)
 
-    def on_command_connection(self, hp, portlisten, timeout=False):
+    def on_command_connection(self, hp, portlisten, timeout=False, sender=None):
         # _LOGGER.debug(f'On command connection type={type(portlisten)}')
         hp = (hp[0], portlisten)
         hpstr = f'{hp[0]}:{hp[1]}'
