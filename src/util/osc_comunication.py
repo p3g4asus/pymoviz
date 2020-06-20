@@ -111,6 +111,7 @@ class OSCManager(object):
 
     def on_command_connection(self, hp, portlisten, timeout=False, sender=None):
         # _LOGGER.debug(f'On command connection type={type(portlisten)}')
+        conn_from = hp
         hp = (hp[0], portlisten)
         hpstr = f'{hp[0]}:{hp[1]}'
         send_command = self.hostconnect is None or timeout
@@ -119,6 +120,7 @@ class OSCManager(object):
         if hpstr not in self.connected_hosts:
             self.connected_hosts[hpstr] = dict(
                 hp=hp,
+                conn_from=conn_from,
                 timeout=timeout,
                 timer=None,
                 client=SimpleUDPClient(hp[0], hp[1])
@@ -126,6 +128,7 @@ class OSCManager(object):
             rearm_timer = True
         elif not timeout and self.connected_hosts[hpstr]['timeout']:
             self.connected_hosts[hpstr]['timeout'] = False
+            self.connected_hosts[hpstr]['conn_from'] = conn_from
             # _LOGGER.debug('Setting timeout to false')
         else:
             new_connection = False
@@ -267,10 +270,10 @@ class OSCManager(object):
                                            *p['args'],
                                            **p['kwargs'],
                                            last_sent=time())
-                for hpstr, d in self.connected_hosts.items():
-                    if el['address'] != COMMAND_CONNECTION:
-                        _LOGGER.debug(f'Maybe Sending {el["dest"]} = {hpstr}')
-                    if not el['dest'] or hpstr == f'{el["dest"][0]}:{el["dest"][1]}':
+                for _, d in self.connected_hosts.items():
+                    # if el['address'] != COMMAND_CONNECTION:
+                    #     _LOGGER.debug(f'Maybe Sending {el["dest"]} = {hpstr}')
+                    if not el['dest'] or d['conn_from'] == el['dest']:
                         if el['address'] != COMMAND_CONNECTION:
                             _LOGGER.debug(f'Sending[{d["hp"][0]}:{d["hp"][1]}] {el["address"]} -> {args}')
                         d['client'].send_message(el['address'], args)
