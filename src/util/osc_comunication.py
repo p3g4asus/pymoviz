@@ -163,7 +163,7 @@ class OSCManager(object):
 
     def device_callback(self, client_address, address, *oscs):
         if address != COMMAND_CONNECTION:
-            _LOGGER.debug(f'Received cmd={address} par={str(oscs)}')
+            _LOGGER.debug(f'Received cmd={address} cla={client_address} par={str(oscs)}')
         warn = True
         uid = ''
         if address in self.callbacks:
@@ -267,8 +267,8 @@ class OSCManager(object):
                                            *p['args'],
                                            **p['kwargs'],
                                            last_sent=time())
-                for _, d in self.connected_hosts.items():
-                    if not el['dest'] or d['hp'] == el['dest']:
+                for hpstr, d in self.connected_hosts.items():
+                    if not el['dest'] or hpstr == el['dest']:
                         if el['address'] != COMMAND_CONNECTION:
                             _LOGGER.debug(f'Sending[{d["hp"][0]}:{d["hp"][1]}] {el["address"]} -> {args}')
                         d['client'].send_message(el['address'], args)
