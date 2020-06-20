@@ -268,7 +268,7 @@ class OSCManager(object):
                                            **p['kwargs'],
                                            last_sent=time())
                 for hpstr, d in self.connected_hosts.items():
-                    if not el['dest'] or hpstr == el['dest']:
+                    if not el['dest'] or hpstr == f'{el["dest"][0]}:{el["dest"][1]}':
                         if el['address'] != COMMAND_CONNECTION:
                             _LOGGER.debug(f'Sending[{d["hp"][0]}:{d["hp"][1]}] {el["address"]} -> {args}')
                         d['client'].send_message(el['address'], args)
