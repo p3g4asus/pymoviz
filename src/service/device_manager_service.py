@@ -520,7 +520,7 @@ class DeviceManagerService(object):
         else:
             self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID, do_split=True, dest=sender)
 
-    def on_command_loglevel(self, level, notify_screen_on, notify_every_ms, *args):
+    def on_command_loglevel(self, level, notify_screen_on, notify_every_ms, *args, sender=None, **kwargs):
         init_logger(__name__, level)
         self.verbose = level
         if notify_screen_on >= 0:
