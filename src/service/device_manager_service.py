@@ -528,7 +528,7 @@ class DeviceManagerService(object):
         if notify_every_ms >= 0:
             self.notify_every_ms = notify_every_ms
 
-    def on_command_stop(self, *args):
+    def on_command_stop(self, *args, sender=None, **kwargs):
         self.loop.stop()
 
     def reset_service_notifications(self):
