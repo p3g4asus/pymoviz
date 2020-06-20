@@ -307,15 +307,15 @@ class DeviceManagerService(object):
                                                        cls=User))
             self.create_device_managers()
 
-    def on_command_condisc(self, cmd, *args):
+    def on_command_condisc(self, cmd, *args, sender=None, **kwargs):
         _LOGGER.info(f'On Command condisc: {cmd}')
         if cmd == 'c':
             if args and isinstance(args[0], User) and args[0] in self.users:
                 self.last_user = args[0]
             else:
-                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_INVALID_USER)
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_INVALID_USER, dest=sender)
                 return
-        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, cmd)
+        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, cmd, dest=sender)
         for dm in self.devicemanagers_active_done.copy():
             self.devicemanagers_active.append(dm)
             self.devicemanagers_active_done.remove(dm)
@@ -326,50 +326,50 @@ class DeviceManagerService(object):
             info['retry'] = 0
         Timer(0, partial(self.start_remaining_connection_operations, bytimer=False))
 
-    def on_command_listviews(self, *args):
+    def on_command_listviews(self, *args, sender=None, **kwargs):
         _LOGGER.info('List view before send:')
         for v in self.views:
             _LOGGER.info(f'View = {v}')
-        self.oscer.send(COMMAND_LISTVIEWS_RV, *self.views)
+        self.oscer.send(COMMAND_LISTVIEWS_RV, *self.views, dest=sender)
 
-    def on_command_listusers(self, *args):
-        self.oscer.send(COMMAND_LISTUSERS_RV, *self.users)
+    def on_command_listusers(self, *args, sender=None, **kwargs):
+        self.oscer.send(COMMAND_LISTUSERS_RV, *self.users, dest=sender)
 
-    def on_command_connectors(self, connectors_info, *args):
+    def on_command_connectors(self, connectors_info, *args, sender=None, **kwargs):
         connectors_info = json.loads(connectors_info)
         if connectors_info:
             for ci in connectors_info:
                 if not exists(ci['temp']):
-                    self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1)
+                    self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, dest=sender)
                     return
             self.connectors_format = True
             Timer(0, partial(TcpClient.init_connectors_async, self.loop, connectors_info))
-        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK)
+        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, dest=sender)
 
-    def on_command_listdevices(self, *args):
+    def on_command_listdevices(self, *args, sender=None, **kwargs):
         out = []
         for uid, dm in self.devicemanagers_by_uid.items():
             out.append(uid)
             out.append(dm.get_device())
-        self.oscer.send(COMMAND_LISTDEVICES_RV, *out)
+        self.oscer.send(COMMAND_LISTDEVICES_RV, *out, dest=sender)
 
-    async def on_command_delelem_async(self, elem, *args, lst=None, on_ok=None):
+    async def on_command_delelem_async(self, elem, *args, lst=None, on_ok=None, sender=None, **kwargs):
         try:
             _LOGGER.info(f'on_command_delelem_async {elem}')
             rv = await elem.delete(self.db)
             if rv:
                 if elem in lst:
                     lst.remove(elem)
-                self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem)
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem, dest=sender)
                 if on_ok:
                     on_ok(elem)
                 TcpClient.reset_templates()
             else:
-                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem))
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem), dest=sender)
         except Exception:
             _LOGGER.error(f'on_command_delelem_async exception {traceback.format_exc()}')
 
-    async def on_command_saveelem_async(self, elem, *args, lst=None, on_ok=None):
+    async def on_command_saveelem_async(self, elem, *args, lst=None, on_ok=None, sender=None, **kwargs):
         try:
             _LOGGER.info(f'on_command_saveelem_async {elem}')
             rv = await elem.to_db(self.db)
@@ -378,24 +378,24 @@ class DeviceManagerService(object):
                     lst.append(elem)
                 else:
                     lst[lst.index(elem)] = elem
-                self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem)
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, elem, dest=sender)
                 if on_ok:
                     on_ok(elem)
                 TcpClient.reset_templates()
             else:
-                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem))
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % str(elem), dest=sender)
         except Exception:
             _LOGGER.error(f'on_command_saveelem_async exception {traceback.format_exc()}')
 
-    def on_command_dbelem(self, elem, *args, asyncmethod=None, lst=None, cls=None, on_ok=None):
+    def on_command_dbelem(self, elem, *args, asyncmethod=None, lst=None, cls=None, on_ok=None, sender=None, **kwargs):
         _LOGGER.info(f'on_command_dbelem {elem}')
         if isinstance(elem, cls):
             if self.devicemanagers_all_stopped():
                 Timer(0, partial(asyncmethod, elem, lst=lst, on_ok=on_ok))
             else:
-                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID)
+                self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID, dest=sender)
         else:
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_INVALID_ITEM)
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_INVALID_ITEM, dest=sender)
 
     def on_event_command_handle(self, dm, command, *args):
         _LOGGER.debug(f'On Command Handle dm={dm} comm={command} a={args}')
@@ -455,11 +455,11 @@ class DeviceManagerService(object):
         else:
             return False
 
-    def on_command_newdevice(self, typev, *args):
+    def on_command_newdevice(self, typev, *args, sender=None, **kwargs):
         if typev not in self.devicemanager_class_by_type:
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_TYPE_DEVICE_UNKNOWN)
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_TYPE_DEVICE_UNKNOWN, dest=sender)
         elif not self.devicemanagers_all_stopped():
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_CONNECTION_STATE_INVALID)
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_CONNECTION_STATE_INVALID, dest=sender)
         else:
             uid = self.generate_uid()
             self.devicemanagers_by_uid[uid] = self.devicemanager_class_by_type[typev](
@@ -472,7 +472,7 @@ class DeviceManagerService(object):
                 debug_params=self.debug_params.get(typev, dict()),
                 on_command_handle=self.on_event_command_handle,
                 on_state_transition=self.on_event_state_transition)
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid)
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, uid, dest=sender)
 
     async def db_query_single(self, txt):
         result = dict(error='', rows=[], cols=[], rowcount=0, changes=0, lastrowid=-1)
@@ -499,7 +499,7 @@ class DeviceManagerService(object):
         _LOGGER.debug(f'Query result {result}')
         return result
 
-    async def db_query(self, txt):
+    async def db_query(self, txt, sender=None):
         queries = re.split(r';[\r\n]*', txt)
         results = []
         for q in queries:
@@ -507,18 +507,18 @@ class DeviceManagerService(object):
             if q:
                 r = await self.db_query_single(q)
                 results.append(r)
-        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, results, do_split=True)
+        self.oscer.send(COMMAND_CONFIRM, CONFIRM_OK, results, do_split=True, dest=sender)
 
-    def on_command_query(self, txt, *args):
+    def on_command_query(self, txt, *args, sender=None, **kwargs):
         _LOGGER.debug(f'on_command_query {txt}')
         if not self.db:
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % self.db_fname, do_split=True)
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_1, MSG_DB_SAVE_ERROR % self.db_fname, do_split=True, dest=sender)
         elif not txt:
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_INVALID_PARAM, do_split=True)
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_INVALID_PARAM, do_split=True, dest=sender)
         elif self.devicemanagers_all_stopped():
-            Timer(0, partial(self.db_query, txt))
+            Timer(0, partial(self.db_query, txt, sender=None))
         else:
-            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID, do_split=True)
+            self.oscer.send(COMMAND_CONFIRM, CONFIRM_FAILED_2, MSG_CONNECTION_STATE_INVALID, do_split=True, dest=sender)
 
     def on_command_loglevel(self, level, notify_screen_on, notify_every_ms, *args):
         init_logger(__name__, level)

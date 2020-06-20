@@ -215,7 +215,7 @@ class OSCManager(object):
                     self.unhandle_device(address, uid)
                 try:
                     fixedpars = item['a'] if address != COMMAND_CONNECTION else (client_address,) + item['a']
-                    item['f'](*fixedpars, *self.deserialize(pars))
+                    item['f'](*fixedpars, *self.deserialize(pars), sender=client_address)
                 except Exception:
                     _LOGGER.error(f'Handler({fixedpars}, {pars} [{self.deserialize(pars)}]) error {traceback.format_exc()}')
         if warn:
@@ -226,7 +226,7 @@ class OSCManager(object):
         self.unhandle_device(COMMAND_CONFIRM, uid)
         confirm_callback(*confirm_params, *args, timeout=timeout)
 
-    def send_device(self, address, uid, *args, do_split=False, confirm_callback=None, confirm_params=(), timeout=-1):
+    def send_device(self, address, uid, *args, do_split=False, confirm_callback=None, confirm_params=(), timeout=-1, dest=None):
         args = (uid,) + args
         self.send(address,
                   *args,
@@ -234,7 +234,8 @@ class OSCManager(object):
                   do_split=do_split,
                   confirm_callback=confirm_callback,
                   confirm_params=confirm_params,
-                  timeout=timeout)
+                  timeout=timeout,
+                  dest=None)
 
     def uninit(self):
         if self.transport:
@@ -267,9 +268,10 @@ class OSCManager(object):
                                            **p['kwargs'],
                                            last_sent=time())
                 for _, d in self.connected_hosts.items():
-                    if el['address'] != COMMAND_CONNECTION:
-                        _LOGGER.debug(f'Sending[{d["hp"][0]}:{d["hp"][1]}] {el["address"]} -> {args}')
-                    d['client'].send_message(el['address'], args)
+                    if not el['dest'] or d['hp'] == el['dest']:
+                        if el['address'] != COMMAND_CONNECTION:
+                            _LOGGER.debug(f'Sending[{d["hp"][0]}:{d["hp"][1]}] {el["address"]} -> {args}')
+                        d['client'].send_message(el['address'], args)
                 self.process_cmd_queue()
 
     def call_split_callback(self, *args, timeout=False, uid='', item=None, last_sent=0):
@@ -283,7 +285,8 @@ class OSCManager(object):
                        split=item['split'],
                        splits=item['splits'],
                        currentsplit='' if not timeout else item['currentsplit'],
-                       sendto=item['sendto'])
+                       sendto=item['sendto'],
+                       dest=item['dest'])
 
     def send_split(self,
                    retry=-1,
@@ -294,6 +297,7 @@ class OSCManager(object):
                    last_sent=0,
                    currentsplit='',
                    sendto=COMMAND_CONFIRM,
+                   dest=None,
                    handles=None):
         if not currentsplit:
             split = split + 1
@@ -312,6 +316,7 @@ class OSCManager(object):
                     retry=retry,
                     do_split=True,
                     split=split,
+                    dest=dest,
                     strsplit=strsplit,
                     currentsplit=currentsplit,
                     splits=splits,
@@ -328,13 +333,14 @@ class OSCManager(object):
                     kwargs=item))
         self.cmd_queue.append(dict(
             address=sendto,
+            dest=dest,
             args=tuple(args),
             handles=handles
         ))
         self.process_cmd_queue()
         return True
 
-    def send(self, address, *args, confirm_callback=None, confirm_params=(), do_split=False, timeout=-1, uid=''):
+    def send(self, address, *args, confirm_callback=None, confirm_params=(), do_split=False, timeout=-1, uid='', dest=None):
         if confirm_callback:
             _LOGGER.debug(f'Adding handle for COMMAND_CONFIRM tim={timeout}')
             handles = [dict(
@@ -359,12 +365,14 @@ class OSCManager(object):
             n2 = n1 // OSCManager.PKT_SPLIT + (1 if n1 % OSCManager.PKT_SPLIT else 0)
             self.send_split(
                 uid=uid,
+                dest=dest,
                 strsplit=strsplit,
                 splits=n2,
                 sendto=address,
                 handles=handles)
         else:
             self.cmd_queue.append(dict(
+                dest=dest,
                 address=address,
                 args=tuple(args),
                 handles=handles

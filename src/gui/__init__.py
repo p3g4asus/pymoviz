@@ -824,10 +824,10 @@ class MainApp(MDApp):
             self.oscer.handle(COMMAND_PRINTMSG, self.on_printmsg)
             _LOGGER.info('Osc init ok done')
 
-    def on_printmsg(self, msg):
+    def on_printmsg(self, msg, **kwargs):
         toast(msg)
 
-    def on_list_devices_rv(self, *ld):
+    def on_list_devices_rv(self, *ld, **kwargs):
         self.devicemanagers_by_uid.clear()
         for x in range(0, len(ld), 2):
             dev = ld[x + 1]
@@ -858,7 +858,7 @@ class MainApp(MDApp):
             for f in self.all_format:
                 f(dev, device=args[0], fitobj=args[1], state=args[2], manager=inst)
 
-    def on_list_users_rv(self, *ld):
+    def on_list_users_rv(self, *ld, **kwargs):
         self.users = list(ld)
         useri = int(self.config.get('dbpars', 'user'))
         self.current_user = None
@@ -868,7 +868,7 @@ class MainApp(MDApp):
                 break
         self.on_osc_init_ok_cmd_next(COMMAND_LISTDEVICES)
 
-    def on_list_views_rv(self, *ld):
+    def on_list_views_rv(self, *ld, **kwargs):
         self.views = list(ld)
         self.root.ids.id_tabcont.new_view_list(self.views)
         self.on_osc_init_ok_cmd_next(COMMAND_LISTUSERS)
