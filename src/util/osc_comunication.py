@@ -224,7 +224,7 @@ class OSCManager(object):
         if warn:
             _LOGGER.warning(f'Handler not found for {address} (uid={uid}) ({self.callbacks})')
 
-    def call_confirm_callback(self, *args, confirm_callback=None, confirm_params=(), timeout=False, uid=''):
+    def call_confirm_callback(self, *args, confirm_callback=None, confirm_params=(), timeout=False, uid='', sender=None):
         _LOGGER.debug(f'Calling confirm_callback with cp={confirm_params} args={args}')
         self.unhandle_device(COMMAND_CONFIRM, uid)
         confirm_callback(*confirm_params, *args, timeout=timeout)
