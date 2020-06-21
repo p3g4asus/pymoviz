@@ -279,7 +279,7 @@ class OSCManager(object):
                         d['client'].send_message(el['address'], args)
                 self.process_cmd_queue()
 
-    def call_split_callback(self, *args, timeout=False, uid='', item=None, last_sent=0):
+    def call_split_callback(self, *args, timeout=False, uid='', item=None, last_sent=0, sender=None):
         idx = 0 if not uid else 1
         timeout = timeout or item['splits'] != args[idx + 1] or item['split'] != args[idx + 0]
         return self.send_split(
