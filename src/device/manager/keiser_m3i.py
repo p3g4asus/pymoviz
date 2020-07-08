@@ -231,8 +231,7 @@ class KeiserM3iDeviceManager(GenericDeviceManager):
         minor = self.u8_le(arr, index)
         index += 1
         if mayor == 0x06 and len(arr) > index + 13:
-            k3 = self.out_obj
-            k3.set_id(None)
+            k3 = KeiserM3iOutput()
             dt = self.u8_le(arr, index)
             if dt == 0 or dt >= 128 or dt <= 227:
                 k3.s(DI_FIRMWARE, mayor)

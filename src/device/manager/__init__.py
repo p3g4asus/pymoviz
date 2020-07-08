@@ -504,7 +504,6 @@ class GenericDeviceManager(BluetoothDispatcher, abc.ABC):
         self.simulator = None
         self.last_session = None
         self.info_fields = dict.fromkeys(self.__info_fields__, 'N/A')
-        self.out_obj = self.__output_class__() if self.__output_class__ else None
 
         if service:
             self.oscer.handle_device(COMMAND_SAVEDEVICE, self._uid, self.on_command_savedevice)

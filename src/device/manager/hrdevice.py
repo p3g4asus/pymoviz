@@ -166,8 +166,7 @@ class HRDeviceManager(GattDeviceManager):
         data = characteristic.getValue()
         flags = self.u8_le(data, i)
         i += 1
-        hro = self.out_obj
-        hro.set_id(None)
+        hro = HRDeviceOutput()
         if isHeartRateInUINT16(flags):
             hrmval = self.u16_le(data, i)
             i += 2
