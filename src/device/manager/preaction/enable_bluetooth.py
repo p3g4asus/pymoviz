@@ -1,5 +1,5 @@
 from . import Action
-from kivy.metrics import dp
+from kivy.utils import get_color_from_hex
 from util.bluetooth_dispatcher import BluetoothDispatcher
 from util import init_logger
 
@@ -57,12 +57,12 @@ class EnableBluetooth(Action):
 
     def build_dialog(self, config, device_types):
         from kivymd.uix.button import MDRaisedButton
-        from kivymd.uix.list import OneLineAvatarListItem
+        from kivymd.uix.list import OneLineListItem
         from kivymd.uix.dialog import MDDialog
         tp = ''
         for i, devt in enumerate(device_types):
             if len(device_types) > 1 and i == len(device_types) - 1:
-                tp += f'and {devt}'
+                tp += f' and {devt}'
             elif i > 0:
                 tp += f', {devt}'
             else:
@@ -71,13 +71,13 @@ class EnableBluetooth(Action):
             type="simple",
             title=f"Enabling Bluetooth is required for devices of type {tp}",
             items=[
-                OneLineAvatarListItem(
+                OneLineListItem(
                     text="ENABLE (always ask)",
-                    background_color=(255, 246, 51, 1),
+                    background_color=get_color_from_hex('#ecff33'),
                     on_release=lambda x: self._do_execute(True, config)),
-                OneLineAvatarListItem(
+                OneLineListItem(
                     text="ENABLE (never ask again)",
-                    background_color=(110, 255, 51, 1),
+                    background_color=get_color_from_hex('#58ff33'),
                     on_release=lambda x: self._do_execute(False, config))
             ],
             buttons=[
