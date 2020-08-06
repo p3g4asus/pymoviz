@@ -1,4 +1,5 @@
 from . import Action
+from kivy.metrics import dp
 from util.bluetooth_dispatcher import BluetoothDispatcher
 from util import init_logger
 
@@ -83,6 +84,9 @@ class EnableBluetooth(Action):
             ]
         )
         self.dialog.ids.button_box.orientation = 'vertical'
+        self.dialog.ids.root_button_box.anchor_x = 'center'
+        self.dialog.ids.root_button_box.anchor_y = 'bottom'
+        self.dialog.ids.root_button_box.height = dp(160)
         self.dialog.open()
 
     def execute(self, config, device_types, on_finish):
