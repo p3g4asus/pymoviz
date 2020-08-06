@@ -2,7 +2,7 @@ from gui.list_item_cb import get_brand_item
 from kivy.lang import Builder
 from kivy.properties import DictProperty, ObjectProperty, StringProperty
 from kivy.uix.screenmanager import Screen
-from util import get_natural_color, init_logger
+from util import init_logger
 
 
 _LOGGER = init_logger(__name__)
@@ -67,13 +67,11 @@ class TypeWidgetCB(Screen):
         self.buttons = []
         self.edit_widget = None
         self.edit_widget_txt = None
-        col = get_natural_color(False)
         for x, o in self.types.items():
             b = get_brand_item(group=self.group,
                                text=x,
                                brandinfo=x,
                                active=o['active'],
-                               background_color=col,
                                on_brand=self.on_brand_selected)
             self.buttons.append(b)
             self.ids.id_types.add_widget(b)

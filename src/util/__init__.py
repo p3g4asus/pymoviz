@@ -147,14 +147,6 @@ def find_devicemanager_classes(_LOGGER):
     return out
 
 
-def get_natural_color(hex=True):
-    from kivy.app import App
-    from kivy.utils import get_color_from_hex
-    from kivymd.color_definitions import colors
-    hexval = '#' + colors[App.get_running_app().theme_cls.theme_style]["Background"]
-    return hexval if hex else get_color_from_hex(hexval)
-
-
 def get_verbosity(config):
     if isinstance(config, str):
         verb = config
