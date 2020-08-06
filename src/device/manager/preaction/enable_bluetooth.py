@@ -56,7 +56,7 @@ class EnableBluetooth(Action):
 
     def build_dialog(self, config, device_types):
         from kivymd.uix.button import MDFlatButton, MDRaisedButton
-        from kivymd.dialog import MDDialog
+        from kivymd.uix.dialog import MDDialog
         tp = ''
         for i, devt in enumerate(device_types):
             if len(device_types) > 1 and i == len(device_types) - 1:
