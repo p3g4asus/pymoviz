@@ -57,7 +57,7 @@ class EnableBluetooth(Action):
 
     def build_dialog(self, config, device_types):
         from kivymd.uix.button import MDRaisedButton
-        from kivymd.uix.list import OneLineListItem
+        from kivymd.uix.list import OneLineAvatarListItem
         from kivymd.uix.dialog import MDDialog
         tp = ''
         for i, devt in enumerate(device_types):
@@ -71,11 +71,11 @@ class EnableBluetooth(Action):
             type="simple",
             title=f"Enabling Bluetooth is required for devices of type {tp}",
             items=[
-                OneLineListItem(
+                OneLineAvatarListItem(
                     text="ENABLE (always ask)",
                     background_color=(255, 246, 51, 1),
                     on_release=lambda x: self._do_execute(True, config)),
-                OneLineListItem(
+                OneLineAvatarListItem(
                     text="ENABLE (never ask again)",
                     background_color=(110, 255, 51, 1),
                     on_release=lambda x: self._do_execute(False, config))
