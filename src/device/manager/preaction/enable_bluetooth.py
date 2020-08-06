@@ -39,8 +39,10 @@ class EnableBluetooth(Action):
         self.dialog.dismiss()
         if alwaysask is not None:
             if not alwaysask:
+                _LOGGER.info('Writing config')
                 config.set('preaction', 'ask_enable_bluetooth', '0')
                 config.write()
+                _LOGGER.info('Write config done')
             self.dispatcher.enable()
         else:
             self.on_enable(EnableBluetooth, False, False)
@@ -69,7 +71,7 @@ class EnableBluetooth(Action):
         self.dialog = MDDialog(
             size_hint=(0.8, 0.3),
             title=f"Enable Bluetooth?",
-            type="confirmation",
+            type="simple",
             text=f"Enabling Bluetooth is required for devices of type {tp}",
             buttons=[
                 MDRaisedButton(
