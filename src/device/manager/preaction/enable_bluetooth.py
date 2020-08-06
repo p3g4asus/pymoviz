@@ -87,6 +87,7 @@ class EnableBluetooth(Action):
             ]
         )
         self.dialog.ids.title.font_style = "Body1"
+        self.dialog.ids.box_items.padding = (0, 0)
         # self.dialog.ids.button_box.orientation = 'vertical'
         # self.dialog.ids.root_button_box.anchor_x = 'center'
         # self.dialog.ids.root_button_box.anchor_y = 'bottom'
