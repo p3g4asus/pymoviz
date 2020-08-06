@@ -467,7 +467,7 @@ class MainApp(MDApp):
             dialog = MDDialog(
                 title=f"Confirm delete {nameitem}",
                 size_hint=(0.8, 0.3),
-                type="simple",
+                type="alert",
                 text=f"Delete {nameitem} {name}?",
                 buttons=[
                     MDFlatButton(

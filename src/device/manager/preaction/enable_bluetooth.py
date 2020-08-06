@@ -56,7 +56,8 @@ class EnableBluetooth(Action):
         self.on_disable(EnableBluetooth, wasdisabled, True)
 
     def build_dialog(self, config, device_types):
-        from kivymd.uix.button import MDFlatButton, MDRaisedButton
+        from kivymd.uix.button import MDRaisedButton
+        from kivymd.uix.list import OneLineListItem
         from kivymd.uix.dialog import MDDialog
         tp = ''
         for i, devt in enumerate(device_types):
@@ -67,26 +68,29 @@ class EnableBluetooth(Action):
             else:
                 tp += devt
         self.dialog = MDDialog(
-            size_hint=(0.8, 0.3),
-            title=f"Enable Bluetooth?",
             type="simple",
-            text=f"Enabling Bluetooth is required for devices of type {tp}",
+            title=f"Enabling Bluetooth is required for devices of type {tp}",
+            items=[
+                OneLineListItem(
+                    text="ENABLE (always ask)",
+                    background_color=(255, 246, 51, 1),
+                    on_release=lambda x: self._do_execute(True, config)),
+                OneLineListItem(
+                    text="ENABLE (never ask again)",
+                    background_color=(110, 255, 51, 1),
+                    on_release=lambda x: self._do_execute(False, config))
+            ],
             buttons=[
                 MDRaisedButton(
                     text="CANCEL", on_release=lambda x: self._do_execute(None, config)
-                ),
-                MDFlatButton(
-                    text="ENABLE (always ask)", on_release=lambda x: self._do_execute(True, config)
-                ),
-                MDFlatButton(
-                    text="ENABLE (never ask again)", on_release=lambda x: self._do_execute(False, config)
                 )
             ]
         )
-        self.dialog.ids.button_box.orientation = 'vertical'
-        self.dialog.ids.root_button_box.anchor_x = 'center'
-        self.dialog.ids.root_button_box.anchor_y = 'bottom'
-        self.dialog.ids.root_button_box.height = dp(160)
+        self.dialog.ids.title.font_style = "Body1"
+        # self.dialog.ids.button_box.orientation = 'vertical'
+        # self.dialog.ids.root_button_box.anchor_x = 'center'
+        # self.dialog.ids.root_button_box.anchor_y = 'bottom'
+        # self.dialog.ids.root_button_box.height = dp(160)
         self.dialog.open()
 
     def execute(self, config, device_types, on_finish):
