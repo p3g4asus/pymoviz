@@ -1,20 +1,19 @@
-from functools import partial
 import re
 import traceback
 
 from db.view import View
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.core.window import Window
 from kivy.properties import BooleanProperty, ListProperty, ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 from kivy.utils import get_color_from_hex
-from kivymd.uix.card import MDCardPost
 from kivymd.uix.list import TwoLineListItem
 from kivymd.uix.tab import MDTabsBase
-from util import get_natural_color, init_logger
+from util import init_logger
 from util.timer import Timer
+
+from .mdcardpost import SwipeToDeleteItem, ICON_TRASH
 
 
 _LOGGER = init_logger(__name__)
@@ -108,15 +107,16 @@ FORMATTER_COLORS = {
 }
 
 
-def init_formatter_colors():
-    if not FORMATTER_COLORS['NATURAL']:
-        FORMATTER_COLORS['NATURAL'] = get_natural_color()
+def _get_color_from_hex(col):
+    if col is None:
+        return (1, 1, 1, 0)
+    else:
+        return get_color_from_hex(col)
 
 
 class ViewPlayWidget(BoxLayout, MDTabsBase):
 
     def __init__(self, *args, **kwargs):
-        init_formatter_colors()
         if 'view' in kwargs:
             self.view = kwargs['view']
             del kwargs['view']
@@ -188,7 +188,7 @@ class FormatterItem(TwoLineListItem):
         self.text = self.formatter.get_title()
         self.secondary_text = self.formatter.set_timeout() if self.player else self.formatter.print_example()
         self.background_color = self.secondary_background_color =\
-            get_color_from_hex(FORMATTER_COLORS[
+            _get_color_from_hex(FORMATTER_COLORS[
                 self.formatter.background if self.formatter.background is not None
                 else 'NATURAL'])
 
@@ -212,35 +212,44 @@ class FormatterAdd(Screen):
             self.ids.id_formatters.add_widget(fi)
 
 
-class FormatterPost(MDCardPost):
+class FormatterPost(SwipeToDeleteItem):
     formatter = ObjectProperty()
+    remove_handler = ObjectProperty(None, allownone=True)
 
     def change_bg(self, elem, *args, html=None, **kwargs):
         self.formatter.set_background(elem)
-        self.background_color = get_color_from_hex(html)
+        self.background_color = _get_color_from_hex(html)
 
-    def __init__(self, formatter=None, callback=None):
+    def on_button_click(self, name):
+        if name == ICON_TRASH:
+            if self.remove_handler:
+                self.remove_handler(self, formatter=self.formatter)
+        else:
+            self.change_bg(name, html=FORMATTER_COLORS[name])
+
+    def __init__(self, formatter=None, remove_handler=None):
         menu_items = []
         ll = list(FORMATTER_COLORS.keys())
         ll.sort()
         for c in ll:
             menu_items.append(dict(
-                viewclass='MDMenuItem',
                 text=c,
-                callback=partial(self.change_bg, html=FORMATTER_COLORS[c])
+                font_style="Caption",
+                height="36dp",
+                top_pad="10dp",
+                bot_pad="10dp",
+                divider=None
             ))
         _LOGGER.debug(f'Creating post from {formatter}')
         super(FormatterPost, self).__init__(
             formatter=formatter,
-            tile_font_style='H3',
+            remove_handler=remove_handler,
             path_to_avatar=formatter.deviceobj.get_icon(),
             right_menu=menu_items,
             name_data=f'Name: {formatter.name}\nDevice: {formatter.deviceobj.get_alias()}',
-            swipe=True,
             text_post=formatter.print_example(),
-            card_size=(Window.width - 10, dp(80)),
-            callback=partial(callback, formatter=formatter),
-            background_color=get_color_from_hex(FORMATTER_COLORS[
+            height=dp(80),
+            background_color=_get_color_from_hex(FORMATTER_COLORS[
                 formatter.background if formatter.background is not None else 'NATURAL']))
 
 
@@ -250,7 +259,6 @@ class ViewWidget(Screen):
     formatters = ListProperty()
 
     def __init__(self, **kwargs):
-        init_formatter_colors()
         self.register_event_type('on_confirm')
         super(ViewWidget, self).__init__(**kwargs)
         self.view = self.obj
@@ -269,14 +277,14 @@ class ViewWidget(Screen):
         self.view2gui()
         _LOGGER.info(f"On view called {str(self.view)}")
 
-    def callback_card(self, elem, *args, formatter=None):
+    def remove_card(self, elem, *args, formatter=None):
         self.view.items.remove(formatter)
         self.ids.id_formatters.remove_widget(elem)
         if not len(self.ids.id_formatters.children):
             self.set_enabled(False)
 
     def formatter2widget(self, f):
-        pst = FormatterPost(formatter=f, callback=self.callback_card)
+        pst = FormatterPost(formatter=f, remove_handler=self.remove_card)
         return pst
 
     def gui2view(self):

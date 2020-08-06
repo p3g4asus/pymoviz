@@ -36,7 +36,7 @@ from kivy.uix.settings import SettingsWithSpinner
 from kivy.utils import platform
 from kivymd.app import MDApp
 from kivymd.toast.kivytoast.kivytoast import toast
-from kivymd.uix.button import MDFlatButton
+from kivymd.uix.button import MDFlatButton, MDRaisedButton
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.list import OneLineAvatarListItem
 from kivymd.uix.menu import MDDropdownMenu
@@ -60,7 +60,7 @@ from util import asyncio_graceful_shutdown, db_dir, find_devicemanager_classes,\
 
 _LOGGER = init_logger(__name__, level=logging.DEBUG)
 __prog__ = "pyMoviz"
-__version__ = (2, 1, 0)
+__version__ = (3, 0, 0)
 
 KV = \
     '''
@@ -105,7 +105,7 @@ KV = \
                 icon: "close"
                 x: root.parent.x + dp(10)
                 pos_hint: {"top": 1}
-                on_release: root.parent.toggle_nav_drawer()
+                on_release: root.parent.set_state("toggle")
 
             MDLabel:
                 markup: True
@@ -141,7 +141,7 @@ Screen:
                         id: id_toolbar
                         title: app.title
                         md_bg_color: app.theme_cls.primary_color
-                        left_action_items: [["menu", lambda x: nav_drawer.toggle_nav_drawer()]]
+                        left_action_items: [["menu", lambda x: nav_drawer.set_state("toggle")]]
                         right_action_items: [["lan-connect", app.connect_active_views], ["lan-disconnect", app.disconnect_active_views], ["dots-vertical", app.open_menu]]
 
                     MyTabs:
@@ -218,7 +218,7 @@ class MyTabs(MDTabs):
         if isinstance(w, View):
             w = self.already_present(w)
         if w and isinstance(w, (ViewPlayWidget, VelocityTab)):
-            super(MyTabs, self).remove_widget(w)
+            super(MyTabs, self).remove_widget(w.tab_label)
             idx = -3
             try:
                 idx = self.tab_list.index(w)
@@ -282,11 +282,11 @@ class MyTabs(MDTabs):
             tab.tab_label.state = "down"
             tab.tab_label.on_release()
 
-    def on_tab_switch(self, inst, text):
-        super(MyTabs, self).on_tab_switch(inst, text)
+    def on_tab_switch(self, tab, label, text):
+        super(MyTabs, self).on_tab_switch(tab, label, text)
         _LOGGER.info("On tab switch to %s" % str(text))
-        self.current_tab = inst.tab
-        _LOGGER.info("Gui: Currenttab = %s" % str(inst.tab))
+        self.current_tab = tab
+        _LOGGER.info("Gui: Currenttab = %s" % str(tab))
 
 
 class MainApp(MDApp):
@@ -467,14 +467,22 @@ class MainApp(MDApp):
             dialog = MDDialog(
                 title=f"Confirm delete {nameitem}",
                 size_hint=(0.8, 0.3),
-                text_button_ok="Yes",
+                type="simple",
                 text=f"Delete {nameitem} {name}?",
-                text_button_cancel="Cancel",
-                events_callback=partial(
-                    self.on_confirm_del_item,
-                    item=item,
-                    oscercmd=oscercmd,
-                    name=name)
+                buttons=[
+                    MDFlatButton(
+                        text="Yes", on_release=partial(self.on_confirm_del_item,
+                                                       item=item,
+                                                       oscercmd=oscercmd,
+                                                       name=name)
+                    ),
+                    MDRaisedButton(
+                        text="Cancel", on_release=partial(self.on_confirm_del_item,
+                                                          item=item,
+                                                          oscercmd=oscercmd,
+                                                          name=name)
+                    ),
+                ]
             )
             dialog.open()
 
@@ -498,8 +506,8 @@ class MainApp(MDApp):
             exitv = args[0]
         toast(f"[E {exitv}] {msg}")
 
-    def on_confirm_del_item(self, *args, item=None, name='', oscercmd=''):
-        if args[0] == 'Yes':
+    def on_confirm_del_item(self, but, *args, item=None, name='', oscercmd=''):
+        if but.text == 'Yes':
             if isinstance(item, GenericDeviceManager):
                 item.del_device(on_del_device=self.on_confirm_del_item_server)
             else:
@@ -509,6 +517,11 @@ class MainApp(MDApp):
                                     self.on_confirm_del_item_server,
                                     name=name),
                                 timeout=5)
+        while but:
+            but = but.parent
+            if isinstance(but, MDDialog):
+                but.dismiss()
+                break
 
     def generic_del_item(self, *arg, dct=dict(), nameitem='', oscercmd=''):
         self.current_widget = TypeWidget(
@@ -643,44 +656,85 @@ class MainApp(MDApp):
     def open_menu(self, *args, **kwargs):
         items = [
             dict(
-                viewclass="MDMenuItem",
                 text="Add...",
                 icon="plus",
-                callback=self.generic_add
+                font_style="Caption",
+                height="36dp",
+                top_pad="10dp",
+                bot_pad="10dp",
+                divider=None
             ),
             dict(
-                viewclass="MDMenuItem",
                 text="Edit...",
                 icon="square-edit-outline",
-                callback=self.generic_edit
+                font_style="Caption",
+                height="36dp",
+                top_pad="10dp",
+                bot_pad="10dp",
+                divider=None
             ),
             dict(
-                viewclass="MDMenuItem",
                 text="Delete...",
                 icon="delete",
-                callback=self.generic_delete
+                font_style="Caption",
+                height="36dp",
+                top_pad="10dp",
+                bot_pad="10dp",
+                divider=None
             ),
             dict(
-                viewclass="MDMenuItem",
                 text="Query...",
                 icon="database-search",
-                callback=self.open_query
+                font_style="Caption",
+                height="36dp",
+                top_pad="10dp",
+                bot_pad="10dp",
+                divider=None
             ),
             dict(
-                viewclass="MDMenuItem",
                 text="Stop backend",
                 icon="stop",
-                callback=self.stop_server
+                font_style="Caption",
+                height="36dp",
+                top_pad="10dp",
+                bot_pad="10dp",
+                divider=None
             ),
             dict(
-                viewclass="MDMenuItem",
                 text="Exit",
                 icon="exit-to-app",
-                callback=self.on_nav_exit
+                font_style="Caption",
+                height="36dp",
+                top_pad="10dp",
+                bot_pad="10dp",
+                divider=None
             )
         ]
-        MDDropdownMenu(items=items, width_mult=3).open(
-            self.root.ids.id_toolbar.ids["right_actions"].children[0])
+
+        def menu_callback(instance):
+            if instance.text == "Add...":
+                self.generic_add()
+            elif instance.text == "Edit...":
+                self.generic_edit()
+            elif instance.text == "Delete...":
+                self.generic_delete()
+            elif instance.text == "Query...":
+                self.open_query()
+            elif instance.text == "Stop backend":
+                self.stop_server()
+            elif instance.text == "Exit":
+                self.on_nav_exit()
+            while instance:
+                instance = instance.parent
+                if isinstance(instance, MDDropdownMenu):
+                    instance.dismiss()
+                    break
+
+        MDDropdownMenu(
+            items=items,
+            width_mult=3.5,
+            caller=self.root.ids.id_toolbar.ids["right_actions"].children[0],
+            callback=menu_callback).open()
 
 # https://stackoverflow.com/questions/42159927/http-basic-auth-on-twisted-klein-server
 # https://github.com/racker/python-twisted-core/blob/master/doc/examples/dbcred.py
@@ -1041,7 +1095,7 @@ class MainApp(MDApp):
         col = get_natural_color(False)
         for items in {
             "home-outline": ("Home", self.on_nav_home),
-            "settings-outline": ("Settings", self.on_nav_settings),
+            "cog-outline": ("Settings", self.on_nav_settings),
             "exit-to-app": ("Exit", self.on_nav_exit),
         }.items():
             self.root.ids.content_drawer.ids.box_item.add_widget(
@@ -1054,7 +1108,7 @@ class MainApp(MDApp):
             )
 
     def on_nav_home(self, *args, **kwargs):
-        self.root.ids.nav_drawer.toggle_nav_drawer()
+        self.root.ids.nav_drawer.set_state("close")
         self.root.ids.id_tabcont.simulate_tab_switch(0)
 
     def on_nav_exit(self, *args, **kwargs):

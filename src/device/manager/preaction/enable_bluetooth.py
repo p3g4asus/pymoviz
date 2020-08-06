@@ -5,67 +5,6 @@ from util import init_logger
 _LOGGER = init_logger(__name__)
 
 
-_GUI = '''
-#:import images_path kivymd.images_path
-
-<EnableBluetoothContentDialog>
-    orientation: 'vertical'
-    padding: dp(15)
-    spacing: dp(10)
-
-    MDLabel:
-        id: title
-        text: root.title
-        font_style: 'H6'
-        halign: 'left'
-        valign: 'top'
-        size_hint_y: None
-        text_size: self.width, None
-        height: self.texture_size[1]
-
-    ScrollView:
-        id: scroll
-        size_hint_y: None
-        height:
-            root.height - (box_buttons.height + title.height + dp(48)\
-            + sep.height)
-
-        canvas:
-            Rectangle:
-                pos: self.pos
-                size: self.size
-                #source: f'{images_path}dialog_in_fade.png'
-                source: f'{images_path}transparent.png'
-
-        MDLabel:
-            text: '\\n' + root.text + '\\n'
-            size_hint_y: None
-            height: self.texture_size[1]
-            valign: 'top'
-            halign: 'left'
-            markup: True
-
-    MDSeparator:
-        id: sep
-
-    BoxLayout:
-        orientation: 'vertical'
-        id: box_buttons
-        size_hint_y: None
-        height: dp(120)
-        spacing: dp(10)
-        MDFlatButton:
-            id: id_cancelbtn
-            text: 'CANCEL'
-        MDRaisedButton:
-            id: id_askbtn
-            text: 'ENABLE (always ask)'
-        MDRaisedButton:
-            id: id_noaskbtn
-            text: 'ENABLE (never ask again)'
-'''
-
-
 class MyBluetoothDispatcher(BluetoothDispatcher):
     def __init__(self, loop, on_enable=None, on_disable=None):
         self.on_enable = on_enable
@@ -116,40 +55,33 @@ class EnableBluetooth(Action):
         self.on_disable(EnableBluetooth, wasdisabled, True)
 
     def build_dialog(self, config, device_types):
-        from kivy.uix.modalview import ModalView
-        from kivymd.theming import ThemableBehavior
-        from kivy.properties import StringProperty
-        from kivy.lang import Builder
-        from kivymd.uix.card import MDCard
-
-        Builder.load_string(_GUI)
-
-        class EnableBluetoothContentDialog(MDCard):
-            text = StringProperty()
-            title = StringProperty()
-
-            def __init__(self, action, config=None, device_types=None, **kwargs):
-                super(EnableBluetoothContentDialog, self).__init__(**kwargs)
-                tp = ''
-                for i, devt in enumerate(device_types):
-                    if len(device_types) > 1 and i == len(device_types) - 1:
-                        tp += f'and {devt}'
-                    elif i > 0:
-                        tp += f', {devt}'
-                    else:
-                        tp += devt
-                self.text = f"Enabling Bluetooth is required for devices of type {tp}"
-                self.title = 'Enable Bluetooth?'
-                self.ids.id_cancelbtn.bind(on_release=lambda x: action._do_execute(None, config))
-                self.ids.id_askbtn.bind(on_release=lambda x: action._do_execute(True, config))
-                self.ids.id_noaskbtn.bind(on_release=lambda x: action._do_execute(False, config))
-
-        class EnableBluetoothDialog(ThemableBehavior, ModalView):
-            def __init__(self, action, config=None, device_types=None, **kwargs):
-                super().__init__(**kwargs)
-                self.add_widget(EnableBluetoothContentDialog(action, config=config, device_types=device_types))
-
-        self.dialog = EnableBluetoothDialog(self, config=config, device_types=device_types)
+        from kivymd.uix.button import MDFlatButton, MDRaisedButton
+        from kivymd.dialog import MDDialog
+        tp = ''
+        for i, devt in enumerate(device_types):
+            if len(device_types) > 1 and i == len(device_types) - 1:
+                tp += f'and {devt}'
+            elif i > 0:
+                tp += f', {devt}'
+            else:
+                tp += devt
+        self.dialog = MDDialog(
+            size_hint=(0.8, 0.3),
+            title=f"Enable Bluetooth?",
+            type="confirmation",
+            text=f"Enabling Bluetooth is required for devices of type {tp}",
+            buttons=[
+                MDRaisedButton(
+                    text="CANCEL", on_release=lambda x: self._do_execute(None, config)
+                ),
+                MDFlatButton(
+                    text="ENABLE (always ask)", on_release=lambda x: self._do_execute(True, config)
+                ),
+                MDFlatButton(
+                    text="ENABLE (never ask again)", on_release=lambda x: self._do_execute(False, config)
+                )
+            ]
+        )
         self.dialog.open()
 
     def execute(self, config, device_types, on_finish):
