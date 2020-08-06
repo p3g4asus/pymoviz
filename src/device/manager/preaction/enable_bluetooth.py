@@ -82,6 +82,7 @@ class EnableBluetooth(Action):
                 )
             ]
         )
+        self.dialog.ids.button_box.orientation = 'vertical'
         self.dialog.open()
 
     def execute(self, config, device_types, on_finish):
