@@ -73,10 +73,18 @@ class EnableBluetooth(Action):
             items=[
                 OneLineListItem(
                     text="ENABLE (always ask)",
+                    _txt_left_pad=0,
+                    _txt_right_pad=0,
+                    _txt_top_pad=0,
+                    _txt_bot_pad=0,
                     background_color=get_color_from_hex('#ecff33'),
                     on_release=lambda x: self._do_execute(True, config)),
                 OneLineListItem(
                     text="ENABLE (never ask again)",
+                    _txt_left_pad=0,
+                    _txt_right_pad=0,
+                    _txt_top_pad=0,
+                    _txt_bot_pad=0,
                     background_color=get_color_from_hex('#58ff33'),
                     on_release=lambda x: self._do_execute(False, config))
             ],
