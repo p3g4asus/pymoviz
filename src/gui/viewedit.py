@@ -109,7 +109,7 @@ FORMATTER_COLORS = {
 
 def _get_color_from_hex(col):
     if col is None:
-        return (1, 1, 1, 0)
+        return (0, 0, 0, 0)
     else:
         return get_color_from_hex(col)
 
@@ -152,6 +152,7 @@ class FormatterItem(TwoLineListItem):
     player = BooleanProperty(True)
 
     def __init__(self, *args, **kwargs):
+        kwargs['_no_ripple_effect'] = kwargs.get('_no_ripple_effect', True)
         super(FormatterItem, self).__init__(*args, **kwargs)
         self.timer_format = None
         self.formatter2gui()
@@ -187,7 +188,7 @@ class FormatterItem(TwoLineListItem):
         # self.ids.id_dropdown.current_item = self.formatter.background
         self.text = self.formatter.get_title()
         self.secondary_text = self.formatter.set_timeout() if self.player else self.formatter.print_example()
-        self.background_color = self.secondary_background_color =\
+        self.bg_color =\
             _get_color_from_hex(FORMATTER_COLORS[
                 self.formatter.background if self.formatter.background is not None
                 else 'NATURAL'])
@@ -208,6 +209,7 @@ class FormatterAdd(Screen):
         for f in self.formatters:
             fi = FormatterItem(formatter=f,
                                player=False,
+                               _no_ripple_effect=False,
                                on_release=self.dispatch_on_confirm)
             self.ids.id_formatters.add_widget(fi)
 
