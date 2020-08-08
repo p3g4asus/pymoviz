@@ -27,11 +27,13 @@ Builder.load_string(
         MDToolbar:
             id: id_toolbar
             pos_hint: {'top': 1}
-            size_hint: (1, 0.2)
+            size_hint_x: 1
             title: 'New User'
             md_bg_color: app.theme_cls.primary_color
             left_action_items: [["arrow-left", lambda x: root.dispatch_on_confirm(False)]]
             elevation: 10
+            size_hint_y: None
+            height: dp(60)
         BoxLayout:
             padding: [dp(30), dp(20)]
             spacing: dp(30)
@@ -51,30 +53,45 @@ Builder.load_string(
             rows: 4
             MDLabel:
                 text: 'Male'
+                size_hint_y: None
+                height: dp(70)
             MDSwitch:
                 id: id_sex
+                size_hint_y: None
+                height: dp(70)
             MDLabel:
                 text: 'Weight (Kg)'
+                size_hint_y: None
+                height: dp(70)
             MDSlider:
                 id: id_weight
                 min: 10
                 max: 500
                 value: 70
+                size_hint_y: None
+                height: dp(70)
             MDLabel:
                 text: 'Height (cm)'
+                size_hint_y: None
+                height: dp(70)
             MDSlider:
                 id: id_height
                 min: 130
                 max: 270
                 value: 170
+                size_hint_y: None
+                height: dp(70)
             MDLabel:
                 text: 'Birthday'
+                size_hint_y: None
+                height: dp(70)
             ButtonDatePicker:
-                size_hint: (0.85, 0.25)
                 id: id_birth
                 font_size: "12sp"
                 dateformat: '%d/%m/%Y'
                 on_date_picked: root.set_birthday(self.date)
+                size_hint_y: None
+                height: dp(40)
     '''
 )
 

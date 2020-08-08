@@ -2,6 +2,7 @@ import re
 
 from kivy.lang import Builder
 from kivy.properties import DictProperty, ObjectProperty, StringProperty
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.list import ThreeLineListItem
 from util import init_logger
@@ -22,8 +23,10 @@ Builder.load_string(
             md_bg_color: app.theme_cls.primary_color
             left_action_items: [["arrow-left", lambda x: root.dispatch('on_search_stop', None)]]
             elevation: 10
+            size_hint_y: None
+            height: dp(60)
         BoxLayout:
-            size_hint: (1, 0.05)
+            size_hint_y: None
             height: self.minimum_height
             padding: [dp(30), dp(20)]
             MDProgressBar:
@@ -31,54 +34,66 @@ Builder.load_string(
                 max: 99
                 value: 0
                 id: id_progress
+                size_hint_y: None
+                height: dp(30)
         ScrollView:
             MDList:
                 id: id_btds
 
 <SearchSettingsScreen>:
-    ScrollView:
-        GridLayout:
-            orientation: 'vertical'
-            cols: 1
+    BoxLayout:
+        orientation: 'vertical'
+        height: self.minimum_height
+        spacing_y: 0
+        id: id_grid
+        pos_hint: {'top': 1}
+        size_hint_y: 1
+        MDToolbar:
+            id: id_toolbar
+            title: 'Search Results'
+            md_bg_color: app.theme_cls.primary_color
+            left_action_items: [["arrow-left", lambda x: root.exit()]]
+            right_action_items: [["folder-search", lambda x: root.start_search()]]
+            elevation: 10
+            size_hint_x: 1
+            size_hint_y: None
+            height: dp(60)
+        BoxLayout:
+            padding: [dp(30), dp(20)]
+            size_hint_y: None
+            height: dp(60)
+            id: id_alias_cont
+            MDTextField:
+                pos_hint: {'top': 1}
+                id: id_alias
+                hint_text: 'Device alias'
+                error: True
+                helper_text_mode: "on_error"
+                helper_text: 'Please insert a valid alias'
+                on_text: root.check_alias(self, self.text)
+                size_hint_y: None
+                height: dp(60)
+        ThreeLineListItem:
+            id: id_label
+        BoxLayout:
+            id: id_priority
+            size_hint_y: None
             height: self.minimum_height
-            id: id_grid
-            MDToolbar:
-                id: id_toolbar
-                title: 'Search Results'
-                md_bg_color: app.theme_cls.primary_color
-                left_action_items: [["arrow-left", lambda x: root.exit()]]
-                right_action_items: [["folder-search", lambda x: root.start_search()]]
-                elevation: 10
-            BoxLayout:
-                height: self.minimum_height
+            padding: [dp(30), dp(0)]
+            MDLabel:
+                size_hint_x: 0.4
+                text: "Priority"
+                markup: True
                 size_hint_y: None
-                padding: [dp(30), dp(20)]
-                MDTextField:
-                    pos_hint: {'top': 1}
-                    id: id_alias
-                    hint_text: 'Device alias'
-                    error: True
-                    helper_text_mode: "on_error"
-                    helper_text: 'Please insert a valid alias'
-                    on_text: root.check_alias(self, self.text)
-            ThreeLineListItem:
-                id: id_label
-            GridLayout:
-                rows: 1
-                cols: 2
+                height: dp(60)
+            MDSlider:
+                size_hint_x: 0.6
+                id: id_orderd
+                min: 1
+                max: 100
+                value: 50
                 size_hint_y: None
-                height: self.minimum_height + dp(5)
-                padding: [dp(30), dp(20)]
-                MDLabel:
-                    size_hint_x: 0.4
-                    text: "Priority"
-                    markup: True
-                MDSlider:
-                    size_hint_x: 0.6
-                    id: id_orderd
-                    min: 1
-                    max: 100
-                    value: 50
+                height: dp(60)
     '''
 )
 
@@ -164,8 +179,7 @@ class SearchSettingsScreen(Screen):
         super(SearchSettingsScreen, self).__init__(**kwargs)
         self.name = 'conf_d' + self.devicetype
         self.search_screen = None
-        if self.conf_widget:
-            self.ids.id_grid.add_widget(self.conf_widget)
+        self.ids.id_grid.add_widget(self.conf_widget if self.conf_widget else BoxLayout(orientation='horizontal'))
         self.conf2gui()
 
     def exit(self):

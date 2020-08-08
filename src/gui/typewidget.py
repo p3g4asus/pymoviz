@@ -13,14 +13,14 @@ Builder.load_string(
 #:import MDList kivymd.uix.list.MDList
 <TypeWidget>:
     name: 'type'
-    GridLayout:
+    BoxLayout:
         spacing: dp(5)
         height: self.minimum_height
-        rows: 2
-        cols: 1
+        orientation: 'vertical'
         MDToolbar:
             pos_hint: {'top': 1}
-            size_hint: (1, 0.2)
+            size_hint_y: None
+            height: dp(60)
             title: root.title
             md_bg_color: app.theme_cls.primary_color
             left_action_items: [["arrow-left", lambda x: root.dispatch_on_type(root.ABORT)]]

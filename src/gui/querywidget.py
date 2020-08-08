@@ -13,11 +13,10 @@ Builder.load_string(
     '''
 <QueryWidget>:
     name: 'query'
-    GridLayout:
-        spacing: dp(5)
+    BoxLayout:
+        spacing: dp(10)
         height: self.minimum_height
-        rows: 3
-        cols: 1
+        orientation: 'vertical'
         MDToolbar:
             id: id_toolbar
             pos_hint: {'top': 1}
@@ -26,9 +25,13 @@ Builder.load_string(
             md_bg_color: app.theme_cls.primary_color
             left_action_items: [["arrow-left", lambda x: root.stop_querying(back=True)]]
             elevation: 10
+            size_hint_x: 1
+            size_hint_y: None
+            height: dp(60)
         MDTextField:
             id: id_query
-            size_hint: (1, 0.45)
+            size_hint: (1, None)
+            height: (Window.height - dp(80)) // 2
             multiline: True
             write_tabs: False
             helper_text_mode: "on_error"
@@ -36,15 +39,18 @@ Builder.load_string(
             on_text: root.enable_buttons(self, self.text)
         ScrollView:
             id: scrlv
-            size_hint: (1, 0.45)
+            size_hint: (1, None)
+            height: (Window.height - dp(80)) // 2
             MDTextField:
                 id: id_result
-                size_hint: None, None
+                size_hint: (1, None)
                 multiline: True
                 write_tab: True
                 readonly: True
                 on_text: root.on_result(self, self.text)
-                height: max(self.minimum_height, scrlv.height)
+                height: (Window.height - dp(80)) // 2
+        BoxLayout:
+            orientation: 'vertical'
     '''
 )
 

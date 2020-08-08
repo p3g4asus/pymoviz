@@ -27,23 +27,24 @@ Builder.load_string(
 
 <ViewWidget>:
     name: 'view_edit'
-    GridLayout:
-        spacing: dp(5)
+    BoxLayout:
+        orientation: 'vertical'
         height: self.minimum_height
-        rows: 4
-        cols: 1
         MDToolbar:
             id: id_toolbar
             pos_hint: {'top': 1}
-            size_hint: (1, 0.2)
             title: 'New View'
             md_bg_color: app.theme_cls.primary_color
             left_action_items: [["arrow-left", lambda x: root.dispatch_on_confirm(False)]]
             right_action_items: [["plus", lambda x: root.open_add_formatter_screen()]]
             elevation: 10
+            size_hint_x: 1
+            size_hint_y: None
+            height: dp(60)
         BoxLayout:
             padding: [dp(30), dp(5)]
-            size_hint: (1, 0.1)
+            size_hint: (1, None)
+            height: self.minimum_height
             MDTextField:
                 id: id_name
                 icon_type: "without"
@@ -52,8 +53,11 @@ Builder.load_string(
                 helper_text_mode: "on_error"
                 helper_text: "Enter at least a letter"
                 on_text: root.enable_buttons(self, self.text)
+                size_hint_y: None
+                height: dp(60)
         ScrollView:
-            size_hint: (1, 0.7)
+            size_hint: (1, None)
+            height: Window.height - dp(160)
             GridLayout:
                 id: id_formatters
                 cols: 1
@@ -61,20 +65,23 @@ Builder.load_string(
                 padding: dp(5)
                 size_hint_y: None
                 height: self.minimum_height
+        BoxLayout:
+            orientation: 'vertical'
 <FormatterAdd>:
     name: 'formatter_add'
-    GridLayout:
+    BoxLayout:
         spacing: dp(5)
+        orientation: 'vertical'
         height: self.minimum_height
-        rows: 2
-        cols: 1
         MDToolbar:
             pos_hint: {'top': 1}
-            size_hint: (1, 0.2)
             title: 'Add Formatter'
             md_bg_color: app.theme_cls.primary_color
             left_action_items: [["arrow-left", lambda x: root.dispatch_on_confirm(None)]]
             elevation: 10
+            size_hint_x: 1
+            size_hint_y: None
+            height: dp(60)
         ScrollView:
             MDList:
                 id: id_formatters

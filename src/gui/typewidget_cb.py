@@ -13,11 +13,12 @@ Builder.load_string(
 #:import Window kivy.core.window.Window
 <TypeWidgetCB>:
     name: 'type_cb'
-    GridLayout:
-        cols: 1
+    BoxLayout:
         id: id_grid
         size_hint_y: None
+        size_hint_x: 1
         height: Window.height
+        orientation: 'vertical'
         spacing_y: dp(20)
         MDToolbar:
             pos_hint: {'top': 1}
@@ -26,6 +27,8 @@ Builder.load_string(
             md_bg_color: app.theme_cls.primary_color
             left_action_items: [["arrow-left", lambda x: root.dispatch_on_type(False)]]
             elevation: 10
+            size_hint_y: None
+            height: dp(60)
         ScrollView:
             size_hint_y: None
             height: id_grid.height - (box_buttons.height + id_toolbar.height\

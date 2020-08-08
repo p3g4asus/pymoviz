@@ -13,21 +13,29 @@ Builder.load_string(
     MDLabel:
         size_hint_x: 0.4
         text: 'Machine ID'
+        size_hint_y: None
+        height: dp(70)
     MDSlider:
         size_hint_x: 0.6
         id: id_machine
         min: 1
         max: 254
         value: root.DEFAULT_MACHINE
+        size_hint_y: None
+        height: dp(70)
     MDLabel:
         size_hint_x: 0.4
         text: 'Buffer distanza'
+        size_hint_y: None
+        height: dp(70)
     MDSlider:
         size_hint_x: 0.6
         id: id_buffer
         min: 1
         max: 1000
         value: root.DEFAULT_BUFFER
+        size_hint_y: None
+        height: dp(70)
     '''
 )
 
