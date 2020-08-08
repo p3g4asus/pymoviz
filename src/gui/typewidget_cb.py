@@ -36,6 +36,8 @@ Builder.load_string(
             MDList:
                 id: id_types
         BoxLayout:
+            orientation: 'vertical'
+        BoxLayout:
             id: box_buttons
             size_hint_y: None
             height: dp(20)
