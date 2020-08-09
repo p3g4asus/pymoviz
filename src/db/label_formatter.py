@@ -28,7 +28,9 @@ class SetColor(object):
         setmethod(val)
 
     def set(self, obj, val):
-        setattr(obj, self.field_name, val)
+        if obj.field_name in obj.settings:
+            obj.settings[obj.field_name] = val
+        self._set(obj, val)
 
 
 _SETCOLOR_BACKGROUND = SetColor('Background', 'background', 'set_background')
