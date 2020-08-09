@@ -1,20 +1,23 @@
 import re
 import traceback
+from functools import partial
 
 from db.view import View
 from kivy.lang import Builder
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ListProperty, ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.colorpicker import ColorPicker
 from kivy.uix.screenmanager import Screen
 from kivy.utils import get_color_from_hex
+from kivymd.uix.button import MDFlatButton, MDRaisedButton
+from kivymd.uix.dialog import MDDialog
 from kivymd.uix.list import TwoLineListItem
 from kivymd.uix.tab import MDTabsBase
 from util import init_logger
 from util.timer import Timer
 
-from .mdcardpost import SwipeToDeleteItem, ICON_TRASH
-
+from .mdcardpost import ICON_TRASH, SwipeToDeleteItem
 
 _LOGGER = init_logger(__name__)
 
@@ -115,7 +118,9 @@ FORMATTER_COLORS = {
 
 
 def _get_color_from_hex(col):
-    if col is None:
+    if col and col in FORMATTER_COLORS:
+        col = FORMATTER_COLORS[col]
+    if not col or col[0] != '#':
         return (0, 0, 0, 0)
     else:
         return get_color_from_hex(col)
@@ -195,10 +200,7 @@ class FormatterItem(TwoLineListItem):
         # self.ids.id_dropdown.current_item = self.formatter.background
         self.text = self.formatter.get_title()
         self.secondary_text = self.formatter.set_timeout() if self.player else self.formatter.print_example()
-        self.bg_color =\
-            _get_color_from_hex(FORMATTER_COLORS[
-                self.formatter.background if self.formatter.background is not None
-                else 'NATURAL'])
+        self.bg_color = _get_color_from_hex(self.formatter.background)
 
 
 class FormatterAdd(Screen):
@@ -225,21 +227,56 @@ class FormatterPost(SwipeToDeleteItem):
     formatter = ObjectProperty()
     remove_handler = ObjectProperty(None, allownone=True)
 
-    def change_bg(self, elem, *args, html=None, **kwargs):
-        self.formatter.set_background(elem)
-        self.background_color = _get_color_from_hex(html)
-
     def on_button_click(self, name):
         if name == ICON_TRASH:
             if self.remove_handler:
                 self.remove_handler(self, formatter=self.formatter)
         else:
-            self.change_bg(name, html=FORMATTER_COLORS[name])
+            self.show_color_dialog(name)
+
+    def show_color_dialog(self, colname):
+        setcol = self.formatter.get_colors_to_set()[colname]
+        hex_color = setcol.get(self.formatter)
+        if hex_color and hex_color[0] == '#':
+            colors = dict(hex_color=hex_color)
+        elif hex_color and hex_color in FORMATTER_COLORS:
+            colors = dict(hex_color=FORMATTER_COLORS[hex_color])
+        else:
+            colors = dict(color=(0, 0, 0, 0))
+        cp = ColorPicker(size_hint_y=None,
+                         height=dp(300),
+                         **colors)
+        dialog = MDDialog(
+            title="Color choice",
+            type="custom",
+            content_cls=cp,
+            buttons=[
+                MDRaisedButton(
+                    text="Cancel", on_release=partial(self.on_new_color, renc=cp, colname=colname)
+                ),
+                MDFlatButton(
+                    text="OK", on_release=partial(self.on_new_color, renc=cp, colname=colname)
+                ),
+            ]
+        )
+        dialog.open()
+
+    def on_new_color(self, but, *args, renc=None, colname=''):
+        if but.text == 'OK':
+            setcol = self.formatter.get_colors_to_set()[colname]
+            setcol.set(self.formatter, renc.hex_color)
+            self.md_bg_color = _get_color_from_hex(self.formatter.background)
+            self.text_post = self.formatter.print_example()
+
+        while but:
+            but = but.parent
+            if isinstance(but, MDDialog):
+                but.dismiss()
+                break
 
     def __init__(self, formatter=None, remove_handler=None):
         menu_items = []
-        ll = list(FORMATTER_COLORS.keys())
-        ll.sort()
+        ll = formatter.get_colors_to_set().keys()
         for c in ll:
             menu_items.append(dict(
                 text=c,
@@ -258,8 +295,7 @@ class FormatterPost(SwipeToDeleteItem):
             name_data=f'Name: {formatter.name}\nDevice: {formatter.deviceobj.get_alias()}',
             text_post=formatter.print_example(),
             height=dp(80),
-            background_color=_get_color_from_hex(FORMATTER_COLORS[
-                formatter.background if formatter.background is not None else 'NATURAL']))
+            md_bg_color=_get_color_from_hex(formatter.background))
 
 
 class ViewWidget(Screen):

@@ -59,6 +59,13 @@ Builder.load_string(
     max_swipe_x: 0.92
 
     MDCardSwipeLayerBox:
+        canvas:
+            Color:
+                # #263238
+                rgba: root.md_bg_color
+
+            Rectangle:
+                size: self.size
         AnchorLayout:
             anchor_x: 'right'
             anchor_y: 'center'
@@ -70,6 +77,7 @@ Builder.load_string(
 
     CardElement:
         id: id_card
+        md_bg_color: root.md_bg_color if root.md_bg_color[3] else self.theme_cls.bg_light
         height: root.height
         path_to_avatar: root.path_to_avatar
         text_post: root.text_post
@@ -92,6 +100,7 @@ class CardElement(MDCardSwipeFrontBox):
     right_menu = ListProperty()
     _menu_button = ObjectProperty(None, allownone=True)
     background_color = ListProperty([1, 1, 1, 0])
+    md_bg_color = ListProperty([1, 1, 1, 1])
     width_mult = NumericProperty(3.5)
 
     def __init__(self, **kwargs):
@@ -145,6 +154,7 @@ class SwipeToDeleteItem(MDCardSwipe):
     name_data = StringProperty()
     right_menu = ListProperty()
     background_color = ListProperty([1, 1, 1, 0])
+    md_bg_color = ListProperty([1, 1, 1, 1])
     width_mult = NumericProperty(3.5)
 
     def __init__(self, **kwargs):

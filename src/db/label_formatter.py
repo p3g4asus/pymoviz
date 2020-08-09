@@ -12,6 +12,32 @@ from util import init_logger
 _LOGGER = init_logger(__name__)
 
 
+class SetColor(object):
+    def __init__(self, name, field_name, method_name):
+        self.name = name
+        self.field_name = field_name
+        self.method_name = method_name
+
+    def get(self, obj):
+        # col = getattr(obj, self.field_name)
+        # return '#ffffff' if not col or col[0] != '#' else col
+        return getattr(obj, self.field_name)
+
+    def _set(self, obj, val):
+        setmethod = getattr(obj, self.method_name)
+        setmethod(val)
+
+    def set(self, obj, val):
+        setattr(obj, self.field_name, val)
+
+
+_SETCOLOR_BACKGROUND = SetColor('Background', 'background', 'set_background')
+_SETCOLOR_MAIN = SetColor('Main', 'col', '_set_col')
+_SETCOLOR_ERROR = SetColor('Error', 'colerror', '_set_colerror')
+_SETCOLOR_WARNING = SetColor('Warning', 'colmin', '_set_colmin')
+_SETCOLOR_OK = SetColor('OK', 'colmax', '_set_colmax')
+
+
 class LabelFormatter(SerializableDBObj, abc.ABC):
     __table__ = 'label'
     __columns__ = (
@@ -81,6 +107,10 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         if self.classname is None:
             self.classname = self.fullname()
         self.wrappers = []
+
+    @classmethod
+    def get_colors_to_set(cls):
+        return dict(Background=_SETCOLOR_BACKGROUND)
 
     def __lt__(self, other):
         return self.orderd < other.orderd
@@ -238,6 +268,10 @@ class SimpleFormatter(LabelFormatter):
     def _set_col(self, col):
         self._set_setting_field(col=col)
 
+    @classmethod
+    def get_colors_to_set(cls):
+        return dict(Background=_SETCOLOR_BACKGROUND, Main=_SETCOLOR_MAIN)
+
     def format(self, *args, **kwargs):
         if args:
             s = self.format_str % args
@@ -299,6 +333,14 @@ class DoubleFormatter(LabelFormatter):
 
     def _set_colerror(self, colerror):
         self._set_setting_field(colerror=colerror)
+
+    @classmethod
+    def get_colors_to_set(cls):
+        return dict(Background=_SETCOLOR_BACKGROUND,
+                    Main=_SETCOLOR_MAIN,
+                    OK=_SETCOLOR_OK,
+                    Warning=_SETCOLOR_WARNING,
+                    Error=_SETCOLOR_ERROR)
 
     def format(self, v1, v2, *args, **kwargs):
         if v1 is None or v2 is None:
@@ -364,6 +406,10 @@ class SessionFormatter(LabelFormatter):
         return self.wrap(self.get_pre(), 0) +\
             self.wrap(f'[color={self.col}]{datepub}[/color]' if self.col else f'{datepub}', 1)
 
+    @classmethod
+    def get_colors_to_set(cls):
+        return dict(Background=_SETCOLOR_BACKGROUND, Main=_SETCOLOR_MAIN)
+
 
 class UserFormatter(LabelFormatter):
     def __init__(self, pre='$D User: ', **kwargs):
@@ -380,6 +426,10 @@ class UserFormatter(LabelFormatter):
                 self.wrap(f"{flds[0]} {flds[1]}cm/{flds[2]}kg/{years}y", 1)
         else:
             return self.set_timeout()
+
+    @classmethod
+    def get_colors_to_set(cls):
+        return dict(Background=_SETCOLOR_BACKGROUND, Main=_SETCOLOR_MAIN)
 
 
 class StateFormatter(LabelFormatter):
@@ -451,3 +501,11 @@ class StateFormatter(LabelFormatter):
         return self.wrap(self.get_pre(), 0) +\
             self.wrap(f'[color={col1}]{s1}[/color]' if col1 else f'{s1}', 1, pref=pref) +\
             self.wrap(self.post, 4)
+
+    @classmethod
+    def get_colors_to_set(cls):
+        return dict(Background=_SETCOLOR_BACKGROUND,
+                    Main=_SETCOLOR_MAIN,
+                    OK=_SETCOLOR_OK,
+                    Warning=_SETCOLOR_WARNING,
+                    Error=_SETCOLOR_ERROR)
