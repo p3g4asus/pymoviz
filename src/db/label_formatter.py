@@ -28,8 +28,8 @@ class SetColor(object):
         setmethod(val)
 
     def set(self, obj, val):
-        if obj.field_name in obj.settings:
-            obj.settings[obj.field_name] = val
+        if self.field_name in obj.settings:
+            obj.settings[self.field_name] = val
         self._set(obj, val)
 
 
