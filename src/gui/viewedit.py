@@ -198,7 +198,8 @@ class FormatterItem(TwoLineListItem):
         # if not self.formatter.background or self.formatter.background not in self.colors:
         #     self.formatter.background = 'WHITE'
         # self.ids.id_dropdown.current_item = self.formatter.background
-        self.text = self.formatter.get_title()
+        s = self.formatter.get_title()
+        self.text = f'[color={self.formatter.col}]{s}[/color]' if self.formatter.col else s
         self.secondary_text = self.formatter.set_timeout() if self.player else self.formatter.print_example()
         self.bg_color = _get_color_from_hex(self.formatter.background)
 
