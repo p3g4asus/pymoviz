@@ -288,8 +288,12 @@ class SimpleFormatter(LabelFormatter):
             s = self.format_str.format(**kwargs)
         else:
             return self.set_timeout()
-        return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
-            self.wrap(f'[color={self.col}]{s}[/color]' if self.col else f'{s}', 1)
+        if not self.col:
+            return self.wrap(self.get_pre(), 0) +\
+                self.wrap(s, 1)
+        else:
+            return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
+                self.wrap(f'[color={self.col}]{s}[/color]', 1)
 
 
 class SimpleFieldFormatter(SimpleFormatter):
@@ -403,8 +407,12 @@ class SessionFormatter(LabelFormatter):
                 v1 = v1[0]
         datepubo = datetime.fromtimestamp(v1 / 1000)
         datepub = datepubo.strftime('%H:%M:%S %Y-%m-%d')
-        return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
-            self.wrap(f'[color={self.col}]{datepub}[/color]' if self.col else f'{datepub}', 1)
+        if not self.col:
+            return self.wrap(self.get_pre(), 0) +\
+                self.wrap(datepub, 1)
+        else:
+            return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
+                self.wrap(f'[color={self.col}]{datepub}[/color]', 1)
 
 
 class UserFormatter(LabelFormatter):
@@ -418,8 +426,12 @@ class UserFormatter(LabelFormatter):
         if flds:
             datepubo = datetime.fromtimestamp(flds[3])
             years = int((datetime.now()-datepubo).days / 365.25)
-            return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
-                self.wrap(f"{flds[0]} {flds[1]}cm/{flds[2]}kg/{years}y", 1)
+            if not self.col:
+                return self.wrap(self.get_pre(), 0) +\
+                    self.wrap(f"{flds[0]} {flds[1]}cm/{flds[2]}kg/{years}y", 1)
+            else:
+                return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
+                    self.wrap(f"[color={self.col}]{flds[0]} {flds[1]}cm/{flds[2]}kg/{years}y[/color]", 1)
         else:
             return self.set_timeout()
 
@@ -484,9 +496,14 @@ class StateFormatter(LabelFormatter):
             col1 = self.colmax
             s1 = 'connected'
             pref = 'max'
-        return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
-            self.wrap(f'[color={col1}]{s1}[/color]' if col1 else f'{s1}', 1, pref=pref) +\
-            self.wrap(f'[color={self.col}]{self.post}[/color]', 4)
+        if not col1 or not self.col:
+            return self.wrap(self.get_pre(), 0) +\
+                self.wrap(f'{s1}', 1, pref=pref) +\
+                self.wrap(self.post, 4)
+        else:
+            return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
+                self.wrap(f'[color={col1}]{s1}[/color]' if col1 else f'{s1}', 1, pref=pref) +\
+                self.wrap(f'[color={self.col}]{self.post}[/color]', 4)
 
     @classmethod
     def get_colors_to_set(cls):
