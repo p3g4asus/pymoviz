@@ -60,7 +60,7 @@ from util import asyncio_graceful_shutdown, db_dir, find_devicemanager_classes,\
 
 _LOGGER = init_logger(__name__, level=logging.DEBUG)
 __prog__ = "pyMoviz"
-__version__ = (3, 14, 0)
+__version__ = (3, 15, 0)
 
 KV = \
     '''

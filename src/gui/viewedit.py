@@ -268,12 +268,19 @@ class FormatterPost(SwipeToDeleteItem):
             setcol.set(self.formatter, renc.hex_color)
             self.md_bg_color = _get_color_from_hex(self.formatter.background)
             self.text_post = self.formatter.print_example()
+            self.name_data = self.print_name_data()
 
         while but:
             but = but.parent
             if isinstance(but, MDDialog):
                 but.dismiss()
                 break
+
+    def print_name_data(self, formatter=None):
+        if not formatter:
+            formatter = self.formatter
+        s = f'Name: {formatter.name}\nDevice: {formatter.deviceobj.get_alias()}'
+        return f'[color={formatter.col}]{s}[/color]' if formatter.col else s
 
     def __init__(self, formatter=None, remove_handler=None):
         menu_items = []
@@ -293,7 +300,7 @@ class FormatterPost(SwipeToDeleteItem):
             remove_handler=remove_handler,
             path_to_avatar=formatter.deviceobj.get_icon(),
             right_menu=menu_items,
-            name_data=f'Name: {formatter.name}\nDevice: {formatter.deviceobj.get_alias()}',
+            name_data=self.print_name_data(formatter),
             text_post=formatter.print_example(),
             height=dp(80),
             md_bg_color=_get_color_from_hex(formatter.background))
