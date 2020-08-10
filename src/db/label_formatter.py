@@ -502,7 +502,7 @@ class StateFormatter(LabelFormatter):
                 self.wrap(self.post, 4)
         else:
             return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
-                self.wrap(f'[color={col1}]{s1}[/color]' if col1 else f'{s1}', 1, pref=pref) +\
+                self.wrap(f'[color={col1}]{s1}[/color]', 1, pref=pref) +\
                 self.wrap(f'[color={self.col}]{self.post}[/color]', 4)
 
     @classmethod
