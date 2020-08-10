@@ -94,9 +94,11 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
                  name='',
                  example_conf=(),
                  pre='$D: ',
-                 timeout='[color=#f44336]---[/color]',
+                 timeout='---',
                  timeouttime=7,
                  type='fitobj',
+                 colerror='#f44336',
+                 col='#212121',
                  **kwargs):
         super(LabelFormatter, self).__init__(name=name,
                                              example_conf=example_conf,
@@ -104,15 +106,23 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
                                              type=type,
                                              timeouttime=timeouttime,
                                              timeout=timeout,
+                                             colerror=colerror,
+                                             col=col,
                                              **kwargs)
         self.deviceobj = self.f('deviceobj')
         if self.classname is None:
             self.classname = self.fullname()
         self.wrappers = []
 
+    def _set_colerror(self, colerror):
+        self._set_setting_field(colerror=colerror)
+
+    def _set_col(self, col):
+        self._set_setting_field(col=col)
+
     @classmethod
     def get_colors_to_set(cls):
-        return dict(Background=_SETCOLOR_BACKGROUND)
+        return dict(Background=_SETCOLOR_BACKGROUND, Error=_SETCOLOR_ERROR, Main=_SETCOLOR_MAIN)
 
     def __lt__(self, other):
         return self.orderd < other.orderd
@@ -202,7 +212,11 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
         return f'[color={col}]{txt}[/color]'
 
     def set_timeout(self):
-        return self.wrap(self.get_pre(), 0) + self.wrap(self.timeout, 5, pref='error')
+        if self.col and self.colerror:
+            return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
+                self.wrap(f'[color={self.colerror}]{self.timeout}[/color]', 5, pref='error')
+        else:
+            return self.wrap(self.get_pre(), 0) + self.wrap(self.timeout, 5, pref='error')
 
     def reset(self):
         self.order = None
@@ -261,18 +275,11 @@ class LabelFormatter(SerializableDBObj, abc.ABC):
 
 
 class SimpleFormatter(LabelFormatter):
-    def __init__(self, format_str='', col='#212121', **kwargs):
-        super(SimpleFormatter, self).__init__(format_str=format_str, col=col, **kwargs)
+    def __init__(self, format_str='', **kwargs):
+        super(SimpleFormatter, self).__init__(format_str=format_str, **kwargs)
 
     def _set_format_str(self, format_str):
         self._set_setting_field(format_str=format_str)
-
-    def _set_col(self, col):
-        self._set_setting_field(col=col)
-
-    @classmethod
-    def get_colors_to_set(cls):
-        return dict(Background=_SETCOLOR_BACKGROUND, Main=_SETCOLOR_MAIN)
 
     def format(self, *args, **kwargs):
         if args:
@@ -281,7 +288,7 @@ class SimpleFormatter(LabelFormatter):
             s = self.format_str.format(**kwargs)
         else:
             return self.set_timeout()
-        return self.wrap(self.get_pre(), 0) +\
+        return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
             self.wrap(f'[color={self.col}]{s}[/color]' if self.col else f'{s}', 1)
 
 
@@ -304,16 +311,16 @@ class TimeFieldFormatter(SimpleFieldFormatter):
     def __init__(self, example_conf={'time': 3723}, fields=['%ttime'], **kwargs):
         super(TimeFieldFormatter, self).__init__(
             name='Time', format_str='%d:%02d:%02d', example_conf=example_conf,
-            timeout='[color=#f44336]-:--:--[/color]', fields=fields, **kwargs)
+            timeout='-:--:--', fields=fields, **kwargs)
 
 
 class DoubleFormatter(LabelFormatter):
     def __init__(self, f1='', f2='', post='',
-                 col='#212121', colmax='#32cb00', colmin='#fdd835',
-                 colerror='#f44336', **kwargs):
+                 colmax='#32cb00', colmin='#fdd835',
+                 **kwargs):
         super(DoubleFormatter, self).__init__(
-            col=col, f1=f1, f2=f2, post=post,
-            colmin=colmin, colmax=colmax, colerror=colerror, **kwargs)
+            f1=f1, f2=f2, post=post,
+            colmin=colmin, colmax=colmax, **kwargs)
 
     def _set_f1(self, f1):
         self._set_setting_field(f1=f1)
@@ -324,17 +331,11 @@ class DoubleFormatter(LabelFormatter):
     def _set_post(self, post):
         self._set_setting_field(post=post)
 
-    def _set_col(self, col):
-        self._set_setting_field(col=col)
-
     def _set_colmin(self, colmin):
         self._set_setting_field(colmin=colmin)
 
     def _set_colmax(self, colmax):
         self._set_setting_field(colmax=colmax)
-
-    def _set_colerror(self, colerror):
-        self._set_setting_field(colerror=colerror)
 
     @classmethod
     def get_colors_to_set(cls):
@@ -366,10 +367,10 @@ class DoubleFormatter(LabelFormatter):
                     self.wrap(f'({s2})', 2) +\
                     self.wrap(self.post, 4)
             else:
-                return self.wrap(self.get_pre(), 0) +\
+                return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
                     self.wrap(f'[color={col2}]{s1}[/color] ', 1) +\
                     self.wrap(f'[color={self.col}]([/color][color={col1}]{s2}[/color][color={self.col}])[/color]', 2) +\
-                    self.wrap(self.post, 4)
+                    self.wrap(f'[color={self.col}]{self.post}[/color]', 4)
 
 
 class DoubleFieldFormatter(DoubleFormatter):
@@ -388,13 +389,10 @@ class DoubleFieldFormatter(DoubleFormatter):
 
 
 class SessionFormatter(LabelFormatter):
-    def __init__(self, col='#212121', pre='$D Ses: ', **kwargs):
+    def __init__(self, pre='$D Ses: ', **kwargs):
         super(SessionFormatter, self).__init__(
             name='Session', pre=pre, type='session', timeouttime=0,
-            example_conf=dict(datestart=1584885218699), col=col, **kwargs)
-
-    def _set_col(self, col):
-        self._set_setting_field(col=col)
+            example_conf=dict(datestart=1584885218699), **kwargs)
 
     def format(self, v1, *args, **kwargs):
         if not isinstance(v1, (int, float)):
@@ -405,12 +403,8 @@ class SessionFormatter(LabelFormatter):
                 v1 = v1[0]
         datepubo = datetime.fromtimestamp(v1 / 1000)
         datepub = datepubo.strftime('%H:%M:%S %Y-%m-%d')
-        return self.wrap(self.get_pre(), 0) +\
+        return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
             self.wrap(f'[color={self.col}]{datepub}[/color]' if self.col else f'{datepub}', 1)
-
-    @classmethod
-    def get_colors_to_set(cls):
-        return dict(Background=_SETCOLOR_BACKGROUND, Main=_SETCOLOR_MAIN)
 
 
 class UserFormatter(LabelFormatter):
@@ -424,38 +418,28 @@ class UserFormatter(LabelFormatter):
         if flds:
             datepubo = datetime.fromtimestamp(flds[3])
             years = int((datetime.now()-datepubo).days / 365.25)
-            return self.wrap(self.get_pre(), 0) +\
+            return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
                 self.wrap(f"{flds[0]} {flds[1]}cm/{flds[2]}kg/{years}y", 1)
         else:
             return self.set_timeout()
 
-    @classmethod
-    def get_colors_to_set(cls):
-        return dict(Background=_SETCOLOR_BACKGROUND, Main=_SETCOLOR_MAIN)
-
 
 class StateFormatter(LabelFormatter):
-    def __init__(self, col='#212121', pre='$D ST: ', post='',
-                 colmax='#32cb00', colmin='#fdd835', colerror='#f44336', **kwargs):
+    def __init__(self, pre='$D ST: ', post='',
+                 colmax='#32cb00', colmin='#fdd835', **kwargs):
         super(StateFormatter, self).__init__(
             name='State', pre=pre, type='state',
-            example_conf=dict(state=DEVSTATE_DISCONNECTED), col=col, post=post, timeouttime=0,
-            colmax=colmax, colmin=colmin, colerror=colerror, **kwargs)
+            example_conf=dict(state=DEVSTATE_DISCONNECTED), post=post, timeouttime=0,
+            colmax=colmax, colmin=colmin, **kwargs)
 
     def _set_post(self, post):
         self._set_setting_field(post=post)
-
-    def _set_col(self, col):
-        self._set_setting_field(col=col)
 
     def _set_colmin(self, colmin):
         self._set_setting_field(colmin=colmin)
 
     def _set_colmax(self, colmax):
         self._set_setting_field(colmax=colmax)
-
-    def _set_colerror(self, colerror):
-        self._set_setting_field(colerror=colerror)
 
     def format(self, v1, *args, **kwargs):
         if not isinstance(v1, int):
@@ -500,9 +484,9 @@ class StateFormatter(LabelFormatter):
             col1 = self.colmax
             s1 = 'connected'
             pref = 'max'
-        return self.wrap(self.get_pre(), 0) +\
+        return self.wrap(f'[color={self.col}]{self.get_pre()}[/color]', 0) +\
             self.wrap(f'[color={col1}]{s1}[/color]' if col1 else f'{s1}', 1, pref=pref) +\
-            self.wrap(self.post, 4)
+            self.wrap(f'[color={self.col}]{self.post}[/color]', 4)
 
     @classmethod
     def get_colors_to_set(cls):
