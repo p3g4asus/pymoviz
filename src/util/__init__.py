@@ -33,15 +33,18 @@ def db_dir(*args):
     if platform == "android":
         from jnius import autoclass
         Environment = autoclass('android.os.Environment')
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-        ctx = PythonActivity.mActivity
-        strg = ctx.getExternalFilesDirs(None)
-        dest = strg[0]
-        for f in strg:
-            if Environment.isExternalStorageRemovable(f):
-                dest = f
-                break
-        pth = dest.getAbsolutePath()
+        if 0:
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            ctx = PythonActivity.mActivity
+            strg = ctx.getExternalFilesDirs(None)
+            dest = strg[0]
+            for f in strg:
+                if Environment.isExternalStorageRemovable(f):
+                    dest = f
+                    break
+            pth = dest.getAbsolutePath()
+        else:
+            pth = join(Environment.getExternalStorageDirectory().getAbsolutePath(), 'pyMoviz')
     else:
         home = expanduser("~")
         pth = join(home, '.kivymoviz')

@@ -60,7 +60,13 @@ from util import asyncio_graceful_shutdown, db_dir, find_devicemanager_classes,\
 
 _LOGGER = init_logger(__name__, level=logging.DEBUG)
 __prog__ = "pyMoviz"
-__version__ = (3, 17, 0)
+__version__ = (3, 18, 0)
+
+if platform == "android":
+    from android.permissions import request_permissions, Permission
+    request_permissions([Permission.INTERNET, Permission.READ_EXTERNAL_STORAGE,
+                         Permission.WRITE_EXTERNAL_STORAGE, Permission.BLUETOOTH_ADMIN,
+                         Permission.BLUETOOTH, Permission.ACCESS_FINE_LOCATION])
 
 KV = \
     '''
@@ -296,19 +302,22 @@ class MainApp(MDApp):
         if platform == 'android':
             from jnius import autoclass, cast
             Environment = autoclass('android.os.Environment')
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            ctx = PythonActivity.mActivity
-            strg = ctx.getExternalFilesDirs(None)
-            if strg:
-                dest = strg[0]
-                for f in strg:
-                    if Environment.isExternalStorageRemovable(f):
-                        dest = f
-                        break
-                data_dir = dest.getAbsolutePath()
+            if 0:
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                ctx = PythonActivity.mActivity
+                strg = ctx.getExternalFilesDirs(None)
+                if strg:
+                    dest = strg[0]
+                    for f in strg:
+                        if Environment.isExternalStorageRemovable(f):
+                            dest = f
+                            break
+                    data_dir = dest.getAbsolutePath()
+                else:
+                    file_p = cast('java.io.File', ctx.getFilesDir())
+                    data_dir = file_p.getAbsolutePath()
             else:
-                file_p = cast('java.io.File', ctx.getFilesDir())
-                data_dir = file_p.getAbsolutePath()
+                data_dir = join(Environment.getExternalStorageDirectory().getAbsolutePath(), 'pyMoviz')
             if not exists(data_dir):
                 os.mkdir(data_dir)
             return data_dir
